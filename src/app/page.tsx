@@ -7,7 +7,7 @@ import { Tv, Film, BookOpen, ArrowUpRight } from 'lucide-react';
 
 const LabSection = ({ title, sub, icon: Icon, href, colorClass, delay }: any) => {
   return (
-    <Link href={href} className="flex-1 relative group rounded-[2rem] overflow-hidden border border-white/5 bg-[#0A0A0A] h-[70vh] min-w-[300px] transition-all duration-500 hover:border-white/20">
+    <Link href={href} className="flex-1 relative group rounded-4xl overflow-hidden border border-white/5 bg-[#0A0A0A] h-[70vh] min-w-[300px] transition-all duration-500 hover:border-white/20">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
