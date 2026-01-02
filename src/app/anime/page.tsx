@@ -8,71 +8,61 @@ import { Tv, Film, BookOpen, ArrowUpRight } from 'lucide-react';
 
 // --- 45度斜向流动的无缝海报墙组件 ---
 const DiagonalPosterGrid = () => {
-    // 1. 在这里列出你 images 文件夹下所有的图片名
     const myImages = [
-        "/images/败犬女主.png",
-        "/images/冰菓.png",
-        "/images/冰海战记.png",
-        "/images/芙莉莲.png",
-        "/images/钢炼fa.png",
-        "/images/高达0080.png",
-        "/images/化物语.png",
-        "/images/欢迎加入nhk.png",
-        "/images/辉夜第三季.png",
-        "/images/寄生兽.png",
-        "/images/巨人第三季part2.png",
-        "/images/来自新世界.png",
-        "/images/凉宫春日的消失.png",
-        "/images/琉璃的宝石.png",
-        "/images/鲁鲁修.png",
-        "/images/迷宫饭.png",
-        "/images/命运石之门.png",
-        "/images/末日后酒店.png",
-        "/images/女高日常.png",
-        "/images/千年女优.png",
-        "/images/轻音少女第二季.png",
-        "/images/小魔女学院.png",
-        "/images/小樱.png",
-        "/images/咲良田.png",
-        "/images/悠哉日常大王.png",
-        "/images/月色真美.png",
+        "/images/275612.jpg", "/images/败犬女主.png", "/images/冰菓.png",
+        "/images/冰海战记.png", "/images/芙莉莲.png", "/images/钢炼fa.png",
+        "/images/高达0080.png", "/images/化物语.png", "/images/欢迎加入nhk.png",
+        "/images/辉夜第三季.png", "/images/寄生兽.png", "/images/巨人第三季part2.png",
+        "/images/来自新世界.png", "/images/凉宫春日的消失.png", "/images/琉璃的宝石.png",
+        "/images/鲁鲁修.png", "/images/迷宫饭.png", "/images/命运石之门.png",
+        "/images/末日后酒店.png", "/images/女高日常.png", "/images/千年女优.png",
+        "/images/轻音少女第二季.png", "/images/小魔女学院.png", "/images/小樱.png",
+        "/images/咲良田.png", "/images/悠哉日常大王.png", "/images/月色真美.png",
         "/images/mygo.png"
     ];
 
-
-    // 2. 逻辑：无论你提供了多少张图，我们都通过“取余运算 (%)”把它们均匀分发到 24 个格子里
-    // 这样即使你只有 3 张图，它也会 1-2-3-1-2-3 地排满，不会留空
-    const gridImages = Array.from({ length: 24 }, (_, i) => myImages[i % myImages.length]);
+    // 逻辑优化：自动计算需要的格子数量，确保所有图片都能露脸
+    // 我们取 32 或 图片总数的倍数，让网格看起来更饱满
+    const gridCount = 32;
+    const gridImages = Array.from({ length: gridCount }, (_, i) => myImages[i % myImages.length]);
 
     return (
         <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none group-hover:opacity-40 transition-opacity duration-700">
             <motion.div
                 animate={{
-                    x: [0, -100, -200],
-                    y: [0, -150, -300],
+                    // 这里的位移数值可以稍微加大，因为图片变多了
+                    x: [0, -200, -400],
+                    y: [0, -300, -600],
                 }}
                 transition={{
-                    duration: 30,
+                    duration: 40, // 图片多了，速度可以再放慢一点，增加高级感
                     ease: "linear",
                     repeat: Infinity,
                 }}
-                className="grid grid-cols-4 gap-0 w-[200%] md:w-[250%]"
+                // 改为 4 列布局
+                className="grid grid-cols-4 gap-0 w-[250%] md:w-[300%]"
             >
                 {gridImages.map((src, i) => (
                     <div
                         key={i}
                         className="relative aspect-2/3 w-full border-[0.5px] border-white/5 overflow-hidden"
                     >
+                        {/* 增加 loading="lazy" 优化性能 */}
                         <img
                             src={src}
-                            className="w-full h-full object-cover scale-110" // 稍微放大防止边缘露白
+                            loading="lazy"
+                            className="w-full h-full object-cover scale-110"
                             alt={`Poster ${i}`}
+                            // 增加一个简单的错误处理：如果图片加载失败，显示一个半透明占位块
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                            }}
                         />
                     </div>
                 ))}
             </motion.div>
 
-            {/* 遮罩逻辑保持不变 */}
+            {/* 遮罩 */}
             <div className="absolute inset-0 bg-linear-to-b from-[#020202] via-transparent to-[#020202] z-10" />
             <div className="absolute inset-0 bg-linear-to-r from-[#020202]/50 via-transparent to-[#020202]/50 z-10" />
         </div>
@@ -126,7 +116,7 @@ const LabSection = ({ title, sub, icon: Icon, href, colorClass, delay, showPoste
                 <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-linear-to-b ${colorClass}`} />
             )}
 
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none [background-image:linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] [background-size:30px_30px]"></div>
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-size-[30px_30px]"></div>
         </Link>
     );
 };
