@@ -47,7 +47,7 @@ export default function AnimePage() {
         <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden flex flex-col">
 
             {/* 背景层：流动的海报墙 */}
-            <div className="absolute inset-0 z-0 flex flex-col justify-center opacity-30 blur-[1px] scale-110 pointer-events-none">
+            <div className="absolute inset-0 z-0 flex flex-col justify-center opacity-60 blur-[1px] scale-110 pointer-events-none">
                 <PosterMarquee images={posters} direction="left" speed={50} />
                 <div className="mt-8">
                     <PosterMarquee images={posters} direction="right" speed={60} />
