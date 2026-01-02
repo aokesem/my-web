@@ -68,7 +68,7 @@ const DiagonalPosterGrid = () => {
   if (shuffledImages.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden opacity-45 pointer-events-none group-hover:opacity-90 transition-opacity duration-700">
+    <div className="absolute inset-0 overflow-hidden opacity-65 pointer-events-none group-hover:opacity-95 transition-opacity duration-700">
       <motion.div
         animate={{
           x: ["0%", "-50%"],
@@ -159,60 +159,90 @@ const CinemaReel = () => {
 };
 
 // ==============================================
-// 3. 读书组件：斜向流动的文字雨 (Reading)
+// 3. 读书组件：流动的文字雨 (Reading)
 // ==============================================
-const TextStream = () => {
-  // 定义一组充满“知性”的关键词，作为流动的纹理
-  const words = [
-    "春琦，重启吧",
-    "魔女敲响了爱人的窗",
-    "复杂又单纯，宛如大人般的少年持续怀抱某个期望的故事",
-    "所谓的平凡生活，对我而言却是此生触不可及的奢侈品",
-    "她的笑容比余晖还要耀眼，让本该枯燥的课桌染上了异彩",
-    "除去那只寄宿着恶魔的左眼，我也只是个随处可见的高中生",
-    "即便雨水冲刷掉所有痕迹，那个谎言依然在心底隐隐作痛",
-    "哪怕前方是虚无的深渊，我也要去探寻藏在天空尽头的答案",
-    "所谓的爱，大概是这个世界上最温柔也最残忍的一种诅咒吧",
-  ];
+const words = [
+  "春琦，重启吧",
+  "魔女敲响了爱人的窗",
+  "复杂又单纯，宛如大人般的少年持续怀抱某个期望的故事",
+  "所谓的平凡生活，对我而言却是此生触不可及的奢侈品",
+  "她的笑容比余晖还要耀眼，让本该枯燥的课桌染上了异彩",
+  "除去那只寄宿着恶魔的左眼，我也只是个随处可见的高中生",
+  "即便雨水冲刷掉所有痕迹，那个谎言依然在心底隐隐作痛",
+  "哪怕前方是虚无的深渊，我也要去探寻藏在天空尽头的答案",
+  "所谓的爱，大概是这个世界上最温柔也最残忍的一种诅咒吧",
+  "思想的文字承载，在寂静中构建个人的精神乐园",
+];
 
+const TextColumn = ({
+  colIndex,
+  totalCols,
+  isHovered
+}: {
+  colIndex: number;
+  totalCols: number;
+  isHovered: boolean
+}) => {
+  const [wordIndex, setWordIndex] = useState(colIndex % words.length);
+  const [count, setCount] = useState(0);
 
-  // 生成足够多的单词来填满网格
-  // Array(80) 意味着我们会生成 80 个格子，保证覆盖面积
-  const streamContent = Array.from({ length: 80 }, (_, i) => words[i % words.length]);
+  const handleAnimationComplete = () => {
+    setWordIndex((prev) => (prev + totalCols) % words.length);
+    setCount(prev => prev + 1);
+  };
+
+  // 速度区间优化：基础速度设在 10s (最快) 到 16s (最慢) 之间
+  // 这样保证了下限不会过慢（之前的下限接近 25s 太慢了）
+  const baseDuration = useMemo(() => 10 + colIndex * 1.2, [colIndex]);
+  const currentDuration = isHovered ? baseDuration * 1.8 : baseDuration;
 
   return (
-    // 默认 opacity-30 (暗)，悬停 hover:opacity-100 (亮)
-    <div className="absolute inset-0 overflow-hidden bg-[#0A0A0A] opacity-30 group-hover:opacity-80 transition-opacity duration-700">
-      <motion.div
-        animate={{
-          // X轴: 从 0% 移到 -50% (向左)
-          // Y轴: 从 -50% 移到 0% (向下)
-          // 组合起来就是：向左下角移动
-          x: ["0%", "-50%"],
-          y: ["-50%", "0%"],
-        }}
-        transition={{
-          duration: 40, // 速度适中，营造一种平缓的“思考流”
-          ease: "linear",
-          repeat: Infinity,
-        }}
-        // grid-cols-4: 4列布局
-        // w-[200%]: 宽度两倍，确保流动不断
-        // -rotate-12: 稍微给文字本身加一点点微弱的旋转，增加艺术感（可选，这里我没加，保持文字水平易读）
-        className="grid grid-cols-4 gap-8 w-[200%] h-[200%] p-10 -mt-[50%]"
-      >
-        {streamContent.map((word, i) => (
-          <div key={i} className="flex items-center justify-center">
-            <span className="text-[10px] md:text-xs font-mono font-bold tracking-[0.2em] text-white/40 whitespace-nowrap select-none">
-              {word}
-            </span>
-          </div>
-        ))}
-      </motion.div>
+    <div className="relative h-full flex justify-center w-12">
+      <AnimatePresence>
+        <motion.span
+          key={`${colIndex}-${count}`}
+          initial={{ y: "-20%", opacity: 0 }}
+          animate={{
+            y: "120%",
+            opacity: [0, 1, 1, 0]
+          }}
+          transition={{
+            duration: currentDuration,
+            // 大幅缩减初始延迟：从 2.2s 降至 0.4s，让第一批文字雨在 2 秒内全部开始出现
+            delay: count === 0 ? colIndex * 0.4 : 0,
+            ease: "linear",
+          }}
+          onAnimationComplete={handleAnimationComplete}
+          className="absolute text-base md:text-lg font-serif italic tracking-[0.3em] text-white/40 [writing-mode:vertical-rl] whitespace-nowrap select-none leading-none"
+        >
+          {words[wordIndex]}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+};
 
-      {/* 遮罩层：边缘渐变，让文字流仿佛从虚空中来 */}
-      <div className="absolute inset-0 bg-radial-from-t from-transparent via-[#020202]/50 to-[#020202] z-10 pointer-events-none" />
-      <div className="absolute inset-0 bg-linear-to-b from-[#020202] via-transparent to-[#020202] z-10" />
+const TextStream = ({ isHovered }: { isHovered: boolean }) => {
+  const totalCols = 6;
+  const columns = Array.from({ length: totalCols });
+
+  return (
+    /* 亮度控制：默认 opacity-20，父级 hover 时变为 opacity-90 */
+    <div className="absolute inset-0 overflow-hidden bg-[#020202] opacity-20 group-hover:opacity-90 transition-all duration-1000">
+      <div className="flex justify-around h-full w-full px-4 py-16">
+        {columns.map((_, i) => (
+          <TextColumn
+            key={i}
+            colIndex={i}
+            totalCols={totalCols}
+            isHovered={isHovered}
+          />
+        ))}
+      </div>
+
+      {/* 增强遮罩，让大字体在边缘消失得更自然 */}
+      <div className="absolute inset-0 bg-linear-to-b from-[#020202] via-transparent to-[#020202] z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-r from-[#020202] via-transparent to-[#020202] z-10 pointer-events-none opacity-50" />
     </div>
   );
 };
@@ -220,13 +250,41 @@ const TextStream = () => {
 // ==============================================
 // 4. 通用卡片组件 (LabSection)
 // ==============================================
-const LabSection = ({ title, sub, icon: Icon, href, colorClass, delay, variant = "standard" }: any) => {
-  return (
-    <Link href={href} className="flex-1 relative group rounded-[2.5rem] overflow-hidden border border-white/5 bg-[#0A0A0A] h-[75vh] min-w-[320px] transition-all duration-700 hover:border-white/20 hover:shadow-2xl hover:shadow-blue-500/10">
+const LabSection = ({ title, sub, icon: Icon, href, delay, variant = "standard" }: any) => {
+  const [isHovered, setIsHovered] = React.useState(false);
 
+  // 定义不同模块的主题色映射
+  const themeColors = {
+    anime: {
+      text: "text-pink-400",
+      border: "border-pink-500/40",
+      glow: "shadow-pink-500/20",
+      subText: "text-pink-400/80"
+    },
+    cinema: {
+      text: "text-amber-400",
+      border: "border-amber-500/40",
+      glow: "shadow-amber-500/20",
+      subText: "text-amber-400/80"
+    },
+    reading: {
+      text: "text-blue-400",
+      border: "border-blue-500/40",
+      glow: "shadow-blue-500/20",
+      subText: "text-blue-400/80"
+    }
+  }[variant as 'anime' | 'cinema' | 'reading'] || { text: "text-white", border: "border-white/20", glow: "", subText: "text-gray-400" };
+
+  return (
+    <Link
+      href={href}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`flex-1 relative group rounded-[2.5rem] overflow-hidden border border-white/5 bg-[#0A0A0A] h-[75vh] min-w-[320px] transition-all duration-700 hover:border-white/20 hover:shadow-2xl ${isHovered ? themeColors.glow : ''}`}
+    >
       {variant === "anime" && <DiagonalPosterGrid />}
       {variant === "cinema" && <CinemaReel />}
-      {variant === "reading" && <TextStream />}
+      {variant === "reading" && <TextStream isHovered={isHovered} />}
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -236,8 +294,12 @@ const LabSection = ({ title, sub, icon: Icon, href, colorClass, delay, variant =
       >
         <div>
           <div className="flex justify-between items-start mb-12">
-            <div className={`p-3 rounded-2xl bg-white/5 border border-white/10 transition-all duration-500 ${variant === 'cinema' ? 'group-hover:border-white/50 bg-black/20 backdrop-blur-md' : 'group-hover:bg-white/10 group-hover:border-white/30'}`}>
-              <Icon size={22} className="text-gray-400 group-hover:text-white" />
+            <div className={`p-3 rounded-2xl bg-white/5 border border-white/10 transition-all duration-500 ${isHovered ? `bg-black/20 backdrop-blur-md border-white/30` : ''
+              }`}>
+              <Icon
+                size={22}
+                className={`transition-colors duration-500 ${isHovered ? themeColors.text : 'text-gray-400'}`}
+              />
             </div>
             <span className="text-[10px] font-mono tracking-[0.3em] text-gray-600 group-hover:text-gray-400 uppercase">
               Archive-0{Math.floor(delay * 10)}
@@ -245,21 +307,25 @@ const LabSection = ({ title, sub, icon: Icon, href, colorClass, delay, variant =
           </div>
           <h2 className="text-4xl font-bold tracking-tighter text-white/90 group-hover:text-white leading-tight drop-shadow-lg">
             {title.split(' / ')[0]}
-            <span className="block text-lg font-light tracking-[0.2em] text-gray-500 mt-2 mix-blend-plus-lighter">
+            <span className={`block text-lg font-light tracking-[0.2em] mt-2 mix-blend-plus-lighter transition-colors duration-700 ${isHovered ? themeColors.subText : 'text-gray-500'
+              }`}>
               {title.split(' / ')[1]}
             </span>
           </h2>
         </div>
+
         <div>
           <p className="text-sm text-gray-400 font-light leading-relaxed mb-8 group-hover:text-gray-200 transition-colors drop-shadow-md">
             {sub}
           </p>
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border border-white/10 group-hover:bg-white/10 transition-all backdrop-blur-sm">
+          <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border transition-all backdrop-blur-sm ${isHovered ? `${themeColors.border} ${themeColors.text}` : 'border-white/10'
+            }`}>
             <span className="text-[10px] font-mono tracking-widest uppercase">Enter Module</span>
             <ArrowUpRight size={14} />
           </div>
         </div>
       </motion.div>
+
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-size-[30px_30px] z-10"></div>
     </Link>
   );
