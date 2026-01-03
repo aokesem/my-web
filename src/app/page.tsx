@@ -113,15 +113,19 @@ const DiagonalPosterGrid = () => {
 // ==============================================
 // 2. 电影组件：呼吸感幻灯片
 // ==============================================
+// ==============================================
+// 2. 电影组件：呼吸感幻灯片 + 动态胶片特效 (Heavy Film Grain & Scratches)
+// ==============================================
 const CinemaReel = () => {
   const [shuffledStills, setShuffledStills] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // 1. 初始化洗牌
   useEffect(() => {
-    // 使用通用的洗牌函数
     setShuffledStills(shuffleArray(MOVIE_STILLS));
   }, []);
 
+  // 2. 轮播定时器
   useEffect(() => {
     if (shuffledStills.length === 0) return;
     const timer = setInterval(() => {
@@ -133,25 +137,90 @@ const CinemaReel = () => {
   if (shuffledStills.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-black opacity-50 group-hover:opacity-100 transition-opacity duration-700">
-      <AnimatePresence mode="popLayout">
-        <motion.img
-          key={currentIndex}
-          src={shuffledStills[currentIndex]}
-          alt="Cinema Still"
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 0.7, scale: 1.2 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            opacity: { duration: 1.5, ease: "easeInOut" },
-            scale: { duration: 6, ease: "linear" }
-          }}
-          className="absolute inset-0 w-full h-full object-cover opacity-80"
-        />
-      </AnimatePresence>
-      <div className="absolute inset-0 opacity-[0.08] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] brightness-100 contrast-150 mix-blend-overlay"></div>
-      <div className="absolute inset-0 bg-linear-to-t from-[#020202] via-[#020202]/40 to-transparent z-10" />
-    </div>
+    <>
+      {/* 【核心】内嵌 CSS 动画定义 */}
+      <style jsx>{`
+        /* 1. 噪点跳动动画：随机快速移动背景位置 */
+        @keyframes film-grain {
+          0%, 100% { background-position: 0 0; }
+          10% { background-position: -5% -10%; }
+          20% { background-position: -15% 5%; }
+          30% { background-position: 7% -25%; }
+          40% { background-position: -5% 25%; }
+          50% { background-position: -15% 10%; }
+          60% { background-position: 15% 0%; }
+          70% { background-position: 0% 15%; }
+          80% { background-position: 3% 35%; }
+          90% { background-position: -10% 10%; }
+        }
+
+        /* 2. 划痕抖动动画：水平方向快速位移和透明度变化 */
+        @keyframes film-scratch {
+          0%, 100% { transform: translateX(0); opacity: 0.3; }
+          10% { transform: translateX(-2px); }
+          20% { transform: translateX(1px); opacity: 0.5; }
+          30% { transform: translateX(-3px); }
+          40% { transform: translateX(2px); opacity: 0.2;}
+          50% { transform: translateX(-1px); }
+          60% { transform: translateX(3px); opacity: 0.4; }
+          70% { transform: translateX(-2px); }
+          80% { transform: translateX(1px); opacity: 0.6; }
+          90% { transform: translateX(-3px); }
+        }
+
+        .animate-film-grain {
+           /* 使用 steps(1) 让动画逐帧跳变，而不是平滑过渡，更有颗粒感 */
+           animation: film-grain 0.6s steps(1) infinite;
+           background-size: 150% 150%; /* 放大背景图，防止移动时露出边缘 */
+        }
+
+        .film-scratches {
+            /* 利用重复线性渐变制作细线 */
+            background-image: repeating-linear-gradient(
+              to right,
+              transparent 0px,
+              transparent 100px,
+              rgba(255, 255, 255, 0.1) 100px, /* 划痕颜色 */
+              transparent 101px,
+              transparent 240px,
+              rgba(255, 255, 255, 0.08) 240px,
+              transparent 242px
+            );
+            animation: film-scratch 0.4s steps(1) infinite;
+        }
+      `}</style>
+
+      <div className="absolute inset-0 overflow-hidden bg-black opacity-50 group-hover:opacity-100 transition-opacity duration-700">
+        {/* 底层：图片幻灯片 */}
+        <AnimatePresence mode="popLayout">
+          <motion.img
+            key={currentIndex}
+            src={shuffledStills[currentIndex]}
+            alt="Cinema Still"
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 0.7, scale: 1.2 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              opacity: { duration: 1.5, ease: "easeInOut" },
+              scale: { duration: 6, ease: "linear" }
+            }}
+            className="absolute inset-0 w-full h-full object-cover opacity-80"
+          />
+        </AnimatePresence>
+
+        {/* 【新增层 1】动态噪点层 (替代了原来的静止噪点) */}
+        <div
+          className="absolute inset-0 pointer-events-none mix-blend-overlay animate-film-grain opacity-40 z-10"
+          style={{ backgroundImage: `url('https://grainy-gradients.vercel.app/noise.svg')` }}
+        ></div>
+
+        {/* 【新增层 2】动态划痕层 */}
+        <div className="absolute inset-0 pointer-events-none film-scratches mix-blend-screen z-10"></div>
+
+        {/* 顶层：暗角遮罩 (保持不变) */}
+        <div className="absolute inset-0 bg-linear-to-t from-[#020202] via-[#020202]/40 to-transparent z-20" />
+      </div>
+    </>
   );
 };
 
@@ -225,38 +294,38 @@ const TextColumn = ({ colIndex, isHovered, requestToken, releaseToken }: {
 };
 
 // 【新增】3.2 核心书名展示组件 (实现图中的排版风格)
-const BookHero = () => {
+const BookHero = ({ isHovered }: { isHovered: boolean }) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    // 每 6 秒切换一次书名
+    // 持续时间：9秒切换一次
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % READING_LIST.length);
-    }, 6000);
+    }, 9000);
     return () => clearInterval(timer);
   }, []);
 
   const currentBook = READING_LIST[index];
 
   return (
-    // z-index 设置为 20，确保在文字雨和遮罩层之上
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none select-none px-8">
+    <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none select-none px-8 transition-all duration-1000 ${
+      // 【位置与亮度调整区】
+      // translate-y-24 控制下移距离，数值越大越靠下
+      isHovered ? "opacity-90 translate-y-11" : "opacity-25 translate-y-11"
+      }`}>
       <AnimatePresence mode="wait">
         <motion.div
           key={index}
-          // 添加模糊(blur)和缩放(scale)的过渡效果，增加质感
-          initial={{ opacity: 0, scale: 0.98, filter: "blur(8px)" }}
+          initial={{ opacity: 0, scale: 0.98, filter: "blur(12px)" }}
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-          exit={{ opacity: 0, scale: 1.02, filter: "blur(8px)" }}
-          transition={{ duration: 0.8, ease: [0.33, 1, 0.68, 1] }} // 使用平滑的贝塞尔曲线
+          exit={{ opacity: 0, scale: 1.02, filter: "blur(12px)" }}
+          transition={{ duration: 1.2, ease: [0.33, 1, 0.68, 1] }}
           className="text-center"
         >
-          {/* 书名：复刻图中那种巨大的、紧凑的、全大写的粗体风格 */}
           <h2 className="text-4xl lg:text-5xl xl:text-6xl font-black tracking-tighter text-white leading-[0.9] uppercase drop-shadow-2xl">
             {currentBook.title}
           </h2>
-          {/* 作者：使用衬线斜体，拉大间距，形成鲜明对比 */}
-          <p className="mt-6 text-sm md:text-base font-serif italic text-white/60 tracking-[0.3em]">
+          <p className="mt-8 text-sm md:text-base font-serif italic text-white/60 tracking-[0.4em]">
             — {currentBook.author} —
           </p>
         </motion.div>
@@ -264,7 +333,6 @@ const BookHero = () => {
     </div>
   );
 };
-
 
 // 3.3 整合后的 TextStream 主组件
 const TextStream = ({ isHovered }: { isHovered: boolean }) => {
@@ -285,9 +353,8 @@ const TextStream = ({ isHovered }: { isHovered: boolean }) => {
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#020202]">
-      {/* 图层1：背景文字雨层 */}
-      {/* 【关键点】保留了您要求的透明度设置：平时20%，悬停90% */}
-      <div className={`absolute inset-0 flex justify-around h-full w-full px-4 py-16 transition-opacity duration-1000 ${isHovered ? 'opacity-90' : 'opacity-20'
+      {/* 1. 文字雨背景 */}
+      <div className={`absolute inset-0 flex justify-around h-full w-full px-4 py-16 transition-opacity duration-1000 ${isHovered ? 'opacity-80' : 'opacity-40'
         }`}>
         {Array.from({ length: totalCols }).map((_, i) => (
           <TextColumn
@@ -300,17 +367,16 @@ const TextStream = ({ isHovered }: { isHovered: boolean }) => {
         ))}
       </div>
 
-      {/* 图层2：视觉修饰层 - 中心暗角遮罩 */}
-      {/* 使用径向渐变，让四周变暗，从而突出中心的 BookHero 文字 */}
+      {/* 2. 视觉遮罩 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_10%,#020202_85%)] z-10 opacity-80 pointer-events-none" />
-      {/* 原有的上下遮罩 */}
       <div className="absolute inset-0 bg-linear-to-b from-[#020202] via-transparent to-[#020202] z-10 pointer-events-none" />
 
-      {/* 图层3：核心排版层 (在最上方 z-20) */}
-      <BookHero />
+      {/* 3. 书单展示 (修复了之前的 isHovered 传递) */}
+      <BookHero isHovered={isHovered} />
     </div>
   );
 };
+
 
 // ==============================================
 // 4. 通用卡片组件 (LabSection)
