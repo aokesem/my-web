@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon } from 'lucide-react';
 
 // ==============================================
@@ -39,7 +40,7 @@ const RAIN_WORDS = [
   "把吴钩看了，栏杆拍遍，无人会，登临意",
 ];
 
-// 【新增】读书组件 - 核心书单展示数据
+// 读书组件 - 核心书单展示数据
 const READING_LIST = [
   { title: "I Think, Therefore I Am", author: "René Descartes" },
   { title: "The Old Man and the Sea", author: "Ernest Hemingway" },
@@ -59,6 +60,8 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
+const MotionImage = motion(Image);
+
 // ==============================================
 // 1. 动漫组件：斜向流动的海报墙
 // ==============================================
@@ -66,9 +69,8 @@ const DiagonalPosterGrid = () => {
   const [shuffledImages, setShuffledImages] = useState<string[]>([]);
 
   useEffect(() => {
-    // 使用通用的洗牌函数
     const shuffled = shuffleArray(ANIME_IMAGES);
-    setShuffledImages([...shuffled, ...shuffled]); // 双倍列表实现无缝
+    setShuffledImages([...shuffled, ...shuffled]);
   }, []);
 
   if (shuffledImages.length === 0) return null;
@@ -90,15 +92,24 @@ const DiagonalPosterGrid = () => {
         {shuffledImages.map((src: string, i: number) => (
           <div
             key={i}
-            className="relative aspect-[2/3] w-full border-[0.5px] border-white/5 overflow-hidden bg-[#0A0A0A]"
+            // 父容器必须有 relative 才能使用 fill
+            className="relative aspect-2/3 w-full border-[0.5px] border-white/5 overflow-hidden bg-[#0A0A0A]"
           >
-            <img
+            {/* 替换为 Next.js Image */}
+            <Image
               src={src}
-              loading="lazy"
-              className="w-full h-full object-cover scale-105 transition-all duration-500"
               alt={`Poster ${i}`}
+              fill
+              // sizes 属性对性能至关重要：
+              // 手机上约占屏幕1/3宽度 (grid-cols-5 但整体宽300%)
+              // 电脑上约占更小
+              sizes="(max-width: 768px) 33vw, 20vw"
+              className="object-cover scale-105 transition-all duration-500"
               onError={(e) => {
-                e.currentTarget.style.opacity = '0';
+                // Next/Image 的 onError 处理略有不同，通常建议在数据层过滤，
+                // 或者在这里控制显隐状态，简单起见可以保持 opacity 处理
+                const target = e.target as HTMLImageElement;
+                target.style.opacity = '0';
               }}
             />
           </div>
@@ -120,12 +131,10 @@ const CinemaReel = () => {
   const [shuffledStills, setShuffledStills] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 1. 初始化洗牌
   useEffect(() => {
     setShuffledStills(shuffleArray(MOVIE_STILLS));
   }, []);
 
-  // 2. 轮播定时器
   useEffect(() => {
     if (shuffledStills.length === 0) return;
     const timer = setInterval(() => {
@@ -138,9 +147,7 @@ const CinemaReel = () => {
 
   return (
     <>
-      {/* 【核心】内嵌 CSS 动画定义 */}
       <style jsx>{`
-        /* 1. 噪点跳动动画：随机快速移动背景位置 */
         @keyframes film-grain {
           0%, 100% { background-position: 0 0; }
           10% { background-position: -5% -10%; }
@@ -153,8 +160,6 @@ const CinemaReel = () => {
           80% { background-position: 3% 35%; }
           90% { background-position: -10% 10%; }
         }
-
-        /* 2. 划痕抖动动画：水平方向快速位移和透明度变化 */
         @keyframes film-scratch {
           0%, 100% { transform: translateX(0); opacity: 0.3; }
           10% { transform: translateX(-2px); }
@@ -167,20 +172,16 @@ const CinemaReel = () => {
           80% { transform: translateX(1px); opacity: 0.6; }
           90% { transform: translateX(-3px); }
         }
-
         .animate-film-grain {
-           /* 使用 steps(1) 让动画逐帧跳变，而不是平滑过渡，更有颗粒感 */
            animation: film-grain 0.6s steps(1) infinite;
-           background-size: 150% 150%; /* 放大背景图，防止移动时露出边缘 */
+           background-size: 150% 150%; 
         }
-
         .film-scratches {
-            /* 利用重复线性渐变制作细线 */
             background-image: repeating-linear-gradient(
               to right,
               transparent 0px,
               transparent 100px,
-              rgba(255, 255, 255, 0.1) 100px, /* 划痕颜色 */
+              rgba(255, 255, 255, 0.1) 100px, 
               transparent 101px,
               transparent 240px,
               rgba(255, 255, 255, 0.08) 240px,
@@ -191,12 +192,15 @@ const CinemaReel = () => {
       `}</style>
 
       <div className="absolute inset-0 overflow-hidden bg-black opacity-50 group-hover:opacity-100 transition-opacity duration-700">
-        {/* 底层：图片幻灯片 */}
         <AnimatePresence mode="popLayout">
-          <motion.img
+          {/* 使用 MotionImage 替代 motion.img */}
+          <MotionImage
             key={currentIndex}
             src={shuffledStills[currentIndex]}
             alt="Cinema Still"
+            fill // 自动填满父容器
+            sizes="(max-width: 768px) 100vw, 50vw" // 移动端全宽，桌面端半宽
+            priority={true} // 电影海报作为视觉焦点，可以开启优先加载
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 0.7, scale: 1.2 }}
             exit={{ opacity: 0 }}
@@ -204,20 +208,17 @@ const CinemaReel = () => {
               opacity: { duration: 1.5, ease: "easeInOut" },
               scale: { duration: 6, ease: "linear" }
             }}
-            className="absolute inset-0 w-full h-full object-cover opacity-80"
+            className="object-cover opacity-80" // object-cover 配合 fill 使用
           />
         </AnimatePresence>
 
-        {/* 【新增层 1】动态噪点层 (替代了原来的静止噪点) */}
         <div
           className="absolute inset-0 pointer-events-none mix-blend-overlay animate-film-grain opacity-40 z-10"
           style={{ backgroundImage: `url('https://grainy-gradients.vercel.app/noise.svg')` }}
         ></div>
 
-        {/* 【新增层 2】动态划痕层 */}
         <div className="absolute inset-0 pointer-events-none film-scratches mix-blend-screen z-10"></div>
 
-        {/* 顶层：暗角遮罩 (保持不变) */}
         <div className="absolute inset-0 bg-linear-to-t from-[#020202] via-[#020202]/40 to-transparent z-20" />
       </div>
     </>
