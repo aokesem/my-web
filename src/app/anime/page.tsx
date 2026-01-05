@@ -154,7 +154,7 @@ export default function AnimeArchive() {
                                             whileHover={{ scale: 1.03 }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={() => setSelectedId(item.id)}
-                                            className={`relative aspect-[2/3] cursor-pointer rounded-3xl overflow-hidden border transition-all duration-700 ${selectedId === item.id
+                                            className={`relative aspect-2/3 cursor-pointer rounded-3xl overflow-hidden border transition-all duration-700 ${selectedId === item.id
                                                 ? 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50'
                                                 : 'border-white/5 opacity-50 hover:opacity-100 grayscale hover:grayscale-0'
                                                 }`}
