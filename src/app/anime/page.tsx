@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Database, Monitor, Play } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 
 // --- 1. 数据结构 ---
 interface AnimeItem {
@@ -19,37 +20,45 @@ interface AnimeItem {
 }
 
 // --- 2. 模拟数据 (后续可在此扩展) ---
-const MOCK_DATA: AnimeItem[] = [
-    {
-        id: 1,
-        title: "进击的巨人",
-        titleEn: "ATTACK ON TITAN",
-        cover: "/images/anime_poster/巨人第三季part2.png",
-        rating: 98,
-        year: "2013-2023",
-        tags: ["Action", "Philosophy", "Drama"],
-        comment: "这是关于自由最沉重的诠释。从墙内到墙外，从受害者到复仇者，谏山创构建了一个没有出口的道德困局。",
-        status: "Watched"
-    },
-    {
-        id: 2,
-        title: "葬送的芙莉莲",
-        titleEn: "FRIEREN",
-        cover: "/images/anime_poster/芙莉莲.png",
-        rating: 95,
-        year: "2023",
-        tags: ["Fantasy", "Adventure", "Slice of Life"],
-        comment: "欣梅尔死后的第N年，时间在精灵眼中是廉价的，但在旅途中，那些细碎的人情味让长生者理解了瞬间的永恒。",
-        status: "Watched"
-    }
-];
+const MOCK_DATA: AnimeItem[] = []; // Keep empty or remove, we will use state
 
 export default function AnimeArchive() {
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useState<'archive' | 'theater'>('archive');
-    const [selectedId, setSelectedId] = useState<number | null>(1);
+    const [animes, setAnimes] = useState<AnimeItem[]>([]); // New state for data
+    const [selectedId, setSelectedId] = useState<number | null>(null);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
+
+    // Fetch data from Supabase
+    useEffect(() => {
+        setMounted(true);
+        const fetchAnimes = async () => {
+            const { data, error } = await supabase
+                .from('animes')
+                .select('*')
+                .order('id', { ascending: false });
+
+            if (data) {
+                const mappedAnimes: AnimeItem[] = data.map((item: any) => ({
+                    id: item.id,
+                    title: item.title,
+                    titleEn: item.title_en || '',
+                    cover: item.cover_url || '',
+                    rating: item.rating || 0,
+                    year: item.year || '',
+                    tags: item.tags || [],
+                    comment: item.comment || '',
+                    status: item.status || 'Watched'
+                }));
+                setAnimes(mappedAnimes);
+                if (mappedAnimes.length > 0) {
+                    setSelectedId(mappedAnimes[0].id);
+                }
+            }
+        };
+        fetchAnimes();
+    }, []);
 
     // 预留的视频数据数组
     const VIDEO_DATA = [
@@ -77,11 +86,7 @@ export default function AnimeArchive() {
         setCurrentVideoIndex((prev) => (prev - 1 + VIDEO_DATA.length) % VIDEO_DATA.length);
     };
 
-    const selectedAnime = MOCK_DATA.find(a => a.id === selectedId);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const selectedAnime = animes.find(a => a.id === selectedId);
 
     if (!mounted) return null;
 
@@ -148,7 +153,7 @@ export default function AnimeArchive() {
                             {/* 列表滚动区 */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-10 pr-14">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-                                    {MOCK_DATA.map((item) => (
+                                    {animes.map((item) => (
                                         <motion.div
                                             key={item.id}
                                             whileHover={{ scale: 1.03 }}

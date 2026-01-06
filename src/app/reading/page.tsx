@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Quote, Calendar, Hash, X, ChevronLeft, ChevronRight, BookOpen, Bookmark } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 
 // --- 1. 数据结构 (保持不变) ---
 type Category = 'Literature' | 'LightNovel' | 'SocialSci';
@@ -23,80 +24,53 @@ interface Book {
     quotes: BookQuote[];
 }
 
-// 模拟数据 (保持不变)
-const BOOKS: Book[] = [
-    {
-        id: 1, title: "局外人", category: "Literature",
-        cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800",
-        period: { start: "2025.01.12", end: "2025.01.15" },
-        excerpt: "我知道这世界我无处容身。",
-        quotes: [
-            { text: "今天，妈妈死了。也许是昨天，我不知道。", chapter: "第一部 第一章" },
-            { text: "我知道这世界我无处容身，只是，你凭什么审判我的灵魂？", chapter: "第二部 第五章" },
-            { text: "人生在世，永远也不该演戏作假。", chapter: "第二部" }
-        ]
-    },
-    {
-        id: 2, title: "悉达多", category: "Literature",
-        cover: "https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=800",
-        period: { start: "2024.12.01", end: "2024.12.05" },
-        excerpt: "知识可以传达，但智慧不能。",
-        quotes: [
-            { text: "知识可以传达，但智慧不能。一个人可以发现智慧，但无法传授智慧。", chapter: "戈文达" },
-            { text: "大多数人，卡玛拉，就像一片落叶，在空中翻滚、飘摇，最后落在地上。", chapter: "觉醒" }
-        ]
-    },
-    {
-        id: 3, title: "百年孤独", category: "Literature",
-        cover: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=800",
-        period: { start: "2024.11.10", end: "2024.11.28" },
-        excerpt: "过去都是假的。",
-        quotes: [
-            { text: "无论走到哪里，都应该记住，过去都是假的，回忆是一条没有归途的路。", chapter: "第十八章" },
-            { text: "生命中真正重要的不是你遭遇了什么，而是你记住了什么，以及你如何铭记。", chapter: "第一章" }
-        ]
-    },
-    {
-        id: 4, title: "且听风吟", category: "Literature",
-        cover: "https://images.unsplash.com/photo-1476275466078-4007374efbbe?q=80&w=800",
-        period: { start: "2024.10.05", end: "2024.10.06" },
-        excerpt: "看大海看久了想见人。",
-        quotes: [
-            { text: "看大海看久了想见人，见人见久了想看大海。", chapter: "前言" },
-            { text: "不存在十全十美的文章，如同不存在彻头彻尾的绝望。", chapter: "第一章" }
-        ]
-    },
-    {
-        id: 5, title: "86-不存在的战区", category: "LightNovel",
-        cover: "https://images.unsplash.com/photo-1614726365723-49cfae92782f?q=80&w=800",
-        period: { start: "2025.02.01", end: "Active" },
-        excerpt: "依然是我们所选择攀登的山峰。",
-        quotes: [
-            { text: "纵使那是个就算上吊也稍嫌太高的位置，依然是我们所选择攀登的山峰。", chapter: "Ep.1" }
-        ]
-    },
-    {
-        id: 7, title: "规训与惩罚", category: "SocialSci",
-        cover: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=800",
-        period: { start: "2025.03.01", end: "Active" },
-        excerpt: "监狱制度的建立标志着权力技术的转型。",
-        quotes: [
-            { text: "监狱制度的建立标志着权力技术的转型，从对肉体的消灭转向对灵魂的剥夺。", chapter: "第一章 犯人的身体" }
-        ]
-    },
-];
+// 模拟数据 (保持不变) - Replaced by Supabase
+const BOOKS: Book[] = [];
 
 const ITEMS_PER_PAGE = 4;
 
 export default function ReadingArchive() {
+    const [books, setBooks] = useState<Book[]>([]);
     const [currentPage, setCurrentPage] = useState(0);
     const [direction, setDirection] = useState(0);
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
+    useEffect(() => {
+        const fetchBooks = async () => {
+            const { data, error } = await supabase
+                .from('books')
+                .select('*')
+                .order('period_start', { ascending: false });
+
+            if (data) {
+                const mappedBooks: Book[] = data.map((item: any) => ({
+                    id: item.id,
+                    title: item.title,
+                    category: item.category as Category,
+                    cover: item.cover_url || '',
+                    period: {
+                        start: item.period_start || '',
+                        end: item.period_end || 'Active'
+                    },
+                    excerpt: item.excerpt || '',
+                    quotes: item.quotes as BookQuote[] || []
+                }));
+                setBooks(mappedBooks);
+            }
+        };
+        fetchBooks();
+    }, []);
+
     const sortedBooks = useMemo(() => {
         const order: Category[] = ['Literature', 'LightNovel', 'SocialSci'];
-        return [...BOOKS].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
-    }, []);
+        return [...books].sort((a, b) => {
+            // 首先按分类排序
+            const catDiff = order.indexOf(a.category) - order.indexOf(b.category);
+            if (catDiff !== 0) return catDiff;
+            // 同分类按时间排序
+            return b.period.start.localeCompare(a.period.start);
+        });
+    }, [books]);
 
     const totalPages = Math.ceil(sortedBooks.length / ITEMS_PER_PAGE);
     const currentBooks = sortedBooks.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE);
