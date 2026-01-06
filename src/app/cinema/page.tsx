@@ -4,11 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronUp, ChevronDown, Star, Film } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 
-// --- 1. 电影数据结构：支持多剧照 ---
+// --- 1. 电影数据结构：支持多剧照 + Supabase ---
 interface CinemaItem {
     id: number;
     title: string;
+    titleEn: string;
     year: string;
     director: string;
     poster: string;
@@ -17,44 +19,47 @@ interface CinemaItem {
     comment: string;
 }
 
-const CINEMA_DATA: CinemaItem[] = [
-    {
-        id: 1,
-        title: "银翼杀手 2049",
-        year: "2017",
-        director: "Denis Villeneuve",
-        poster: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=800",
-        stills: [
-            "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1200",
-            "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1200",
-            "https://images.unsplash.com/photo-1509281373149-e957c6296406?q=80&w=1200",
-        ],
-        score: 9.2,
-        comment: "极致的视听盛宴，罗杰·狄金斯的摄影将赛博朋克的废土美学推向了神坛。这不仅是续作，更是对存在主义的深度探讨。"
-    },
-    {
-        id: 2,
-        title: "十二怒汉",
-        year: "1957",
-        director: "Sidney Lumet",
-        poster: "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=800",
-        stills: [
-            "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=1200",
-            "https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=1200",
-        ],
-        score: 9.6,
-        comment: "封闭空间内单纯靠台词推动的极致张力。它不仅仅关于正义，更关于偏见、理性和每一个生命不应被草率对待的尊严。"
-    }
-];
-
 export default function CinemaArchive() {
     const [mounted, setMounted] = useState(false);
+    const [movies, setMovies] = useState<CinemaItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedIdx, setSelectedIdx] = useState(0);
     const [stillIdx, setStillIdx] = useState(0); // 剧照索引状态
 
-    const current = CINEMA_DATA[selectedIdx];
+    useEffect(() => {
+        setMounted(true);
+        fetchMovies();
+    }, []);
 
-    useEffect(() => { setMounted(true); }, []);
+    const fetchMovies = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('movies')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching movies:', error);
+            setLoading(false);
+            return;
+        }
+
+        if (data) {
+            const mappedMovies: CinemaItem[] = data.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                titleEn: item.title_en || '',
+                year: item.year || '',
+                director: item.director || '',
+                poster: item.cover_url || '',
+                stills: item.stills && item.stills.length > 0 ? item.stills : [item.cover_url || ''],
+                score: (item.rating || 0) / 10, // Convert 0-100 to 0-10
+                comment: item.comment || ''
+            }));
+            setMovies(mappedMovies);
+        }
+        setLoading(false);
+    };
 
     // 关键：切换电影时，重置剧照索引
     useEffect(() => {
@@ -63,8 +68,30 @@ export default function CinemaArchive() {
 
     if (!mounted) return null;
 
-    const nextMovie = () => setSelectedIdx((prev) => (prev + 1) % CINEMA_DATA.length);
-    const prevMovie = () => setSelectedIdx((prev) => (prev - 1 + CINEMA_DATA.length) % CINEMA_DATA.length);
+    if (loading) {
+        return (
+            <div className="h-screen w-full bg-[#020202] flex items-center justify-center text-gray-500 font-mono tracking-widest uppercase animate-pulse">
+                Loading_Cinema_Data...
+            </div>
+        );
+    }
+
+    if (movies.length === 0) {
+        return (
+            <div className="h-screen w-full bg-[#020202] flex flex-col items-center justify-center text-gray-400 font-mono">
+                <p className="text-xl tracking-widest uppercase mb-4">No Movies Found</p>
+                <p className="text-sm text-gray-600">请在后台添加电影数据</p>
+                <Link href="/admin/movies" className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    前往后台管理
+                </Link>
+            </div>
+        );
+    }
+
+    const current = movies[selectedIdx];
+
+    const nextMovie = () => setSelectedIdx((prev) => (prev + 1) % movies.length);
+    const prevMovie = () => setSelectedIdx((prev) => (prev - 1 + movies.length) % movies.length);
 
     // 切换当前电影的剧照
     const toggleStill = () => {
@@ -96,7 +123,7 @@ export default function CinemaArchive() {
                         transition={{ type: "spring", stiffness: 70, damping: 20 }}
                         className="flex flex-col items-center relative z-10"
                     >
-                        {CINEMA_DATA.map((item, idx) => (
+                        {movies.map((item, idx) => (
                             <div key={item.id} className="relative py-10 flex flex-col items-center group">
 
                                 {/* 物理齿孔细节 */}
@@ -122,7 +149,11 @@ export default function CinemaArchive() {
                                     className={`relative w-44 aspect-2/3 cursor-pointer rounded-sm overflow-hidden transition-all duration-700 ${idx === selectedIdx ? 'shadow-[0_0_50px_rgba(59,130,246,0.1)] ring-1 ring-white/20' : ''
                                         }`}
                                 >
-                                    <img src={item.poster} className="w-full h-full object-cover" alt={item.title} />
+                                    {item.poster ? (
+                                        <img src={item.poster} className="w-full h-full object-cover" alt={item.title} />
+                                    ) : (
+                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">NO POSTER</div>
+                                    )}
                                 </motion.div>
                             </div>
                         ))}
@@ -206,7 +237,7 @@ export default function CinemaArchive() {
                             <div className="pt-8 border-t border-white/5 max-w-2xl">
                                 <p className="text-[10px] font-mono text-gray-600 mb-6 tracking-[0.6em] uppercase">Observation_Log</p>
                                 <p className="text-xl font-light text-gray-400 italic leading-relaxed">
-                                    “{current.comment}”
+                                    "{current.comment}"
                                 </p>
                             </div>
                         </div>
@@ -223,7 +254,7 @@ export default function CinemaArchive() {
                                         ))}
                                     </div>
                                     <span className="text-6xl font-bold italic font-mono tracking-tighter">
-                                        {current.score}
+                                        {current.score.toFixed(1)}
                                         <span className="text-xs not-italic opacity-20 ml-2 font-sans tracking-widest">/ 10</span>
                                     </span>
                                 </div>

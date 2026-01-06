@@ -152,7 +152,7 @@ export default function AnimeAdmin() {
                                 <Label>封面</Label>
                                 <ImageUpload
                                     bucket="covers"
-                                    folder="anime"
+                                    folder="anime_cover"
                                     value={currentAnime.cover_url || ''}
                                     onChange={(url) => setCurrentAnime({ ...currentAnime, cover_url: url })}
                                 />

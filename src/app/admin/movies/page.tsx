@@ -17,6 +17,7 @@ interface Movie {
     title: string;
     title_en: string;
     cover_url: string;
+    stills: string[]; // 多张剧照
     director: string;
     rating: number;
     year: string;
@@ -77,6 +78,7 @@ export default function MoviesAdmin() {
                 title: currentMovie.title,
                 title_en: currentMovie.title_en,
                 cover_url: currentMovie.cover_url,
+                stills: currentMovie.stills || [],
                 director: currentMovie.director,
                 rating: Number(currentMovie.rating) || 0,
                 year: currentMovie.year,
@@ -160,13 +162,61 @@ export default function MoviesAdmin() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>封面</Label>
+                                    <Label>电影海报 (竖版)</Label>
                                     <ImageUpload
                                         bucket="covers"
-                                        folder="movies"
+                                        folder="cinema_cover"
                                         value={currentMovie.cover_url || ''}
                                         onChange={(url) => setCurrentMovie({ ...currentMovie, cover_url: url })}
                                     />
+                                </div>
+                            </div>
+
+                            {/* 剧照上传区 - 支持多张 */}
+                            <div className="space-y-2">
+                                <Label>电影剧照 (横版，可上传多张)</Label>
+                                <div className="space-y-3">
+                                    {(currentMovie.stills || []).map((still, idx) => (
+                                        <div key={idx} className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <ImageUpload
+                                                    bucket="covers"
+                                                    folder="cinema_photo"
+                                                    value={still}
+                                                    onChange={(url) => {
+                                                        const newStills = [...(currentMovie.stills || [])];
+                                                        newStills[idx] = url;
+                                                        setCurrentMovie({ ...currentMovie, stills: newStills });
+                                                    }}
+                                                />
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const newStills = (currentMovie.stills || []).filter((_, i) => i !== idx);
+                                                    setCurrentMovie({ ...currentMovie, stills: newStills });
+                                                }}
+                                            >
+                                                删除
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setCurrentMovie({
+                                                ...currentMovie,
+                                                stills: [...(currentMovie.stills || []), '']
+                                            });
+                                        }}
+                                        className="w-full"
+                                    >
+                                        + 添加剧照
+                                    </Button>
                                 </div>
                             </div>
 

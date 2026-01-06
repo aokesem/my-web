@@ -181,7 +181,7 @@ export default function BooksAdmin() {
                                 <Label>封面</Label>
                                 <ImageUpload
                                     bucket="covers"
-                                    folder="books"
+                                    folder="book_cover"
                                     value={currentBook.cover_url || ''}
                                     onChange={(url) => setCurrentBook({ ...currentBook, cover_url: url })}
                                 />

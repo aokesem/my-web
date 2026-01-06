@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon } from 'lucide-react';
+import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock } from 'lucide-react';
 
 // ==============================================
 // 0. 常量与工具函数定义 (优化点：数据分离与逻辑复用)
@@ -458,7 +458,16 @@ const LabSection = ({ title, sub, icon: Icon, href, delay, variant = "anime" }: 
 // ==============================================
 export default function LabPortal() {
   return (
-    <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center p-8 overflow-hidden">
+    <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center p-8 overflow-hidden relative">
+      {/* Admin Entry Point - Top Right */}
+      <Link
+        href="/admin"
+        className="absolute top-8 right-8 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-500/50 hover:bg-zinc-900/80 transition-all duration-300 backdrop-blur-sm group"
+      >
+        <Lock size={14} className="group-hover:rotate-12 transition-transform" />
+        <span className="text-xs font-mono tracking-wider uppercase">Admin</span>
+      </Link>
+
       <div className="w-full max-w-7xl mb-12 flex justify-between items-end">
         <div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 mb-4">
