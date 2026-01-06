@@ -119,7 +119,7 @@ export default function CinemaArchive() {
                                         scale: idx === selectedIdx ? 1.05 : 0.85,
                                         filter: idx === selectedIdx ? "grayscale(0%) brightness(1.1)" : "grayscale(100%) brightness(0.3)"
                                     }}
-                                    className={`relative w-44 aspect-[2/3] cursor-pointer rounded-sm overflow-hidden transition-all duration-700 ${idx === selectedIdx ? 'shadow-[0_0_50px_rgba(59,130,246,0.1)] ring-1 ring-white/20' : ''
+                                    className={`relative w-44 aspect-2/3 cursor-pointer rounded-sm overflow-hidden transition-all duration-700 ${idx === selectedIdx ? 'shadow-[0_0_50px_rgba(59,130,246,0.1)] ring-1 ring-white/20' : ''
                                         }`}
                                 >
                                     <img src={item.poster} className="w-full h-full object-cover" alt={item.title} />
