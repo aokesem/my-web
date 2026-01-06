@@ -167,7 +167,7 @@ export default function ReadingArchive() {
                                 {isActive && (
                                     <motion.div
                                         layoutId="categoryUnderline"
-                                        className="absolute -bottom-1 left-0 right-0 h-[1px] bg-blue-400/50"
+                                        className="absolute -bottom-1 left-0 right-0 h-px bg-blue-400/50"
                                     />
                                 )}
                             </button>
@@ -261,13 +261,13 @@ const RealisticBookCard = ({ book, onClick }: { book: Book; onClick: () => void 
             />
 
             {/* --- 卡片内容层 --- */}
-            <div className="h-full w-full bg-[#0a0a0a] m-[1px] rounded-[inherit] overflow-hidden flex flex-col shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-all group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.9)]">
+            <div className="h-full w-full bg-[#0a0a0a] m-px rounded-[inherit] overflow-hidden flex flex-col shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-all group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.9)]">
                 {/* --- A. 封面区域 --- */}
                 <div className="relative h-[80%] w-full overflow-hidden bg-[#050505]">
 
                     <img
                         src={book.cover}
-                        className="w-full h-full object-cover opacity-60 mix-blend-luminosity grayscale-[40%] contrast-125 transition-all duration-700 ease-out group-hover:opacity-100 group-hover:mix-blend-normal group-hover:grayscale-0 group-hover:scale-105"
+                        className="w-full h-full object-cover opacity-60 mix-blend-luminosity grayscale-40 contrast-125 transition-all duration-700 ease-out group-hover:opacity-100 group-hover:mix-blend-normal group-hover:grayscale-0 group-hover:scale-105"
                     />
 
                     <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] pointer-events-none" />
@@ -344,7 +344,7 @@ const BookDetailModal = ({ book, onClose }: { book: Book; onClose: () => void })
                 </button>
 
                 <div className="w-full md:w-2/5 relative h-64 md:h-auto overflow-hidden bg-[#050505]">
-                    <img src={book.cover} className="w-full h-full object-cover opacity-70 mix-blend-luminosity grayscale-[20%] contrast-125" />
+                    <img src={book.cover} className="w-full h-full object-cover opacity-70 mix-blend-luminosity grayscale-20 contrast-125" />
                     <div className="absolute inset-0 bg-linear-to-t from-[#0a0a0a] via-transparent to-transparent opacity-90" />
 
                     <div className="absolute bottom-12 left-12 right-12">
