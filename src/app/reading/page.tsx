@@ -144,15 +144,15 @@ export default function ReadingArchive() {
             </div>
 
             {/* --- 顶部正中 --- */}
-            <div className="absolute top-10 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center select-none w-full">
-                <div className="flex items-baseline gap-3 opacity-40 mb-2">
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center select-none w-full pointer-events-none">
+                <div className="flex items-baseline gap-3 opacity-70 mb-2">
                     <span className="text-6xl font-black font-serif tracking-tighter text-white">
                         {String(currentPage + 1).padStart(2, '0')}
                     </span>
                     <span className="text-2xl font-mono text-gray-500 font-light">/ {String(totalPages).padStart(2, '0')}</span>
                 </div>
 
-                <div className="relative w-full max-w-4xl mt-10 overflow-hidden mask-fade-edges">
+                <div className="relative w-full max-w-4xl mt-4 overflow-hidden mask-fade-edges">
                     <div className="flex justify-center items-center h-20 overflow-x-auto no-scrollbar scroll-smooth">
                         <nav className="flex items-center gap-12 px-[25%] pointer-events-auto shrink-0">
                             {categories.map((cat) => {
@@ -346,7 +346,7 @@ const BookDetailModal = ({ book, onClose }: { book: Book; onClose: () => void })
                 </button>
 
                 <div className="w-full md:w-2/5 relative h-64 md:h-auto overflow-hidden bg-[#050505]">
-                    <img src={book.cover} className="w-full h-full object-cover opacity-70 mix-blend-luminosity grayscale-20 contrast-125" />
+                    <img src={book.cover} className="w-full h-full object-cover opacity-90" />
                     <div className="absolute inset-0 bg-linear-to-t from-[#0a0a0a] via-transparent to-transparent opacity-90" />
 
                     <div className="absolute bottom-12 left-12 right-12">
