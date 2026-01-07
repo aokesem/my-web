@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 
 // --- 1. 数据结构 (保持不变) ---
-type Category = 'Literature' | 'LightNovel' | 'SocialSci';
+type Category = string;
 
 interface BookQuote {
     text: string;
@@ -34,6 +34,7 @@ export default function ReadingArchive() {
     const [currentPage, setCurrentPage] = useState(0);
     const [direction, setDirection] = useState(0);
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
     useEffect(() => {
         const fetchBooks = async () => {
@@ -56,32 +57,58 @@ export default function ReadingArchive() {
                     quotes: item.quotes as BookQuote[] || []
                 }));
                 setBooks(mappedBooks);
+
+                // Initialize selected category if not set
+                if (mappedBooks.length > 0) {
+                    const uniqueCats = Array.from(new Set(mappedBooks.map(b => b.category)));
+                    const predefinedOrder = ['Literature', 'LightNovel', 'SocialSci'];
+                    uniqueCats.sort((a, b) => {
+                        const idxA = predefinedOrder.indexOf(a);
+                        const idxB = predefinedOrder.indexOf(b);
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
+                        return a.localeCompare(b);
+                    });
+                    setSelectedCategory(uniqueCats[0]);
+                }
             }
         };
         fetchBooks();
     }, []);
 
-    const sortedBooks = useMemo(() => {
-        const order: Category[] = ['Literature', 'LightNovel', 'SocialSci'];
-        return [...books].sort((a, b) => {
-            // 首先按分类排序
-            const catDiff = order.indexOf(a.category) - order.indexOf(b.category);
-            if (catDiff !== 0) return catDiff;
-            // 同分类按时间排序
-            return b.period.start.localeCompare(a.period.start);
+    const categories = useMemo(() => {
+        const uniqueCats = Array.from(new Set(books.map(b => b.category)));
+        const predefinedOrder = ['Literature', 'LightNovel', 'SocialSci'];
+        return uniqueCats.sort((a, b) => {
+            const idxA = predefinedOrder.indexOf(a);
+            const idxB = predefinedOrder.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b);
         });
     }, [books]);
+
+    const filteredBooks = useMemo(() => {
+        if (!selectedCategory) return books;
+        return books.filter(b => b.category === selectedCategory);
+    }, [books, selectedCategory]);
+
+    const sortedBooks = useMemo(() => {
+        return [...filteredBooks].sort((a, b) => {
+            return b.period.start.localeCompare(a.period.start);
+        });
+    }, [filteredBooks]);
 
     const totalPages = Math.ceil(sortedBooks.length / ITEMS_PER_PAGE);
     const currentBooks = sortedBooks.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE);
 
     const jumpToCategory = (category: Category) => {
-        const index = sortedBooks.findIndex(b => b.category === category);
-        if (index !== -1) {
-            const targetPage = Math.floor(index / ITEMS_PER_PAGE);
-            setDirection(targetPage > currentPage ? 1 : -1);
-            setCurrentPage(targetPage);
-        }
+        if (selectedCategory === category) return;
+        setDirection(categories.indexOf(category) > categories.indexOf(selectedCategory!) ? 1 : -1);
+        setSelectedCategory(category);
+        setCurrentPage(0);
     };
 
     const paginate = (newDirection: number) => {
@@ -117,7 +144,7 @@ export default function ReadingArchive() {
             </div>
 
             {/* --- 顶部正中 --- */}
-            <div className="absolute top-10 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center select-none">
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center select-none w-full">
                 <div className="flex items-baseline gap-3 opacity-40 mb-2">
                     <span className="text-6xl font-black font-serif tracking-tighter text-white">
                         {String(currentPage + 1).padStart(2, '0')}
@@ -125,29 +152,33 @@ export default function ReadingArchive() {
                     <span className="text-2xl font-mono text-gray-500 font-light">/ {String(totalPages).padStart(2, '0')}</span>
                 </div>
 
-                <nav className="flex gap-8 pointer-events-auto mt-10">
-                    {(['Literature', 'LightNovel', 'SocialSci'] as Category[]).map((cat) => {
-                        const isActive = currentBooks[0]?.category === cat;
-                        return (
-                            <button
-                                key={cat}
-                                onClick={() => jumpToCategory(cat)}
-                                className={`relative text-xl md:text-2xl font-serif italic tracking-wide transition-all duration-500 ${isActive
-                                    ? 'text-blue-100 scale-110 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'
-                                    : 'text-gray-700 hover:text-gray-500'
-                                    }`}
-                            >
-                                {cat}
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="categoryUnderline"
-                                        className="absolute -bottom-1 left-0 right-0 h-px bg-blue-400/50"
-                                    />
-                                )}
-                            </button>
-                        );
-                    })}
-                </nav>
+                <div className="relative w-full max-w-4xl mt-10 overflow-hidden mask-fade-edges">
+                    <div className="flex justify-center items-center h-20 overflow-x-auto no-scrollbar scroll-smooth">
+                        <nav className="flex items-center gap-12 px-[25%] pointer-events-auto shrink-0">
+                            {categories.map((cat) => {
+                                const isActive = selectedCategory === cat;
+                                return (
+                                    <button
+                                        key={cat}
+                                        onClick={() => jumpToCategory(cat)}
+                                        className={`relative whitespace-nowrap text-xl md:text-2xl font-serif italic tracking-wide transition-all duration-500 hover:scale-105 ${isActive
+                                            ? 'text-blue-100 scale-110 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'
+                                            : 'text-gray-700 hover:text-gray-500'
+                                            }`}
+                                    >
+                                        {cat}
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="categoryUnderline"
+                                                className="absolute -bottom-1 left-0 right-0 h-px bg-blue-400/50"
+                                            />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                </div>
             </div>
 
             {/* --- Main Content --- */}
@@ -246,10 +277,7 @@ const RealisticBookCard = ({ book, onClick }: { book: Book; onClick: () => void 
 
                     <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] pointer-events-none" />
 
-                    {/* 分类标签：位置调整到左下 */}
-                    <div className="absolute bottom-5 left-5 px-2 py-1 bg-black/40 border border-white/10 text-[8px] font-mono uppercase tracking-widest text-gray-400 backdrop-blur-none group-hover:text-white group-hover:border-white/30 transition-colors">
-                        {book.category}
-                    </div>
+
 
                     {/* 时间周期：位置调整到右下 */}
                     <div className="absolute bottom-5 right-5 flex flex-col items-end gap-1">
