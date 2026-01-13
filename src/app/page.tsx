@@ -28,7 +28,7 @@ const MOVIE_STILLS = [
   "/images/film_poster/地狱的眼睛.png", "/images/film_poster/怀抱孩子的竹千代.png", "/images/film_poster/埋藏黄金的墓地.png",
   "/images/film_poster/面朝阳光.png", "/images/film_poster/狮子云.png", "/images/film_poster/是你们武士.png",
   "/images/film_poster/天国与地狱.png", "/images/film_poster/夕阳.png", "/images/film_poster/Micheal的沉思.png",
-  "/images/film_poster/tuco的笑.png",
+  "/images/film_poster/tuco的笑.png", "/images/film_poster/我很好.png", "/images/film_poster/追忆似水年华.png"
 ];
 
 // 读书组件 - 背景文字雨数据
