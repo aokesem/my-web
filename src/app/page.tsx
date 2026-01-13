@@ -14,7 +14,7 @@ import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock } from 'lucide-react
 const ANIME_IMAGES = [
   "/images/anime_poster/败犬女主.png", "/images/anime_poster/冰菓.png", "/images/anime_poster/冰海战记.png",
   "/images/anime_poster/芙莉莲.png", "/images/anime_poster/钢炼fa.png", "/images/anime_poster/高达0080.png",
-  "/images/anime_poster/化物语.png", "/images/anime_poster/欢迎加入nhk.png", "/images/anime_poster/辉夜第三季.png",
+  "/images/anime_poster/化物语.png", "/images/anime_poster/高木第二季.png", "/images/anime_poster/欢迎加入nhk.png", "/images/anime_poster/辉夜第三季.png",
   "/images/anime_poster/寄生兽.png", "/images/anime_poster/少女歌剧.png", "/images/anime_poster/巨人第三季part2.png", "/images/anime_poster/来自新世界.png",
   "/images/anime_poster/凉宫春日的消失.png", "/images/anime_poster/琉璃的宝石.png", "/images/anime_poster/鲁鲁修.png",
   "/images/anime_poster/迷宫饭.png", "/images/anime_poster/女高中生的无所事事.png", "/images/anime_poster/命运石之门.png", "/images/anime_poster/赌博默示录.png", "/images/anime_poster/末日后酒店.png",
@@ -547,7 +547,7 @@ export default function LabPortal() {
       <main className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl">
         <LabSection
           title="动漫 / ANIME"
-          sub="ACGN文化与审美研究，记录那些触动灵魂的瞬间。"
+          sub="那些想象力与演出的美好回忆"
           icon={Tv}
           href="/anime"
           variant="anime"
@@ -555,7 +555,7 @@ export default function LabPortal() {
         />
         <LabSection
           title="电影 / CINEMA"
-          sub="第七艺术的私人放映，关于光影、构图与叙事的记忆。"
+          sub="关于光影、构图与叙事的流转"
           icon={Film}
           href="/cinema"
           variant="cinema"
@@ -563,7 +563,7 @@ export default function LabPortal() {
         />
         <LabSection
           title="读书 / READING"
-          sub="思想的文字承载，在寂静中构建个人的精神乐园。"
+          sub="最华美的词句和最深邃的思考"
           icon={BookOpen}
           href="/reading"
           variant="reading"
