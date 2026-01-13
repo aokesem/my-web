@@ -15,12 +15,12 @@ const ANIME_IMAGES = [
   "/images/anime_poster/败犬女主.png", "/images/anime_poster/冰菓.png", "/images/anime_poster/冰海战记.png",
   "/images/anime_poster/芙莉莲.png", "/images/anime_poster/钢炼fa.png", "/images/anime_poster/高达0080.png",
   "/images/anime_poster/化物语.png", "/images/anime_poster/欢迎加入nhk.png", "/images/anime_poster/辉夜第三季.png",
-  "/images/anime_poster/寄生兽.png", "/images/anime_poster/巨人第三季part2.png", "/images/anime_poster/来自新世界.png",
+  "/images/anime_poster/寄生兽.png", "/images/anime_poster/少女歌剧.png", "/images/anime_poster/巨人第三季part2.png", "/images/anime_poster/来自新世界.png",
   "/images/anime_poster/凉宫春日的消失.png", "/images/anime_poster/琉璃的宝石.png", "/images/anime_poster/鲁鲁修.png",
-  "/images/anime_poster/迷宫饭.png", "/images/anime_poster/命运石之门.png", "/images/anime_poster/末日后酒店.png",
-  "/images/anime_poster/女高日常.png", "/images/anime_poster/千年女优.png", "/images/anime_poster/轻音少女第二季.png",
-  "/images/anime_poster/小魔女学院.png", "/images/anime_poster/小樱.png", "/images/anime_poster/咲良田.png",
-  "/images/anime_poster/悠哉日常大王.png", "/images/anime_poster/月色真美.png", "/images/anime_poster/mygo.png"
+  "/images/anime_poster/迷宫饭.png", "/images/anime_poster/女高中生的无所事事.png", "/images/anime_poster/命运石之门.png", "/images/anime_poster/赌博默示录.png", "/images/anime_poster/末日后酒店.png",
+  "/images/anime_poster/女高日常.png", "/images/anime_poster/千年女优.png", "/images/anime_poster/轻音少女第二季.png", "/images/anime_poster/幸运星.png",
+  "/images/anime_poster/小魔女学院.png", "/images/anime_poster/小樱.png", "/images/anime_poster/咲良田.png", "/images/anime_poster/斩服少女.png",
+  "/images/anime_poster/悠哉日常大王.png", "/images/anime_poster/月色真美.png", "/images/anime_poster/mygo.png", "/images/anime_poster/EVA.png",
 ];
 
 // 电影剧照数据
@@ -42,11 +42,11 @@ const RAIN_WORDS = [
 
 // 读书组件 - 核心书单展示数据
 const READING_LIST = [
-  { title: "I Think, Therefore I Am", author: "René Descartes" },
-  { title: "The Old Man and the Sea", author: "Ernest Hemingway" },
-  { title: "The Moon and Sixpence", author: "Somerset Maugham" },
-  { title: "Moby Dick", author: "Herman Melville" },
-  { title: "Crime and Punishment", author: "Fyodor Dostoevsky" },
+  { title: "重启咲良田", author: "河野 裕" },
+  { title: "付丧堂古董店", author: " 御堂 彰彦" },
+  { title: "地中海与菲利普二世时代的地中海世界", author: "Fernand Braudel" },
+  { title: "蓝熊船长的十三条半命", author: "Walter Moers" },
+  { title: "华丽人生", author: "伊坂 幸太郎" },
   { title: "Brave New World", author: "Aldous Huxley" },
 ];
 
