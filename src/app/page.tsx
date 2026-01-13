@@ -468,7 +468,7 @@ export default function LabPortal() {
         <span className="text-xs font-mono tracking-wider uppercase">Admin</span>
       </Link>
 
-      <div className="w-full max-w-7xl mb-12 flex justify-between items-end">
+      <div className="w-full max-w-7xl mb-12 flex justify-between items-end relative">
         <div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 mb-4">
             <div className="h-px w-6 bg-blue-500" />
@@ -478,6 +478,68 @@ export default function LabPortal() {
             Private <span className="text-gray-700">Lab.</span>
           </h1>
         </div>
+
+        {/* Social Media Links - Center Position */}
+        {/* 
+            【位置调整说明】：
+            - left-[58%] : 控制水平位置。数值越大越靠右。默认居中是 left-1/2 (50%)。
+            - -bottom-8  : 控制垂直位置。数值越负越向下。
+        */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="absolute left-[72%] -translate-x-1/2 -bottom-4 flex items-center gap-8"
+        >
+          {/* Bilibili */}
+          <a
+            href="https://space.bilibili.com/244067577"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex flex-col items-center gap-2"
+          >
+            <div className="relative p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-110">
+              <svg className="w-6 h-6 text-white/50 group-hover:text-[#FB7299] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z" />
+              </svg>
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_20px_rgba(251,114,153,0.3)]" />
+            </div>
+            <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Bilibili</span>
+          </a>
+
+          {/* Bangumi - Updated Icon */}
+          <a
+            href="https://bgm.tv/user/614830"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex flex-col items-center gap-2"
+          >
+            <div className="relative p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-110">
+              <svg className="w-6 h-6 text-white/50 group-hover:text-[#F09199] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 4h7v7H4V4zm0 9h7v7H4v-7zm9-9h7v7h-7V4zm0 9h7v7h-7v-7z" style={{ fillRule: 'evenodd' }} />
+              </svg>
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_20px_rgba(240,145,153,0.3)]" />
+            </div>
+            <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Bangumi</span>
+          </a>
+
+          {/* Letterboxd - Updated Icon */}
+          <a
+            href="https://letterboxd.com/phantomreset/films/by/entry-rating/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex flex-col items-center gap-2"
+          >
+            <div className="relative p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-110">
+              <svg className="w-6 h-6 text-white/50 group-hover:text-[#FF8000] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10ZM5.5 8a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Zm13 0a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" />
+              </svg>
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_20px_rgba(255,128,0,0.3)]" />
+            </div>
+            <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Letterboxd</span>
+          </a>
+        </motion.div>
+
         <div className="hidden md:block text-[10px] font-mono text-gray-600 tracking-[0.4em] uppercase pb-2">
           Ready to Explore © 2026
         </div>

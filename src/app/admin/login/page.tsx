@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { Link } from 'lucide-react';
+import NextLink from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -34,7 +37,12 @@ export default function AdminLogin() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-black">
+        <div className="flex items-center justify-center min-h-screen bg-black relative">
+            {/* Back to Home Button */}
+            <NextLink href="/" className="absolute top-8 left-8 p-3 border border-white/10 hover:border-white/30 rounded-full transition-all group bg-black/50 backdrop-blur-md z-50">
+                <ArrowLeft size={20} className="text-gray-500 group-hover:text-gray-200" />
+            </NextLink>
+
             <Card className="w-full max-w-sm bg-zinc-900 border-zinc-800 text-white">
                 <CardHeader>
                     <CardTitle className="text-2xl">管理员登录</CardTitle>
