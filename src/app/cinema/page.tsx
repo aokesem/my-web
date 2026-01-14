@@ -228,10 +228,20 @@ export default function CinemaArchive() {
                                         {current.director}
                                     </span>
                                 </p>
-                                <h2 className="text-7xl font-black italic tracking-tighter uppercase leading-none mb-6">
-                                    {current.title}
-                                    <span className="text-3xl font-light opacity-30 ml-6 not-italic font-sans">({current.year})</span>
-                                </h2>
+
+                                {/* 修改部分：包裹了主标题与英文原名 */}
+                                <div className="mb-6">
+                                    <h2 className="text-7xl font-black italic tracking-tighter uppercase leading-none text-white">
+                                        {current.title}
+                                        <span className="text-3xl font-light opacity-30 ml-6 not-italic font-sans">({current.year})</span>
+                                    </h2>
+                                    {/* 新增：英文原名展示 */}
+                                    {current.titleEn && (
+                                        <p className="text-lg font-mono text-blue-500/60 tracking-[0.25em] mt-3 uppercase pl-1">
+                                            {current.titleEn}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="pt-8 border-t border-white/5 max-w-2xl">
