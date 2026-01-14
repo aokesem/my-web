@@ -22,6 +22,7 @@ interface Book {
     period: { start: string; end: string };
     excerpt: string;
     quotes: BookQuote[];
+    display_order: number;
 }
 
 // 模拟数据 (保持不变) - Replaced by Supabase
@@ -41,7 +42,7 @@ export default function ReadingArchive() {
             const { data, error } = await supabase
                 .from('books')
                 .select('*')
-                .order('period_start', { ascending: false });
+                .order('period_start', { ascending: true });
 
             if (data) {
                 const mappedBooks: Book[] = data.map((item: any) => ({
@@ -54,7 +55,8 @@ export default function ReadingArchive() {
                         end: item.period_end || 'Active'
                     },
                     excerpt: item.excerpt || '',
-                    quotes: item.quotes as BookQuote[] || []
+                    quotes: item.quotes as BookQuote[] || [],
+                    display_order: item.display_order || 0,
                 }));
                 setBooks(mappedBooks);
 
@@ -97,6 +99,11 @@ export default function ReadingArchive() {
 
     const sortedBooks = useMemo(() => {
         return [...filteredBooks].sort((a, b) => {
+            // [修改] 优先按照 display_order (升序: 小的在前)
+            if (a.display_order !== b.display_order) {
+                return a.display_order - b.display_order;
+            }
+            // 如果权重一样，再按时间倒序 (新的在前)
             return b.period.start.localeCompare(a.period.start);
         });
     }, [filteredBooks]);

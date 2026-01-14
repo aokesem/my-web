@@ -8,11 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash, X } from 'lucide-react';
+import { Plus, Pencil, Trash, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 
-// Type definition matches DB
 interface Book {
     id: number;
     title: string;
@@ -22,6 +21,7 @@ interface Book {
     period_end: string | null;
     excerpt: string | null;
     quotes: { text: string; chapter: string }[] | null;
+    display_order: number; // [新增] 排序字段
 }
 
 export default function BooksAdmin() {
@@ -39,6 +39,8 @@ export default function BooksAdmin() {
         const { data, error } = await supabase
             .from('books')
             .select('*')
+            // [修改] 优先按 display_order 升序排列 (0, 1, 2...)，相同的再按 ID 排
+            .order('display_order', { ascending: true })
             .order('id', { ascending: true });
 
         if (error) {
@@ -62,7 +64,6 @@ export default function BooksAdmin() {
     };
 
     const handleSave = async () => {
-        // Basic validation
         if (!currentBook.title || !currentBook.category) {
             toast.error('Title and Category are required');
             return;
@@ -76,11 +77,11 @@ export default function BooksAdmin() {
                 period_start: currentBook.period_start || null,
                 period_end: currentBook.period_end || 'Active',
                 excerpt: currentBook.excerpt,
-                quotes: currentBook.quotes || []
+                quotes: currentBook.quotes || [],
+                display_order: Number(currentBook.display_order) || 0 // [新增] 保存排序权重
             };
 
             if (currentBook.id) {
-                // Update
                 const { error } = await supabase
                     .from('books')
                     .update(payload)
@@ -88,7 +89,6 @@ export default function BooksAdmin() {
                 if (error) throw error;
                 toast.success('Book updated');
             } else {
-                // Create
                 const { error } = await supabase
                     .from('books')
                     .insert([payload]);
@@ -127,7 +127,9 @@ export default function BooksAdmin() {
     };
 
     const openCreate = () => {
-        setCurrentBook({ category: 'Literature', quotes: [] });
+        // [新增] 自动设置 display_order 为当前最大值 + 10，方便排在最后
+        const maxOrder = books.length > 0 ? Math.max(...books.map(b => b.display_order)) : 0;
+        setCurrentBook({ category: 'Literature', quotes: [], display_order: maxOrder + 10 });
         setIsOpen(true);
     };
 
@@ -158,7 +160,7 @@ export default function BooksAdmin() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>分类 (可输入新分类)</Label>
+                                    <Label>分类</Label>
                                     <Input
                                         list="categories-list"
                                         value={currentBook.category || ''}
@@ -177,6 +179,19 @@ export default function BooksAdmin() {
                                 </div>
                             </div>
 
+                            {/* [新增] 排序权重设置 */}
+                            <div className="space-y-2">
+                                <Label className="text-blue-400">排序权重 (数字越小越靠前)</Label>
+                                <Input
+                                    type="number"
+                                    value={currentBook.display_order ?? ''}
+                                    onChange={e => setCurrentBook({ ...currentBook, display_order: Number(e.target.value) })}
+                                    className="bg-black border-zinc-800"
+                                    placeholder="例如: 1, 2, 3..."
+                                />
+                                <p className="text-[10px] text-zinc-500">提示：可以设置 10, 20, 30 这样留出中间插入的空间。</p>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label>封面</Label>
                                 <ImageUpload
@@ -189,7 +204,7 @@ export default function BooksAdmin() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>开始阅读日期 (YYYY-MM-DD)</Label>
+                                    <Label>开始阅读日期</Label>
                                     <Input
                                         type="date"
                                         value={currentBook.period_start || ''}
@@ -203,7 +218,6 @@ export default function BooksAdmin() {
                                         value={currentBook.period_end || ''}
                                         onChange={e => setCurrentBook({ ...currentBook, period_end: e.target.value })}
                                         className="bg-black border-zinc-800"
-                                        placeholder="YYYY-MM-DD 或 Active"
                                     />
                                 </div>
                             </div>
@@ -246,7 +260,6 @@ export default function BooksAdmin() {
                                             </Button>
                                         </div>
                                     ))}
-                                    {currentBook.quotes?.length === 0 && <div className="text-xs text-zinc-500 italic">暂无摘录。</div>}
                                 </div>
                             </div>
 
@@ -263,7 +276,8 @@ export default function BooksAdmin() {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
-                            <TableHead className="text-zinc-400 w-[50px]">ID</TableHead>
+                            {/* [修改] 增加顺序显示列 */}
+                            <TableHead className="text-zinc-400 w-[60px]">序号</TableHead>
                             <TableHead className="text-zinc-400">书名</TableHead>
                             <TableHead className="text-zinc-400">分类</TableHead>
                             <TableHead className="text-zinc-400">阅读周期</TableHead>
@@ -277,12 +291,12 @@ export default function BooksAdmin() {
                             </TableRow>
                         ) : books.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-10 text-zinc-500">暂无书籍，请添加。</TableCell>
+                                <TableCell colSpan={5} className="text-center py-10 text-zinc-500">暂无书籍。</TableCell>
                             </TableRow>
                         ) : (
                             books.map((book) => (
                                 <TableRow key={book.id} className="border-zinc-800 hover:bg-zinc-900/50">
-                                    <TableCell className="font-mono text-zinc-500">{book.id}</TableCell>
+                                    <TableCell className="font-mono text-blue-400 font-bold">{book.display_order}</TableCell>
                                     <TableCell className="font-medium text-gray-200">{book.title}</TableCell>
                                     <TableCell>
                                         <span className="px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs border border-blue-500/20">
