@@ -4,13 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock } from 'lucide-react';
+import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock, DoorOpen } from 'lucide-react';
 
-// ==============================================
-// 0. 常量与工具函数定义 (优化点：数据分离与逻辑复用)
-// ==============================================
-
-// 动漫海报数据
+// ... (0. 常量与工具函数定义 - 保持不变) ...
 const ANIME_IMAGES = [
   "/images/anime_poster/败犬女主.png", "/images/anime_poster/冰菓.png", "/images/anime_poster/冰海战记.png",
   "/images/anime_poster/芙莉莲.png", "/images/anime_poster/钢炼fa.png", "/images/anime_poster/高达0080.png",
@@ -22,16 +18,12 @@ const ANIME_IMAGES = [
   "/images/anime_poster/小魔女学院.png", "/images/anime_poster/小樱.png", "/images/anime_poster/咲良田.png", "/images/anime_poster/斩服少女.png",
   "/images/anime_poster/悠哉日常大王.png", "/images/anime_poster/月色真美.png", "/images/anime_poster/mygo.png", "/images/anime_poster/EVA.png",
 ];
-
-// 电影剧照数据
 const MOVIE_STILLS = [
   "/images/film_poster/地狱的眼睛.png", "/images/film_poster/怀抱孩子的竹千代.png", "/images/film_poster/埋藏黄金的墓地.png",
   "/images/film_poster/面朝阳光.png", "/images/film_poster/狮子云.png", "/images/film_poster/是你们武士.png",
   "/images/film_poster/天国与地狱.png", "/images/film_poster/夕阳.png", "/images/film_poster/Micheal的沉思.png",
   "/images/film_poster/tuco的笑.png", "/images/film_poster/我很好.png", "/images/film_poster/追忆似水年华.png"
 ];
-
-// 读书组件 - 背景文字雨数据
 const RAIN_WORDS = [
   "春琦，重启吧", "于是，魔女敲响了爱人的窗", "髣髴兮若轻云之蔽月，飘飖兮若流风之回雪",
   "寄蜉蝣于天地，渺沧海之一粟", "有善始者实繁，能克终者盖寡", "虽复尘埋无所用，犹能夜夜气冲天",
@@ -39,8 +31,6 @@ const RAIN_WORDS = [
   "重重碎锦，片片真花。纷披草树，散乱烟霞", "伤心桥下春波绿，曾是惊鸿照影来",
   "把吴钩看了，栏杆拍遍，无人会，登临意",
 ];
-
-// 读书组件 - 核心书单展示数据
 const READING_LIST = [
   { title: "重启咲良田", author: "河野 裕" },
   { title: "付丧堂古董店", author: " 御堂 彰彦" },
@@ -50,7 +40,6 @@ const READING_LIST = [
   { title: "Brave New World", author: "Aldous Huxley" },
 ];
 
-// 【优化点：提取通用的 Fisher-Yates 洗牌算法】
 function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -62,9 +51,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 const MotionImage = motion(Image);
 
-// ==============================================
-// 1. 动漫组件：斜向流动的海报墙
-// ==============================================
+// ... (1. 动漫组件 DiagonalPosterGrid - 保持不变) ...
 const DiagonalPosterGrid = () => {
   const [shuffledImages, setShuffledImages] = useState<string[]>([]);
 
@@ -92,22 +79,15 @@ const DiagonalPosterGrid = () => {
         {shuffledImages.map((src: string, i: number) => (
           <div
             key={i}
-            // 父容器必须有 relative 才能使用 fill
             className="relative aspect-2/3 w-full border-[0.5px] border-white/5 overflow-hidden bg-[#0A0A0A]"
           >
-            {/* 替换为 Next.js Image */}
             <Image
               src={src}
               alt={`Poster ${i}`}
               fill
-              // sizes 属性对性能至关重要：
-              // 手机上约占屏幕1/3宽度 (grid-cols-5 但整体宽300%)
-              // 电脑上约占更小
               sizes="(max-width: 768px) 33vw, 20vw"
               className="object-cover scale-105 transition-all duration-500"
               onError={(e) => {
-                // Next/Image 的 onError 处理略有不同，通常建议在数据层过滤，
-                // 或者在这里控制显隐状态，简单起见可以保持 opacity 处理
                 const target = e.target as HTMLImageElement;
                 target.style.opacity = '0';
               }}
@@ -121,12 +101,7 @@ const DiagonalPosterGrid = () => {
   );
 };
 
-// ==============================================
-// 2. 电影组件：呼吸感幻灯片
-// ==============================================
-// ==============================================
-// 2. 电影组件：呼吸感幻灯片 + 动态胶片特效 (Heavy Film Grain & Scratches)
-// ==============================================
+// ... (2. 电影组件 CinemaReel - 保持不变) ...
 const CinemaReel = () => {
   const [shuffledStills, setShuffledStills] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -148,59 +123,58 @@ const CinemaReel = () => {
   return (
     <>
       <style jsx>{`
-        @keyframes film-grain {
-          0%, 100% { background-position: 0 0; }
-          10% { background-position: -5% -10%; }
-          20% { background-position: -15% 5%; }
-          30% { background-position: 7% -25%; }
-          40% { background-position: -5% 25%; }
-          50% { background-position: -15% 10%; }
-          60% { background-position: 15% 0%; }
-          70% { background-position: 0% 15%; }
-          80% { background-position: 3% 35%; }
-          90% { background-position: -10% 10%; }
-        }
-        @keyframes film-scratch {
-          0%, 100% { transform: translateX(0); opacity: 0.3; }
-          10% { transform: translateX(-2px); }
-          20% { transform: translateX(1px); opacity: 0.5; }
-          30% { transform: translateX(-3px); }
-          40% { transform: translateX(2px); opacity: 0.2;}
-          50% { transform: translateX(-1px); }
-          60% { transform: translateX(3px); opacity: 0.4; }
-          70% { transform: translateX(-2px); }
-          80% { transform: translateX(1px); opacity: 0.6; }
-          90% { transform: translateX(-3px); }
-        }
-        .animate-film-grain {
-           animation: film-grain 0.6s steps(1) infinite;
-           background-size: 150% 150%; 
-        }
-        .film-scratches {
-            background-image: repeating-linear-gradient(
-              to right,
-              transparent 0px,
-              transparent 100px,
-              rgba(255, 255, 255, 0.1) 100px, 
-              transparent 101px,
-              transparent 240px,
-              rgba(255, 255, 255, 0.08) 240px,
-              transparent 242px
-            );
-            animation: film-scratch 0.4s steps(1) infinite;
-        }
-      `}</style>
+          @keyframes film-grain {
+            0%, 100% { background-position: 0 0; }
+            10% { background-position: -5% -10%; }
+            20% { background-position: -15% 5%; }
+            30% { background-position: 7% -25%; }
+            40% { background-position: -5% 25%; }
+            50% { background-position: -15% 10%; }
+            60% { background-position: 15% 0%; }
+            70% { background-position: 0% 15%; }
+            80% { background-position: 3% 35%; }
+            90% { background-position: -10% 10%; }
+          }
+          @keyframes film-scratch {
+            0%, 100% { transform: translateX(0); opacity: 0.3; }
+            10% { transform: translateX(-2px); }
+            20% { transform: translateX(1px); opacity: 0.5; }
+            30% { transform: translateX(-3px); }
+            40% { transform: translateX(2px); opacity: 0.2;}
+            50% { transform: translateX(-1px); }
+            60% { transform: translateX(3px); opacity: 0.4; }
+            70% { transform: translateX(-2px); }
+            80% { transform: translateX(1px); opacity: 0.6; }
+            90% { transform: translateX(-3px); }
+          }
+          .animate-film-grain {
+             animation: film-grain 0.6s steps(1) infinite;
+             background-size: 150% 150%; 
+          }
+          .film-scratches {
+              background-image: repeating-linear-gradient(
+                to right,
+                transparent 0px,
+                transparent 100px,
+                rgba(255, 255, 255, 0.1) 100px, 
+                transparent 101px,
+                transparent 240px,
+                rgba(255, 255, 255, 0.08) 240px,
+                transparent 242px
+              );
+              animation: film-scratch 0.4s steps(1) infinite;
+          }
+        `}</style>
 
       <div className="absolute inset-0 overflow-hidden bg-black opacity-50 group-hover:opacity-100 transition-opacity duration-700">
         <AnimatePresence mode="popLayout">
-          {/* 使用 MotionImage 替代 motion.img */}
           <MotionImage
             key={currentIndex}
             src={shuffledStills[currentIndex]}
             alt="Cinema Still"
-            fill // 自动填满父容器
-            sizes="(max-width: 768px) 100vw, 50vw" // 移动端全宽，桌面端半宽
-            priority={true} // 电影海报作为视觉焦点，可以开启优先加载
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority={true}
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 0.7, scale: 1.2 }}
             exit={{ opacity: 0 }}
@@ -208,7 +182,7 @@ const CinemaReel = () => {
               opacity: { duration: 1.5, ease: "easeInOut" },
               scale: { duration: 6, ease: "linear" }
             }}
-            className="object-cover opacity-80" // object-cover 配合 fill 使用
+            className="object-cover opacity-80"
           />
         </AnimatePresence>
 
@@ -225,11 +199,7 @@ const CinemaReel = () => {
   );
 };
 
-// ==============================================
-// 3. 读书组件：流动的文字雨 + 核心排版 (重构核心)
-// ==============================================
-
-// 3.1 单个文字雨列组件 (保持原样，效果很好)
+// ... (3. 读书组件 TextStream - 保持不变) ...
 const TextColumn = ({ colIndex, isHovered, requestToken, releaseToken }: {
   colIndex: number; isHovered: boolean; requestToken: () => boolean; releaseToken: () => void;
 }) => {
@@ -294,12 +264,10 @@ const TextColumn = ({ colIndex, isHovered, requestToken, releaseToken }: {
   );
 };
 
-// 【新增】3.2 核心书名展示组件 (实现图中的排版风格)
 const BookHero = ({ isHovered }: { isHovered: boolean }) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    // 持续时间：9秒切换一次
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % READING_LIST.length);
     }, 9000);
@@ -309,10 +277,7 @@ const BookHero = ({ isHovered }: { isHovered: boolean }) => {
   const currentBook = READING_LIST[index];
 
   return (
-    <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none select-none px-8 transition-all duration-1000 ${
-      // 【位置与亮度调整区】
-      // translate-y-24 控制下移距离，数值越大越靠下
-      isHovered ? "opacity-90 translate-y-11" : "opacity-25 translate-y-11"
+    <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none select-none px-8 transition-all duration-1000 ${isHovered ? "opacity-90 translate-y-11" : "opacity-25 translate-y-11"
       }`}>
       <AnimatePresence mode="wait">
         <motion.div
@@ -335,7 +300,6 @@ const BookHero = ({ isHovered }: { isHovered: boolean }) => {
   );
 };
 
-// 3.3 整合后的 TextStream 主组件
 const TextStream = ({ isHovered }: { isHovered: boolean }) => {
   const totalCols = 6;
   const [activeCount, setActiveCount] = useState(0);
@@ -354,7 +318,6 @@ const TextStream = ({ isHovered }: { isHovered: boolean }) => {
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#020202]">
-      {/* 1. 文字雨背景 */}
       <div className={`absolute inset-0 flex justify-around h-full w-full px-4 py-16 transition-opacity duration-1000 ${isHovered ? 'opacity-80' : 'opacity-40'
         }`}>
         {Array.from({ length: totalCols }).map((_, i) => (
@@ -367,23 +330,14 @@ const TextStream = ({ isHovered }: { isHovered: boolean }) => {
           />
         ))}
       </div>
-
-      {/* 2. 视觉遮罩 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_10%,#020202_85%)] z-10 opacity-80 pointer-events-none" />
       <div className="absolute inset-0 bg-linear-to-b from-[#020202] via-transparent to-[#020202] z-10 pointer-events-none" />
-
-      {/* 3. 书单展示 (修复了之前的 isHovered 传递) */}
       <BookHero isHovered={isHovered} />
     </div>
   );
 };
 
-
-// ==============================================
-// 4. 通用卡片组件 (LabSection)
-// ==============================================
-
-// 【优化点：定义 Props 类型接口】
+// ... (4. 通用卡片组件 LabSection - 保持不变) ...
 interface LabSectionProps {
   title: string;
   sub: string;
@@ -407,7 +361,6 @@ const LabSection = ({ title, sub, icon: Icon, href, delay, variant = "anime" }: 
       href={href}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      // 【调整】移除 min-w-[320px]，在小屏幕上允许卡片变窄以适应布局
       className={`flex-1 relative group rounded-[2.5rem] overflow-hidden border border-white/5 bg-[#0A0A0A] h-[75vh] transition-all duration-700 hover:border-white/20 hover:shadow-2xl ${isHovered ? themeColors.glow : ''}`}
     >
       {variant === "anime" && <DiagonalPosterGrid />}
@@ -459,7 +412,6 @@ const LabSection = ({ title, sub, icon: Icon, href, delay, variant = "anime" }: 
 export default function LabPortal() {
   return (
     <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center p-8 overflow-hidden relative">
-      {/* Admin Entry Point - Top Right */}
       <Link
         href="/admin"
         className="absolute top-8 right-8 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-500/50 hover:bg-zinc-900/80 transition-all duration-300 backdrop-blur-sm group"
@@ -474,17 +426,24 @@ export default function LabPortal() {
             <div className="h-px w-6 bg-blue-500" />
             <span className="text-[10px] font-mono tracking-[0.3em] text-blue-500 uppercase">System Active</span>
           </motion.div>
-          <h1 className="text-6xl md:text-7xl font-bold italic tracking-tighter">
-            Private <span className="text-gray-700">Lab.</span>
-          </h1>
+
+          {/* New Entry Point Implementation */}
+          <div className="flex items-baseline gap-6 group/title">
+            <h1 className="text-6xl md:text-7xl font-bold italic tracking-tighter">
+              Private <span className="text-gray-700">Lab.</span>
+            </h1>
+
+            {/* The Invisible Door - visible on group hover or subtle default */}
+            <Link
+              href="/profile"
+              className="opacity-50 hover:opacity-100 transition-all duration-500 flex items-center gap-2 text-yellow-500 -translate-y-1 hover:translate-x-2"
+            >
+              <span className="hidden md:inline text-[18px] font-mono tracking-widest uppercase text-yellow-500/70 hover:text-yellow-400">[ My Room ]</span>
+              <DoorOpen size={32} className="stroke-[1.5]" />
+            </Link>
+          </div>
         </div>
 
-        {/* Social Media Links - Center Position */}
-        {/* 
-            【位置调整说明】：
-            - left-[58%] : 控制水平位置。数值越大越靠右。默认居中是 left-1/2 (50%)。
-            - -bottom-8  : 控制垂直位置。数值越负越向下。
-        */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -506,8 +465,6 @@ export default function LabPortal() {
             </div>
             <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Bilibili</span>
           </a>
-
-          {/* Bangumi - Updated Icon */}
           <a
             href="https://bgm.tv/user/614830"
             target="_blank"
@@ -522,8 +479,6 @@ export default function LabPortal() {
             </div>
             <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Bangumi</span>
           </a>
-
-          {/* Letterboxd - Updated Icon */}
           <a
             href="https://letterboxd.com/phantomreset/films/by/entry-rating/"
             target="_blank"
