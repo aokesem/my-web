@@ -20,12 +20,12 @@ interface AnimeItem {
 }
 
 // --- 2. 模拟数据 (后续可在此扩展) ---
-const MOCK_DATA: AnimeItem[] = []; // Keep empty or remove, we will use state
+const MOCK_DATA: AnimeItem[] = [];
 
 export default function AnimeArchive() {
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useState<'archive' | 'theater'>('archive');
-    const [animes, setAnimes] = useState<AnimeItem[]>([]); // New state for data
+    const [animes, setAnimes] = useState<AnimeItem[]>([]);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -47,7 +47,11 @@ export default function AnimeArchive() {
                     cover: item.cover_url || '',
                     rating: item.rating || 0,
                     year: item.year || '',
-                    tags: item.tags || [],
+                    // --- 修改点 1：增强的标签清洗逻辑 ---
+                    // 这里会同时按“英文逗号”和“中文逗号”进行拆分，并去除多余空格
+                    tags: Array.isArray(item.tags)
+                        ? item.tags.flatMap((t: string) => t.split(/[,，]/).map(s => s.trim()).filter(Boolean))
+                        : [],
                     comment: item.comment || '',
                     status: item.status || 'Watched'
                 }));
@@ -106,7 +110,7 @@ export default function AnimeArchive() {
                         {/* --- 左侧容器 (75%) --- */}
                         <div className="w-3/4 flex flex-col border-r-2 border-white/20 shadow-[4px_0_24px_rgba(0,0,0,0.4)]">
 
-                            {/* 顶部导航：文字加大，位置下移 */}
+                            {/* 顶部导航 */}
                             <header className="pt-10 px-10 shrink-0">
                                 <div className="flex items-center gap-10 mb-4">
                                     <Link href="/" className="group p-2 -ml-2 hover:bg-white/5 rounded-full transition-all">
@@ -124,7 +128,7 @@ export default function AnimeArchive() {
 
                                             <div className="h-6 w-px bg-white/10 mx-2" />
 
-                                            {/* 视图切换：解决 TS 报错，直接应用当前模式样式 */}
+                                            {/* 视图切换 */}
                                             <nav className="flex gap-8 text-sm font-mono tracking-widest uppercase">
                                                 <button
                                                     onClick={() => setViewMode('archive')}
@@ -144,7 +148,7 @@ export default function AnimeArchive() {
                                     </div>
                                 </div>
 
-                                {/* 分割线：仅限左侧 75% 区域 */}
+                                {/* 分割线 */}
                                 <div className="relative w-full h-[2px]">
                                     <div className="absolute inset-0 bg-linear-to-r from-white/40 via-white/20 to-transparent" />
                                 </div>
@@ -185,10 +189,17 @@ export default function AnimeArchive() {
                                     className="space-y-12"
                                 >
                                     <div>
-                                        <h2 className="text-4xl font-extrabold italic tracking-tighter leading-tight mb-4 uppercase">
+                                        {/* 标题展示 */}
+                                        <h2 className="text-4xl font-extrabold italic tracking-tighter leading-none mb-3 uppercase text-white/95">
                                             {selectedAnime.title}
                                         </h2>
-                                        <div className="flex items-center gap-4">
+                                        {selectedAnime.titleEn && (
+                                            <p className="text-sm font-serif italic text-gray-500 tracking-wider mb-4 leading-snug">
+                                                {selectedAnime.titleEn}
+                                            </p>
+                                        )}
+
+                                        <div className="flex items-center gap-4 mt-2">
                                             <span className="text-[10px] font-mono text-blue-500 tracking-[0.4em] uppercase">Archive_0{selectedAnime.id}</span>
                                             <div className="h-px w-10 bg-white/10" />
                                             <span className="text-[10px] font-mono text-gray-500 uppercase">{selectedAnime.year}</span>
@@ -209,12 +220,21 @@ export default function AnimeArchive() {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-3">
-                                        {selectedAnime.tags.map(tag => (
-                                            <span key={tag} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-gray-400">
-                                                {tag}
-                                            </span>
-                                        ))}
+                                    {/* --- 修改点 2：标签展示 (大字体 + 斜杠分割 + 无边框) --- */}
+                                    <div className="font-mono tracking-wider leading-relaxed">
+                                        <div className="mb-3 text-blue-500/60 uppercase text-[10px] tracking-[0.3em]">Data_Tags //</div>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                            {selectedAnime.tags.map((tag, i) => (
+                                                <React.Fragment key={`${tag}-${i}`}>
+                                                    <span className="text-base md:text-lg text-gray-200 hover:text-blue-400 transition-colors cursor-default whitespace-nowrap font-medium">
+                                                        #{tag}
+                                                    </span>
+                                                    {i < selectedAnime.tags.length - 1 && (
+                                                        <span className="text-base md:text-lg text-gray-700 select-none">/</span>
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div className="pt-12 border-t border-white/5">
@@ -233,7 +253,7 @@ export default function AnimeArchive() {
                     </motion.div>
                 ) : (
                     /* ==========================================================
-                       THEATER 模式：带切换功能与封面占位符的播放器
+                       THEATER 模式 (保持不变)
                        ========================================================== */
                     <motion.div
                         key="theater-view"
