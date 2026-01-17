@@ -73,7 +73,7 @@ export default function ProfilePage() {
                         CYZ
                     </div>
                     {/* 玻璃反光 */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/40 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-linear-to-tr from-white/40 via-transparent to-transparent pointer-events-none" />
                 </div>
             </div>
 
@@ -116,7 +116,7 @@ export default function ProfilePage() {
                         transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
                         className="absolute inset-0 flex items-center justify-center z-50 pointer-events-auto p-4"
                     >
-                        <div className="relative w-full max-w-4xl aspect-video bg-[#2e3b33] rounded-lg border-[16px] border-[#8b5a2b] shadow-2xl flex flex-col overflow-hidden">
+                        <div className="relative w-full max-w-4xl aspect-video bg-[#2e3b33] rounded-lg border-16 border-[#8b5a2b] shadow-2xl flex flex-col overflow-hidden">
                             <div className="h-12 border-b border-white/10 flex items-center justify-between px-6 bg-black/10">
                                 <span className="font-serif text-white/50 italic text-sm">Classroom 101: Intro</span>
                                 <button

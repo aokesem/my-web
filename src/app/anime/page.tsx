@@ -190,11 +190,11 @@ export default function AnimeArchive() {
                                 >
                                     <div>
                                         {/* 标题展示 */}
-                                        <h2 className="text-4xl font-extrabold italic tracking-tighter leading-none mb-3 uppercase text-white/95">
+                                        <h2 className="text-5xl font-extrabold italic tracking-tighter leading-none mb-3 uppercase text-white/95">
                                             {selectedAnime.title}
                                         </h2>
                                         {selectedAnime.titleEn && (
-                                            <p className="text-sm font-serif italic text-gray-500 tracking-wider mb-4 leading-snug">
+                                            <p className="text-lg font-serif italic text-gray-500 tracking-wider mb-4 leading-snug">
                                                 {selectedAnime.titleEn}
                                             </p>
                                         )}
