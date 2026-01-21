@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Database, Monitor, Play } from 'lucide-react';
+import { ArrowLeft, Database, Monitor, Play, ArrowDownWideNarrow, Calendar, Star } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -25,6 +25,10 @@ const MOCK_DATA: AnimeItem[] = [];
 export default function AnimeArchive() {
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useState<'archive' | 'theater'>('archive');
+
+    // 新增：排序模式状态 ('date' | 'rating')
+    const [sortMode, setSortMode] = useState<'date' | 'rating'>('date');
+
     const [animes, setAnimes] = useState<AnimeItem[]>([]);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -47,8 +51,7 @@ export default function AnimeArchive() {
                     cover: item.cover_url || '',
                     rating: item.rating || 0,
                     year: item.year || '',
-                    // --- 修改点 1：增强的标签清洗逻辑 ---
-                    // 这里会同时按“英文逗号”和“中文逗号”进行拆分，并去除多余空格
+                    // 数据清洗：同时支持中英文逗号拆分
                     tags: Array.isArray(item.tags)
                         ? item.tags.flatMap((t: string) => t.split(/[,，]/).map(s => s.trim()).filter(Boolean))
                         : [],
@@ -63,6 +66,17 @@ export default function AnimeArchive() {
         };
         fetchAnimes();
     }, []);
+
+    // --- 核心排序逻辑 ---
+    // 根据 sortMode 动态计算排序后的列表
+    const sortedAnimes = [...animes].sort((a, b) => {
+        if (sortMode === 'rating') {
+            // 评分模式：按 rating 从大到小排，如果评分相同，则按 ID 排
+            return b.rating - a.rating || b.id - a.id;
+        }
+        // 日期模式（默认）：按 ID 从大到小排
+        return b.id - a.id;
+    });
 
     // 预留的视频数据数组
     const VIDEO_DATA = [
@@ -90,6 +104,7 @@ export default function AnimeArchive() {
         setCurrentVideoIndex((prev) => (prev - 1 + VIDEO_DATA.length) % VIDEO_DATA.length);
     };
 
+    // 注意：这里查找 selectedAnime 时要用 sortedAnimes 还是原始 animes 都可以，只要 ID 唯一即可
     const selectedAnime = animes.find(a => a.id === selectedId);
 
     if (!mounted) return null;
@@ -129,7 +144,7 @@ export default function AnimeArchive() {
                                             <div className="h-6 w-px bg-white/10 mx-2" />
 
                                             {/* 视图切换 */}
-                                            <nav className="flex gap-8 text-sm font-mono tracking-widest uppercase">
+                                            <nav className="flex gap-8 text-sm font-mono tracking-widest uppercase items-center">
                                                 <button
                                                     onClick={() => setViewMode('archive')}
                                                     className="flex items-center gap-2 transition-all duration-500 text-white"
@@ -142,6 +157,23 @@ export default function AnimeArchive() {
                                                     className="flex items-center gap-2 transition-all duration-500 text-gray-600 hover:text-gray-400"
                                                 >
                                                     <Monitor size={22} className="text-gray-400" /> Theater
+                                                </button>
+
+                                                {/* 分割线 */}
+                                                <div className="h-4 w-px bg-white/10 mx-2" />
+
+                                                {/* --- 新增：排序切换按钮 --- */}
+                                                <button
+                                                    onClick={() => setSortMode(prev => prev === 'date' ? 'rating' : 'date')}
+                                                    className="flex items-center gap-2 transition-all duration-500 group"
+                                                >
+                                                    <ArrowDownWideNarrow size={18} className={sortMode === 'rating' ? "text-yellow-500" : "text-gray-500 group-hover:text-gray-300"} />
+                                                    <span className={`${sortMode === 'rating' ? "text-white" : "text-gray-600 group-hover:text-gray-400"}`}>
+                                                        Sort: {sortMode === 'rating' ? 'Rating' : 'Date'}
+                                                    </span>
+                                                    {sortMode === 'rating' && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 ml-1 shadow-[0_0_8px_#eab308]" />
+                                                    )}
                                                 </button>
                                             </nav>
                                         </div>
@@ -157,8 +189,10 @@ export default function AnimeArchive() {
                             {/* 列表滚动区 */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-10 pr-14">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-                                    {animes.map((item) => (
+                                    {/* 这里使用 sortedAnimes 进行渲染 */}
+                                    {sortedAnimes.map((item) => (
                                         <motion.div
+                                            layout // 添加 layout 属性，让排序变化时有平滑的移动动画
                                             key={item.id}
                                             whileHover={{ scale: 1.03 }}
                                             whileTap={{ scale: 0.98 }}
@@ -170,6 +204,15 @@ export default function AnimeArchive() {
                                         >
                                             <img src={item.cover} alt={item.title} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-80" />
+
+                                            {/* 如果是评分排序模式，可以在卡片上显示分数 */}
+                                            {sortMode === 'rating' && (
+                                                <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-yellow-500/30 flex items-center gap-1">
+                                                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                                                    <span className="text-[10px] font-bold text-yellow-500">{item.rating}</span>
+                                                </div>
+                                            )}
+
                                             <div className="absolute bottom-5 left-5 right-5">
                                                 <p className="text-[11px] font-bold tracking-widest uppercase truncate">{item.title}</p>
                                             </div>
@@ -190,11 +233,11 @@ export default function AnimeArchive() {
                                 >
                                     <div>
                                         {/* 标题展示 */}
-                                        <h2 className="text-5xl font-extrabold italic tracking-tighter leading-none mb-3 uppercase text-white/95">
+                                        <h2 className="text-4xl font-extrabold italic tracking-tighter leading-none mb-3 uppercase text-white/95">
                                             {selectedAnime.title}
                                         </h2>
                                         {selectedAnime.titleEn && (
-                                            <p className="text-lg font-serif italic text-gray-500 tracking-wider mb-4 leading-snug">
+                                            <p className="text-sm font-serif italic text-gray-500 tracking-wider mb-4 leading-snug">
                                                 {selectedAnime.titleEn}
                                             </p>
                                         )}
@@ -220,7 +263,7 @@ export default function AnimeArchive() {
                                         </div>
                                     </div>
 
-                                    {/* --- 修改点 2：标签展示 (大字体 + 斜杠分割 + 无边框) --- */}
+                                    {/* 标签展示 (保留之前的大字体+斜杠方案) */}
                                     <div className="font-mono tracking-wider leading-relaxed">
                                         <div className="mb-3 text-blue-500/60 uppercase text-[10px] tracking-[0.3em]">Data_Tags //</div>
                                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
