@@ -69,7 +69,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
             className={`
         flex flex-col overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)]
         bg-[#fdf6e3] text-[#4a3b2a] font-serif
-        border-[12px] border-[#6b4226] rounded-lg
+        border-12 border-[#6b4226] rounded-lg
         /* 位置调整：left-[4%] 更靠左
            宽度调整：w-80 -> w-96 (更宽)
         */
@@ -112,13 +112,13 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                    - 我展开了：flex-[5] (占据大部分)
                    - 别人展开了：flex-none h-14 (只留标题高度)
                 */
-                ${expandedCategory === null ? 'flex-1' : (isExpanded ? 'flex-[5]' : 'flex-none h-[3.5rem]')}
+                ${expandedCategory === null ? 'flex-1' : (isExpanded ? 'flex-5' : 'flex-none h-14')}
               `}
                             onClick={(e) => handleCategoryClick(key, e)}
                         >
 
                             {/* 层标题 (Label) - 点击可展开/折叠 */}
-                            <div className="flex items-center justify-between px-4 py-3 bg-[#e8dcc5] border-b border-[#d4c5a9] cursor-pointer hover:bg-[#decab0] transition-colors shrink-0 h-[3.5rem]">
+                            <div className="flex items-center justify-between px-4 py-3 bg-[#e8dcc5] border-b border-[#d4c5a9] cursor-pointer hover:bg-[#decab0] transition-colors shrink-0 h-14">
                                 <div className="flex items-center gap-3">
                                     <Icon size={20} className="text-[#8b5a2b]" />
                                     <span className="font-black text-lg tracking-wider uppercase opacity-80">{category.label}</span>
@@ -144,7 +144,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                             </div>
 
                             {/* 层阴影 */}
-                            <div className="absolute top-[3.5rem] left-0 w-full h-4 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
+                            <div className="absolute top-14 left-0 w-full h-4 bg-linear-to-b from-black/5 to-transparent pointer-events-none" />
                         </motion.div>
                     );
                 })}
