@@ -74,8 +74,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
            宽度调整：w-80 -> w-96 (更宽)
         */
         ${isActive
-                    ? 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[700px] h-[70vh] z-50 cursor-default'
-                    : 'absolute bottom-[10%] left-[4%] w-80 md:w-96 h-[550px] z-30 cursor-pointer hover:scale-[1.02] transition-transform'
+                    ? 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[700px] h-[70vh] z-50 cursor-default'
+                    : 'absolute bottom-[3%] left-[2%] translate-x-0 translate-y-0 w-80 md:w-96 h-[550px] z-30 cursor-pointer hover:scale-[1.02]'
                 }
       `}
         >

@@ -62,7 +62,7 @@ export default function ProfilePage() {
                     <div className="absolute inset-0 bg-linear-to-tr from-zinc-200 to-zinc-100 flex items-center justify-center text-zinc-400 font-bold text-2xl">
                         CYZ
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/40 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-linear-to-tr from-white/40 via-transparent to-transparent pointer-events-none" />
                 </div>
             </div>
 
