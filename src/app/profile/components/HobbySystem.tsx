@@ -53,13 +53,16 @@ interface HobbySystemProps {
 }
 
 export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
-    // 状态：当前哪个分类是展开的？ null 表示没有特定展开（平均分布）
-    const [expandedCategory, setExpandedCategory] = useState<Category | null>(null);
+    // 状态：哪些分类是展开的？默认全展开
+    const [expandedKeys, setExpandedKeys] = useState<Category[]>(['knowledge', 'sports', 'arts']);
 
     const handleCategoryClick = (key: Category, e: React.MouseEvent) => {
         e.stopPropagation(); // 防止触发整体放大
-        // 如果点击已展开的，则折叠（回到平均分布）；否则展开该项
-        setExpandedCategory(prev => prev === key ? null : key);
+        setExpandedKeys(prev =>
+            prev.includes(key)
+                ? prev.filter(k => k !== key) // 如果已展开则移除，实现折叠
+                : [...prev, key]             // 如果未展开则添加，实现展开
+        );
     };
 
     return (
@@ -75,7 +78,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
         */
         ${isActive
                     ? 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[700px] h-[70vh] z-50 cursor-default'
-                    : 'absolute bottom-[3%] left-[2%] translate-x-0 translate-y-0 w-80 md:w-96 h-[550px] z-30 cursor-pointer hover:scale-[1.02]'
+                    : 'absolute bottom-[3%] left-[2%] translate-x-0 translate-y-0 w-80 md:w-96 h-[550px] z-30 cursor-pointer'
                 }
       `}
         >
@@ -97,9 +100,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                     const Icon = category.icon;
 
                     // 判断是否展开
-                    const isExpanded = expandedCategory === key;
-                    // 判断是否处于"某个其他项展开，但我没展开"的状态 (此时我应该收缩)
-                    const isShrinked = expandedCategory !== null && !isExpanded;
+                    const isExpanded = expandedKeys.includes(key);
 
                     return (
                         <motion.div
@@ -108,11 +109,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                             className={`
                 flex flex-col relative group overflow-hidden transition-all duration-500 ease-in-out
                 /* 高度分配逻辑：
-                   - 没人展开：flex-1 (平均)
-                   - 我展开了：flex-[5] (占据大部分)
-                   - 别人展开了：flex-none h-14 (只留标题高度)
+                   - 已展开：flex-1 (平分剩余空间)
+                   - 已折叠：flex-none h-14 (固定标题高度)
                 */
-                ${expandedCategory === null ? 'flex-1' : (isExpanded ? 'flex-5' : 'flex-none h-14')}
+                ${isExpanded ? 'flex-1' : 'flex-none h-14'}
               `}
                             onClick={(e) => handleCategoryClick(key, e)}
                         >
@@ -130,7 +130,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                             </div>
 
                             {/* 内容列表 */}
-                            <div className={`flex-1 overflow-y-auto p-4 space-y-3 bg-[#fdf6e3] ${isShrinked ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                            <div className={`flex-1 overflow-y-auto p-4 space-y-3 bg-[#fdf6e3] ${!isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                                 {category.items.map((item, i) => (
                                     <div key={i} className="flex items-center justify-between border-b border-[#e6d0b3] pb-1 last:border-0 hover:pl-2 transition-all">
                                         <span className={`font-bold text-[#5c3a21] ${isActive ? 'text-xl' : 'text-lg'}`}>

@@ -49,21 +49,55 @@ export default function ProfilePage() {
             </motion.div>
 
             {/* =========================================
-          2. 固定陈设：左上角头像 (永远可见)
+          2. 装饰陈设：左上角艺术画框 (Art Gallery Frame)
          ========================================= */}
-            <div className="absolute left-0 top-[25%] z-30">
-                <div className="w-48 h-4 bg-[#8b5a2b] rounded-r-lg shadow-[0_10px_20px_rgba(0,0,0,0.15)] relative">
-                    <div className="absolute inset-0 bg-black/10 rounded-r-lg" style={{ backgroundImage: 'linear-gradient(90deg, transparent 50%, rgba(0,0,0,0.05) 50%)', backgroundSize: '4px 4px' }} />
-                    <div className="absolute left-10 top-4 w-4 h-8 bg-[#6b4226] skew-x-12 opacity-80" />
-                    <div className="absolute left-32 top-4 w-4 h-8 bg-[#6b4226] skew-x-12 opacity-80" />
+            <div className="absolute left-15 top-[10%] z-30 flex flex-col items-center">
+                {/* 1. 挂钩/钉子 */}
+                <div className="w-3 h-3 bg-zinc-600 rounded-full shadow-md z-10 relative">
+                    <div className="absolute inset-1 bg-zinc-400 rounded-full" />
                 </div>
 
-                <div className="absolute bottom-4 left-10 w-24 h-24 md:w-28 md:h-28 rounded-full border-[6px] border-white shadow-[0_10px_10px_rgba(0,0,0,0.2)] overflow-hidden bg-zinc-100 group hover:-translate-y-1 hover:scale-105 transition-all duration-300 origin-bottom cursor-pointer">
-                    <div className="absolute inset-0 bg-linear-to-tr from-zinc-200 to-zinc-100 flex items-center justify-center text-zinc-400 font-bold text-2xl">
-                        CYZ
+                {/* 2. 挂绳 (V字型) */}
+                <svg className="w-36 h-10 -mt-2.5 pointer-events-none" viewBox="0 0 100 40">
+                    <path
+                        d="M 50 5 L 15 38 M 50 5 L 85 38"
+                        stroke="#5c3a21"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                    />
+                </svg>
+
+                {/* 3. 画框本体 */}
+                <motion.div
+                    className="relative w-32 h-32 md:w-40 md:h-40 cursor-pointer group origin-top -mt-1"
+                >
+                    {/* 木质外框 (Walnut Wood) */}
+                    <div className="absolute inset-0 bg-[#4a2e18] rounded-xs shadow-[0_15px_35px_rgba(0,0,0,0.3)] border-[5px] border-[#3a2514]">
+                        {/* 木纹理叠加 */}
+                        <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')]" />
                     </div>
-                    <div className="absolute inset-0 bg-linear-to-tr from-white/40 via-transparent to-transparent pointer-events-none" />
-                </div>
+
+                    {/* 金色内圈线 (Gold Detail) */}
+                    <div className="absolute inset-[6px] border border-[#d4af37]/40 rounded-xs" />
+
+                    {/* 画布区域 (Canvas) */}
+                    <div className="absolute inset-[10px] bg-[#fdf6e3] rounded-xs overflow-hidden flex items-center justify-center p-4">
+                        {/* 纸张纹理 */}
+                        <div className="absolute inset-0 opacity-[0.15] bg-[url('https://www.transparenttextures.com/patterns/vignette.png')] pointer-events-none" />
+
+                        {/* 名字/头像文字 */}
+                        <span className="relative z-10 text-3xl md:text-4xl font-serif font-black tracking-tighter text-[#4a3b2a] opacity-90">
+                            CYZ
+                        </span>
+
+                        {/* 内阴影，增加深邃感 */}
+                        <div className="absolute inset-0 shadow-[inner_0_2px_10px_rgba(0,0,0,0.1)] pointer-events-none" />
+                    </div>
+
+                    {/* 整体玻璃高光感 */}
+                    <div className="absolute inset-0 bg-linear-to-tr from-white/10 via-transparent to-transparent pointer-events-none rounded-xs" />
+                </motion.div>
             </div>
 
             {/* =========================================
