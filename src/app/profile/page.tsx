@@ -17,12 +17,12 @@ export default function ProfilePage() {
 
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
-            
+
             {/* 环境光 / 背景渐变 - 明亮洁净 */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f1f5f9_70%)] opacity-100 pointer-events-none" />
-            
+
             {/* 浅色网格背景 - 增加实验室感 */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:40px_40px] opacity-40 pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[40px_40px] opacity-40 pointer-events-none" />
 
             {/* =========================================
           1. 顶部区域：标题 & 状态 (可隐藏)
@@ -57,39 +57,54 @@ export default function ProfilePage() {
             {/* =========================================
           2. 装饰陈设：左上角数字相框 (Digital Frame) - 银白风格
          ========================================= */}
-            <div className="absolute left-10 md:left-20 top-[12%] z-30 flex flex-col items-center">
+            <div className="absolute left-10 md:left-20 top-[2%] z-30 flex flex-col items-center">
                 <motion.div
-                    className="relative w-32 h-32 md:w-40 md:h-40 cursor-pointer group"
+                    className="relative w-32 h-32 md:w-65 md:h-45 cursor-pointer group"
                     whileHover={{ scale: 1.05 }}
                     transition={{ duration: 0.4 }}
                 >
                     {/* 边框发光 (浅蓝) */}
                     <div className="absolute -inset-0.5 bg-linear-to-tr from-blue-200 to-purple-200 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-all duration-500" />
-                    
+
                     {/* 金属外框 (银白) */}
-                    <div className="absolute inset-0 bg-white rounded-xl border border-slate-200 shadow-xl flex items-center justify-center overflow-hidden">
-                        
-                        {/* 扫描线效果 (浅灰) */}
-                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.03)_50%)] bg-[length:100%_4px] pointer-events-none z-20" />
-                        
-                        {/* 内容区域 */}
-                        <div className="relative z-10 flex flex-col items-center justify-center">
-                            <span className="text-4xl md:text-5xl font-black tracking-tighter text-slate-800 group-hover:text-blue-600 transition-colors duration-500">
-                                CYZ
-                            </span>
-                            <span className="text-[9px] font-mono text-slate-400 tracking-[0.3em] uppercase mt-1">
-                                Profile_ID
-                            </span>
+                    <div className="absolute inset-0 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden ring-1 ring-slate-100">
+
+                        {/* --- A. 头像层 --- */}
+                        <div className="relative w-full h-full bg-slate-100">
+                            {/* 这里请替换为您真实的头像路径 */}
+                            <img
+                                src="images\浅井惠.png"
+                                alt="Avatar"
+                                className="w-full h-full object-cover transition-all duration-700 filter grayscale contrast-125 group-hover:grayscale-0 group-hover:contrast-100"
+                            />
+                            {/* 蓝色电子滤镜遮罩 (悬停时消失) */}
+                            <div className="absolute inset-0 bg-blue-500/10 mix-blend-overlay transition-opacity duration-700 group-hover:opacity-0" />
                         </div>
 
+                        {/* --- B. 扫描线与纹理 --- */}
+                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.05)_50%)] bg-size-[100%_4px] pointer-events-none z-20 opacity-50" />
+
+
+
                         {/* 角落装饰 */}
-                        <div className="absolute top-2 left-2 w-1 h-1 bg-slate-300 rounded-full" />
-                        <div className="absolute top-2 right-2 w-1 h-1 bg-slate-300 rounded-full" />
-                        <div className="absolute bottom-2 left-2 w-1 h-1 bg-slate-300 rounded-full" />
-                        <div className="absolute bottom-2 right-2 w-1 h-1 bg-blue-500 rounded-full" />
+                        <div className="absolute top-2 left-2 w-1 h-1 bg-white rounded-full z-40 shadow-sm" />
+                        <div className="absolute top-2 right-2 w-1 h-1 bg-white rounded-full z-40 shadow-sm" />
+                    </div>
+
+                    {/* --- 新增：侧边暗纹文字 (出处提示) --- */}
+                    <div className="absolute left-[105%] top-4 flex flex-col gap-3 pointer-events-none whitespace-nowrap">
+                        <div className="flex items-center gap-2 text-[9px] font-mono text-slate-400/40 group-hover:text-blue-500/60 transition-colors duration-500">
+                            <div className="w-1 h-3 bg-blue-500/20" />
+                            <span className="tracking-[0.7em] uppercase">From</span>
+                        </div>
+                        <div className="flex flex-col text-[11px] font-medium text-slate-400/30 group-hover:text-slate-500/60 transition-colors duration-700 leading-relaxed">
+                            <span className="tracking-widest [writing-mode:vertical-lr]">重启咲良田</span>
+                            <div className="h-4 w-px bg-slate-200 my-1 ml-1.5" />
+                            <span className="tracking-widest [writing-mode:vertical-lr]">浅井 惠</span>
+                        </div>
                     </div>
                 </motion.div>
-                
+
                 {/* 悬浮连接线装饰 */}
                 <div className="h-16 w-px bg-linear-to-b from-slate-300 to-transparent mt-4" />
             </div>

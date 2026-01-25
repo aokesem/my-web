@@ -57,10 +57,11 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
         bg: "bg-orange-50",
         activeColor: "bg-orange-500",
         items: [
-            { name: "动漫", desc: "老二次元了", level: 4 },
+            { name: "动漫", desc: "老二次元了😙", level: 4 },
             { name: "漫画", desc: "还有很多准备看的", level: 3 },
             { name: "游戏", desc: "现在自己不玩了，但依然关注", level: 2 },
             { name: "轻小说", desc: "目前只看过几本，但每本都印象深刻", level: 3 },
+            { name: "MAD制作", desc: "重启咲良田MAD已上传B站，制作下一作中", level: 4 },
         ]
     }
 };
