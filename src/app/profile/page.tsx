@@ -57,7 +57,7 @@ export default function ProfilePage() {
             {/* =========================================
           2. 装饰陈设：左上角数字相框 (Digital Frame) - 银白风格
          ========================================= */}
-            <div className="absolute left-10 md:left-20 top-[2%] z-30 flex flex-col items-center">
+            <div className="absolute left-10 md:left-27 top-[2%] z-30 flex flex-col items-center">
                 <motion.div
                     className="relative w-32 h-32 md:w-65 md:h-45 cursor-pointer group"
                     whileHover={{ scale: 1.05 }}
@@ -92,15 +92,15 @@ export default function ProfilePage() {
                     </div>
 
                     {/* --- 新增：侧边暗纹文字 (出处提示) --- */}
-                    <div className="absolute left-[105%] top-4 flex flex-col gap-3 pointer-events-none whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-[9px] font-mono text-slate-400/40 group-hover:text-blue-500/60 transition-colors duration-500">
+                    <div className="absolute left-[105%] top-2 flex flex-col gap-3 pointer-events-none whitespace-nowrap">
+                        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400/40 group-hover:text-slate-800 transition-colors duration-500">
                             <div className="w-1 h-3 bg-blue-500/20" />
-                            <span className="tracking-[0.7em] uppercase">From</span>
+                            <span className="tracking-[0.3em] uppercase">From</span>
                         </div>
-                        <div className="flex flex-col text-[11px] font-medium text-slate-400/30 group-hover:text-slate-500/60 transition-colors duration-700 leading-relaxed">
+                        <div className="flex flex-col text-[14px] font-medium text-slate-400/30 group-hover:text-blue-800 transition-colors duration-700 leading-relaxed">
                             <span className="tracking-widest [writing-mode:vertical-lr]">重启咲良田</span>
                             <div className="h-4 w-px bg-slate-200 my-1 ml-1.5" />
-                            <span className="tracking-widest [writing-mode:vertical-lr]">浅井 惠</span>
+                            <span className="tracking-widest [writing-mode:vertical-lr]">浅井惠</span>
                         </div>
                     </div>
                 </motion.div>
@@ -110,9 +110,62 @@ export default function ProfilePage() {
             </div>
 
             {/* =========================================
+          2.5 悬浮：HUD 科技标注 (DATA_ANNOTATION)
+         ========================================= */}
+            <div className="absolute left-10 md:left-27 top-[15%] z-20 pointer-events-none select-none">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1 }}
+                    className="relative flex items-start"
+                >
+                    {/* 1. HUD 引线系统 */}
+                    <svg width="40" height="120" className="opacity-30">
+                        <line x1="1" y1="0" x2="1" y2="80" stroke="#3b82f6" strokeWidth="1" />
+                        <line x1="1" y1="80" x2="30" y2="110" stroke="#3b82f6" strokeWidth="1" />
+                        <motion.circle
+                            r="2"
+                            fill="#3b82f6"
+                            animate={{
+                                cx: [1, 1, 30],
+                                cy: [0, 80, 110],
+                                opacity: [0, 1, 0]
+                            }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                        />
+                    </svg>
+
+                    {/* 2. 数据展示块 */}
+                    <div className="mt-20 -ml-2 pointer-events-auto">
+                        <motion.div
+                            initial={{ x: -10, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className="bg-white/5 backdrop-blur-xs p-4 border-l border-blue-500/50 group hover:bg-white/10 transition-colors"
+                        >
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">Memory_Buffer</span>
+                            </div>
+
+                            <div className="max-w-[280px]">
+                                <p className="text-[14px] leading-relaxed text-slate-600 font-serif italic">
+                                    “悲伤的记忆，如果能忘记的话，确实会变得轻松，但是，那样的记忆，也有不能忘记的理由。”
+                                </p>
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between text-[9px] font-mono text-slate-400/60 uppercase">
+                                <span className="tracking-[0.2em]">Ref: SN-422</span>
+                                <span className="tracking-[0.1em]">Sakurada Reset</span>
+                            </div>
+                        </motion.div>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* =========================================
           3. 交互陈设：爱好架子 (Hobby Shelf)
          ========================================= */}
-
             <HobbySystem
                 isActive={activeModule === 'hobby'}
                 onToggle={() => setActiveModule(prev => prev === 'hobby' ? 'idle' : 'hobby')}
