@@ -57,7 +57,7 @@ export default function ProfilePage() {
             {/* =========================================
           2. 装饰陈设：左上角数字相框 (Digital Frame) - 银白风格
          ========================================= */}
-            <div className="absolute left-10 md:left-27 top-[2%] z-30 flex flex-col items-center">
+            <div className="absolute left-10 md:left-25 top-[2%] z-30 flex flex-col items-center">
                 <motion.div
                     className="relative w-32 h-32 md:w-65 md:h-45 cursor-pointer group"
                     whileHover={{ scale: 1.05 }}
@@ -106,13 +106,13 @@ export default function ProfilePage() {
                 </motion.div>
 
                 {/* 悬浮连接线装饰 */}
-                <div className="h-16 w-px bg-linear-to-b from-slate-300 to-transparent mt-4" />
+                <div className="h-10 w-px bg-linear-to-b from-slate-300 to-transparent mt-4" />
             </div>
 
             {/* =========================================
           2.5 悬浮：HUD 科技标注 (DATA_ANNOTATION)
          ========================================= */}
-            <div className="absolute left-10 md:left-27 top-[15%] z-20 pointer-events-none select-none">
+            <div className="absolute left-10 md:left-12 top-[16%] z-20 pointer-events-none select-none">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -141,24 +141,24 @@ export default function ProfilePage() {
                             initial={{ x: -10, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.5 }}
-                            className="bg-white/5 backdrop-blur-xs p-4 border-l border-blue-500/50 group hover:bg-white/10 transition-colors"
+                            className="bg-white/20 backdrop-blur-xs p-4 border-l-2 border-blue-400 group hover:bg-white/10 transition-colors"
                         >
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                                <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">Memory_Buffer</span>
+                                <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">Phrase Collection</span>
                             </div>
 
-                            <div className="max-w-[280px]">
-                                <p className="text-[14px] leading-relaxed text-slate-600 font-serif italic">
-                                    “悲伤的记忆，如果能忘记的话，确实会变得轻松，但是，那样的记忆，也有不能忘记的理由。”
+                            <div className="max-w-[300px]">
+                                <p className="text-[22px] leading-relaxed text-slate-600 font-serif italic">
+                                    “种一棵树最好的时间是十年前，其次是现在”
                                 </p>
                             </div>
 
                             <div className="mt-4 flex items-center justify-between text-[9px] font-mono text-slate-400/60 uppercase">
-                                <span className="tracking-[0.2em]">Ref: SN-422</span>
-                                <span className="tracking-[0.1em]">Sakurada Reset</span>
                             </div>
                         </motion.div>
+
+                        <div className="h-10 ml-37 w-px bg-linear-to-b from-slate-300 to-transparent mt-0 relative z-50 -translate-y-[20px]" />
                     </div>
                 </motion.div>
             </div>

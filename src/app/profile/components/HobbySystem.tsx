@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Book, Maximize2, Minimize2, ChevronDown, ChevronRight, Activity, Terminal, Aperture } from 'lucide-react';
+import { Book, Maximize2, Minimize2, ChevronDown, ChevronRight, Activity, Terminal, Aperture, Cpu, Zap, Library, Gamepad2, Ghost } from 'lucide-react';
 
 // === 数据定义 ===
 type Category = 'knowledge' | 'sports' | 'arts' | 'acgn';
@@ -16,7 +16,7 @@ interface HobbyItem {
 const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[]; color: string; bg: string; activeColor: string }> = {
     knowledge: {
         label: "知识",
-        icon: Terminal,
+        icon: Cpu,
         color: "text-blue-600",
         bg: "bg-blue-50",
         activeColor: "bg-blue-500",
@@ -27,21 +27,22 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
     },
     sports: {
         label: "运动",
-        icon: Activity,
-        color: "text-emerald-600",
-        bg: "bg-emerald-50",
-        activeColor: "bg-emerald-500",
+        icon: Zap,
+        color: "text-red-600",
+        bg: "bg-red-50",
+        activeColor: "bg-red-500",
         items: [
             { name: "跑步", desc: "5km-10km", level: 4 },
             { name: "篮球", desc: "只会投篮", level: 3 },
+            { name: "健身", desc: "想去做，但一直没有开始", level: 1 },
         ]
     },
     arts: {
         label: "文艺",
-        icon: Aperture,
-        color: "text-purple-600",
-        bg: "bg-purple-50",
-        activeColor: "bg-purple-500",
+        icon: Library,
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+        activeColor: "bg-emerald-500",
         items: [
             { name: "电影", desc: "喜欢经典的高分电影，重剧情", level: 4 },
             { name: "读书", desc: "小说和推理小说", level: 2 },
@@ -52,10 +53,10 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
     },
     acgn: {
         label: "ACGN",
-        icon: Book, // 这里使用了 Book 图标，你也可以换成别的
-        color: "text-orange-600",
-        bg: "bg-orange-50",
-        activeColor: "bg-orange-500",
+        icon: Ghost, // 这里使用了 Book 图标，你也可以换成别的
+        color: "text-pink-400",
+        bg: "bg-pink-50",
+        activeColor: "bg-pink-500",
         items: [
             { name: "动漫", desc: "老二次元了😙", level: 4 },
             { name: "漫画", desc: "还有很多准备看的", level: 3 },
@@ -104,13 +105,13 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
             onClick={!isActive ? onToggle : undefined}
             className={`
         flex flex-col overflow-hidden backdrop-blur-xl
-        bg-white/90 text-slate-800 font-mono
-        border border-white/50 rounded-2xl
-        shadow-[0_20px_50px_rgba(0,0,0,0.1)]
-        ring-1 ring-slate-200/50
+        bg-white/95 text-slate-800 font-mono
+        border border-white/60 rounded-2xl
+        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+        ring-1 ring-slate-900/5
         ${isActive
                     ? 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[700px] h-[70vh] z-50 cursor-default'
-                    : 'absolute bottom-[3%] left-[3%] translate-x-0 translate-y-0 w-80 md:w-96 h-[500px] z-30 cursor-pointer hover:border-slate-300 hover:bg-white transition-shadow duration-500 hover:shadow-2xl'
+                    : 'absolute bottom-[2%] left-[3%] translate-x-0 translate-y-0 w-80 md:w-96 h-[500px] z-30 cursor-pointer hover:border-slate-300 hover:bg-white transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
                 }
       `}
         >
