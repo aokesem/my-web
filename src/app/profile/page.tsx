@@ -16,7 +16,13 @@ export default function ProfilePage() {
     if (!isMounted) return null;
 
     return (
-        <div className="relative w-screen h-screen overflow-hidden bg-[#eaf4ec] flex items-center justify-center">
+        <div className="relative w-screen h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
+            
+            {/* 环境光 / 背景渐变 - 明亮洁净 */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f1f5f9_70%)] opacity-100 pointer-events-none" />
+            
+            {/* 浅色网格背景 - 增加实验室感 */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:40px_40px] opacity-40 pointer-events-none" />
 
             {/* =========================================
           1. 顶部区域：标题 & 状态 (可隐藏)
@@ -29,75 +35,63 @@ export default function ProfilePage() {
                     pointerEvents: activeModule === 'idle' ? 'auto' : 'none'
                 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="absolute top-[6%] z-20 flex flex-col items-center gap-4"
+                className="absolute top-[8%] z-20 flex flex-col items-center gap-6"
             >
-                <h1 className="text-3xl md:text-5xl font-bold text-[#3a5a40] tracking-widest drop-shadow-sm font-serif opacity-90">
-                    欢迎来到CYZ的小屋
+                <h1 className="text-3xl md:text-5xl font-bold tracking-tighter text-slate-800 font-sans uppercase drop-shadow-sm">
+                    CYZ's <span className="font-mono text-blue-600">Room</span>
                 </h1>
                 {/* 状态栏 */}
-                <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm px-6 py-2 rounded-full border border-white/40 shadow-sm">
+                <div className="flex items-center gap-4 bg-white/70 backdrop-blur-md px-6 py-2 rounded-full border border-slate-200 shadow-lg shadow-slate-200/50">
                     <div className="flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#ff5f57] border border-[#e0443e]" />
-                        <div className="w-3 h-3 rounded-full bg-[#febc2e] border border-[#d89e24]" />
-                        <div className="w-3 h-3 rounded-full bg-[#28c840] border border-[#1aab29] animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-slate-300" />
+                        <div className="w-2 h-2 rounded-full bg-slate-300" />
+                        <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
                     </div>
-                    <div className="w-px h-4 bg-zinc-400/30" />
-                    <span className="text-sm font-serif italic text-[#3a5a40]/80 tracking-wide">
-                        "今日心情：像窗外的云一样自由。"
+                    <div className="w-px h-3 bg-slate-300" />
+                    <span className="text-xs font-mono text-slate-500 tracking-widest uppercase">
+                        Status: <span className="text-blue-600 font-semibold">Daylight</span>
                     </span>
                 </div>
             </motion.div>
 
             {/* =========================================
-          2. 装饰陈设：左上角艺术画框 (Art Gallery Frame)
+          2. 装饰陈设：左上角数字相框 (Digital Frame) - 银白风格
          ========================================= */}
-            <div className="absolute left-15 top-[10%] z-30 flex flex-col items-center">
-                {/* 1. 挂钩/钉子 */}
-                <div className="w-3 h-3 bg-zinc-600 rounded-full shadow-md z-10 relative">
-                    <div className="absolute inset-1 bg-zinc-400 rounded-full" />
-                </div>
-
-                {/* 2. 挂绳 (V字型) */}
-                <svg className="w-36 h-10 -mt-2.5 pointer-events-none" viewBox="0 0 100 40">
-                    <path
-                        d="M 50 5 L 15 38 M 50 5 L 85 38"
-                        stroke="#5c3a21"
-                        strokeWidth="1.5"
-                        fill="none"
-                        strokeLinecap="round"
-                    />
-                </svg>
-
-                {/* 3. 画框本体 */}
+            <div className="absolute left-10 md:left-20 top-[12%] z-30 flex flex-col items-center">
                 <motion.div
-                    className="relative w-32 h-32 md:w-40 md:h-40 cursor-pointer group origin-top -mt-1"
+                    className="relative w-32 h-32 md:w-40 md:h-40 cursor-pointer group"
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.4 }}
                 >
-                    {/* 木质外框 (Walnut Wood) */}
-                    <div className="absolute inset-0 bg-[#4a2e18] rounded-xs shadow-[0_15px_35px_rgba(0,0,0,0.3)] border-[5px] border-[#3a2514]">
-                        {/* 木纹理叠加 */}
-                        <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')]" />
+                    {/* 边框发光 (浅蓝) */}
+                    <div className="absolute -inset-0.5 bg-linear-to-tr from-blue-200 to-purple-200 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    
+                    {/* 金属外框 (银白) */}
+                    <div className="absolute inset-0 bg-white rounded-xl border border-slate-200 shadow-xl flex items-center justify-center overflow-hidden">
+                        
+                        {/* 扫描线效果 (浅灰) */}
+                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.03)_50%)] bg-[length:100%_4px] pointer-events-none z-20" />
+                        
+                        {/* 内容区域 */}
+                        <div className="relative z-10 flex flex-col items-center justify-center">
+                            <span className="text-4xl md:text-5xl font-black tracking-tighter text-slate-800 group-hover:text-blue-600 transition-colors duration-500">
+                                CYZ
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-400 tracking-[0.3em] uppercase mt-1">
+                                Profile_ID
+                            </span>
+                        </div>
+
+                        {/* 角落装饰 */}
+                        <div className="absolute top-2 left-2 w-1 h-1 bg-slate-300 rounded-full" />
+                        <div className="absolute top-2 right-2 w-1 h-1 bg-slate-300 rounded-full" />
+                        <div className="absolute bottom-2 left-2 w-1 h-1 bg-slate-300 rounded-full" />
+                        <div className="absolute bottom-2 right-2 w-1 h-1 bg-blue-500 rounded-full" />
                     </div>
-
-                    {/* 金色内圈线 (Gold Detail) */}
-                    <div className="absolute inset-[6px] border border-[#d4af37]/40 rounded-xs" />
-
-                    {/* 画布区域 (Canvas) */}
-                    <div className="absolute inset-[10px] bg-[#fdf6e3] rounded-xs overflow-hidden flex items-center justify-center p-4">
-                        {/* 纸张纹理 */}
-                        <div className="absolute inset-0 opacity-[0.15] bg-[url('https://www.transparenttextures.com/patterns/vignette.png')] pointer-events-none" />
-
-                        {/* 名字/头像文字 */}
-                        <span className="relative z-10 text-3xl md:text-4xl font-serif font-black tracking-tighter text-[#4a3b2a] opacity-90">
-                            CYZ
-                        </span>
-
-                        {/* 内阴影，增加深邃感 */}
-                        <div className="absolute inset-0 shadow-[inner_0_2px_10px_rgba(0,0,0,0.1)] pointer-events-none" />
-                    </div>
-
-                    {/* 整体玻璃高光感 */}
-                    <div className="absolute inset-0 bg-linear-to-tr from-white/10 via-transparent to-transparent pointer-events-none rounded-xs" />
                 </motion.div>
+                
+                {/* 悬浮连接线装饰 */}
+                <div className="h-16 w-px bg-linear-to-b from-slate-300 to-transparent mt-4" />
             </div>
 
             {/* =========================================
@@ -114,7 +108,7 @@ export default function ProfilePage() {
          ========================================= */}
 
             {/* 窗户：只有它会变模糊 */}
-            <div className={`transition-all duration-700 ${activeModule !== 'idle' ? 'pointer-events-none' : ''}`}>
+            <div className={`transition-all duration-1000 ${activeModule !== 'idle' ? 'pointer-events-none' : ''}`}>
                 <WindowView
                     isOpen={isWindowOpen}
                     onToggle={() => setIsWindowOpen(!isWindowOpen)}
@@ -125,7 +119,7 @@ export default function ProfilePage() {
             {/* 遮罩层：点击背景关闭放大状态 */}
             {activeModule !== 'idle' && (
                 <div
-                    className="absolute inset-0 z-40 bg-black/10"
+                    className="absolute inset-0 z-40 bg-white/40 backdrop-blur-sm transition-all duration-700"
                     onClick={() => setActiveModule('idle')}
                 />
             )}
