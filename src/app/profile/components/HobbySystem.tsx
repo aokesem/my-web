@@ -23,6 +23,7 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
         items: [
             { name: "LLM", desc: "了解原理", level: 3 },
             { name: "Python", desc: "语法入门", level: 1 },
+            { name: "英语提升", desc: "考虑提升听说中", level: 2 },
         ]
     },
     sports: {

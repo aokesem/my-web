@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
+import TimelineWidget from './components/TimelineWidget';
 
 export default function ProfilePage() {
     const [isWindowOpen, setIsWindowOpen] = useState(false);
 
-    // 状态：'idle' | 'hobby'
-    const [activeModule, setActiveModule] = useState<'idle' | 'hobby'>('idle');
+    // 状态：'idle' | 'hobby' | 'timeline'
+    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline'>('idle');
 
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => { setIsMounted(true); }, []);
@@ -167,6 +168,14 @@ export default function ProfilePage() {
                     </div>
                 </motion.div>
             </div>
+
+            {/* =========================================
+          Right Column 1: 时间线 (Timeline Widget)
+         ========================================= */}
+            <TimelineWidget
+                isActive={activeModule === 'timeline'}
+                onToggle={() => setActiveModule(prev => prev === 'timeline' ? 'idle' : 'timeline')}
+            />
 
             {/* =========================================
           3. 交互陈设：爱好架子 (Hobby Shelf)
