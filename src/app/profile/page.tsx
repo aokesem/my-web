@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
 
@@ -120,18 +120,23 @@ export default function ProfilePage() {
                     className="relative flex items-start"
                 >
                     {/* 1. HUD 引线系统 */}
-                    <svg width="40" height="120" className="opacity-30">
-                        <line x1="1" y1="0" x2="1" y2="80" stroke="#3b82f6" strokeWidth="1" />
+                    <svg width="40" height="120" className="opacity-35 overflow-visible">
+                        {/* 1. 斜连线：从头像边缘拉向垂直引线的高点 */}
+                        <line x1="52" y1="-70" x2="1" y2="-30" stroke="#3b82f6" strokeWidth="1" />
+
+                        {/* 2. 垂直主引线：向下延伸并连接 */}
+                        <line x1="1" y1="-30" x2="1" y2="80" stroke="#3b82f6" strokeWidth="1" />
                         <line x1="1" y1="80" x2="30" y2="110" stroke="#3b82f6" strokeWidth="1" />
+
                         <motion.circle
                             r="2"
                             fill="#3b82f6"
                             animate={{
-                                cx: [1, 1, 30],
-                                cy: [0, 80, 110],
-                                opacity: [0, 1, 0]
+                                cx: [52, 1, 1, 30],
+                                cy: [-70, -30, 80, 110],
+                                opacity: [0, 1, 1, 0]
                             }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
                         />
                     </svg>
 
@@ -145,7 +150,7 @@ export default function ProfilePage() {
                         >
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                                <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">Phrase Collection</span>
+                                <span className="text-[12px] font-mono text-slate-400 tracking-widest uppercase">Phrase Collection</span>
                             </div>
 
                             <div className="max-w-[300px]">

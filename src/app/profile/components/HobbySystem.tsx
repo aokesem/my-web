@@ -85,7 +85,7 @@ const LevelIndicator = ({ level, activeColor }: { level: number, activeColor: st
 );
 
 export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
-    const [expandedKeys, setExpandedKeys] = useState<Category[]>(['knowledge', 'sports', 'arts', 'acgn']);
+    const [expandedKeys, setExpandedKeys] = useState<Category[]>([]);
 
     const handleCategoryClick = (key: Category, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -100,7 +100,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
         <motion.div
             layout
             transition={{
-                layout: { type: "spring", stiffness: 120, damping: 22, mass: 1.2 }
+                type: "spring",
+                stiffness: 100,
+                damping: 20,
+                mass: 1.2
             }}
             onClick={!isActive ? onToggle : undefined}
             className={`
@@ -109,9 +112,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
         border border-white/60 rounded-2xl
         shadow-[0_8px_30px_rgba(0,0,0,0.12)]
         ring-1 ring-slate-900/5
+        fixed transition-all duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]
         ${isActive
-                    ? 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[700px] h-[70vh] z-50 cursor-default'
-                    : 'absolute bottom-[2%] left-[3%] translate-x-0 translate-y-0 w-80 md:w-96 h-[500px] z-30 cursor-pointer hover:border-slate-300 hover:bg-white transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
+                    ? 'z-50 top-[15vh] left-[5vw] w-[90vw] h-[70vh] md:left-[calc(50%-350px)] md:w-[700px]'
+                    : 'z-30 top-[calc(100%-520px)] left-[3%] w-80 md:w-96 h-[500px] hover:border-slate-300 hover:bg-white hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
                 }
       `}
         >
