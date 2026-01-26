@@ -113,7 +113,7 @@ export default function ProfilePage() {
             {/* =========================================
           2.5 悬浮：HUD 科技标注 (DATA_ANNOTATION)
          ========================================= */}
-            <div className="absolute left-10 md:left-12 top-[16%] z-20 pointer-events-none select-none">
+            <div className="absolute left-10 md:left-12 top-[15.5%] z-20 pointer-events-none select-none">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
