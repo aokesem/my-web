@@ -24,6 +24,7 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
             { name: "LLM", desc: "了解原理", level: 3 },
             { name: "Python", desc: "语法入门", level: 1 },
             { name: "英语提升", desc: "考虑提升听说中", level: 2 },
+            { name: "网页开发", desc: "就是这个网站", level: 2 },
         ]
     },
     sports: {
@@ -54,7 +55,7 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
     },
     acgn: {
         label: "ACGN",
-        icon: Ghost, // 这里使用了 Book 图标，你也可以换成别的
+        icon: Ghost,
         color: "text-pink-400",
         bg: "bg-pink-50",
         activeColor: "bg-pink-500",

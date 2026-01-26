@@ -5,12 +5,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
 import TimelineWidget from './components/TimelineWidget';
+import DailyProtocol from './components/DailyProtocol'; // [新增] 引入组件
 
 export default function ProfilePage() {
     const [isWindowOpen, setIsWindowOpen] = useState(false);
 
-    // 状态：'idle' | 'hobby' | 'timeline'
-    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline'>('idle');
+    // [修改] 状态类型增加 'protocol'
+    // 状态：'idle' | 'hobby' | 'timeline' | 'protocol'
+    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol'>('idle');
 
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => { setIsMounted(true); }, []);
@@ -74,7 +76,7 @@ export default function ProfilePage() {
                         <div className="relative w-full h-full bg-slate-100">
                             {/* 这里请替换为您真实的头像路径 */}
                             <img
-                                src="images\浅井惠.png"
+                                src="images/浅井惠.png"
                                 alt="Avatar"
                                 className="w-full h-full object-cover transition-all duration-700 filter grayscale contrast-125 group-hover:grayscale-0 group-hover:contrast-100"
                             />
@@ -84,8 +86,6 @@ export default function ProfilePage() {
 
                         {/* --- B. 扫描线与纹理 --- */}
                         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.05)_50%)] bg-size-[100%_4px] pointer-events-none z-20 opacity-50" />
-
-
 
                         {/* 角落装饰 */}
                         <div className="absolute top-2 left-2 w-1 h-1 bg-white rounded-full z-40 shadow-sm" />
@@ -175,6 +175,15 @@ export default function ProfilePage() {
             <TimelineWidget
                 isActive={activeModule === 'timeline'}
                 onToggle={() => setActiveModule(prev => prev === 'timeline' ? 'idle' : 'timeline')}
+            />
+
+            {/* =========================================
+          Right Column 2: 每日计划 (Daily Protocol)
+         ========================================= */}
+            {/* [新增] 计划板模块 */}
+            <DailyProtocol
+                isActive={activeModule === 'protocol'}
+                onToggle={() => setActiveModule(prev => prev === 'protocol' ? 'idle' : 'protocol')}
             />
 
             {/* =========================================
