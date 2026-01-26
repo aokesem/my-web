@@ -68,8 +68,8 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
             {/* 顶部标题栏 */}
             <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between relative z-10 shrink-0">
                 <div className="flex items-center gap-2">
-                    <GitCommit size={14} className="text-slate-400" />
-                    <span className="text-[14px] font-mono font-bold text-slate-500 tracking-[0.2em] uppercase">
+                    <GitCommit size={26} className="text-slate-400" />
+                    <span className="text-[17px] font-mono font-bold text-slate-500 tracking-[0.2em] uppercase">
                         时间线//Timeline
                     </span>
                 </div>
@@ -142,14 +142,14 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
                         {/* 包装层：确保三条线能撑满整个滚动内容的高度 */}
                         <div className="relative min-h-full pb-20">
                             {/* 背景：三条贯穿的主轨道 */}
-                            <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-between px-12 pointer-events-none opacity-20">
+                            <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-between px-30 pointer-events-none opacity-20">
                                 <div className="w-0.5 h-full bg-blue-500" />
                                 <div className="w-0.5 h-full bg-rose-500" />
                                 <div className="w-0.5 h-full bg-emerald-500" />
                             </div>
 
                             {/* 列头标识 */}
-                            <div className="sticky top-0 z-20 flex justify-between px-16 py-2 bg-white/60 backdrop-blur-md border-b border-slate-100 mb-6 text-[20px] font-black text-slate-400 tracking-widest uppercase">
+                            <div className="sticky top-0 z-20 flex justify-between px-20 py-2 bg-white/60 backdrop-blur-md border-b border-slate-100 mb-6 text-[20px] font-black text-slate-400 tracking-widest uppercase">
                                 <span className="w-20 text-center text-blue-500">知识</span>
                                 <span className="w-20 text-center text-rose-500">社交</span>
                                 <span className="w-20 text-center text-emerald-500">艺体</span>
@@ -160,16 +160,26 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
                                 {TIMELINE_DATA.map((item, index) => {
                                     const isLastInYear = index === TIMELINE_DATA.length - 1 || getYear(item.date) !== getYear(TIMELINE_DATA[index + 1].date);
                                     const itemYear = getYear(item.date);
-                                    const textAlign = item.type === 'knowledge' ? 'text-left items-start'
-                                        : item.type === 'social' ? 'text-center items-center'
-                                            : 'text-right items-end';
+                                    const textAlign = 'items-center text-center';
 
                                     return (
                                         <React.Fragment key={item.id}>
-                                            <div className={`flex flex-col w-full ${textAlign}`}>
-                                                <div className={`relative flex flex-col ${textAlign} max-w-[140px]`}>
-                                                    <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm mb-2 ${item.color} ${item.type === 'knowledge' ? 'ml-[27px]' : ''} ${item.type === 'arts' ? 'mr-[18px]' : ''}`} />
-                                                    <div className={`p-3 rounded-xl bg-white/60 border border-white/60 shadow-sm hover:shadow-md transition-all hover:bg-white w-full ${item.type === 'knowledge' ? 'rounded-tl-none' : ''} ${item.type === 'social' ? 'rounded-t-none' : ''} ${item.type === 'arts' ? 'rounded-tr-none' : ''}`}>
+                                            <div className="flex flex-col w-full items-center">
+                                                {/* 整个事件容器：根据类型平移到对应轨道中心 */}
+                                                <div className={`
+                                                    relative flex flex-col items-center text-center max-w-[200px] transition-transform duration-500
+                                                    ${item.type === 'knowledge' ? '-translate-x-[297px]' : ''}
+                                                    ${item.type === 'social' ? '' : ''}
+                                                    ${item.type === 'arts' ? 'translate-x-[297px]' : ''}
+                                                `}>
+                                                    {/* 轨道上的点：不再手动偏移，跟随容器居中 */}
+                                                    <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm mb-2 ${item.color} z-10`} />
+
+                                                    {/* 内容卡片：宽度增加，文字居中 */}
+                                                    <div className={`
+                                                        p-3 rounded-xl bg-white/70 border border-white/60 shadow-sm hover:shadow-md transition-all hover:bg-white w-full
+                                                        ${item.type === 'social' ? 'rounded-t-none' : ''}
+                                                    `}>
                                                         <div className="text-[16px] font-mono text-slate-400 mb-1">{getDate(item.date)}</div>
                                                         <div className="text-sm font-bold text-slate-700 leading-tight">{item.title}</div>
                                                     </div>
