@@ -5,14 +5,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
 import TimelineWidget from './components/TimelineWidget';
-import DailyProtocol from './components/DailyProtocol'; // [新增] 引入组件
+import DailyProtocol from './components/DailyProtocol';
+import ToolboxWidget from './components/ToolboxWidget'; // [新增] 1. 引入组件
 
 export default function ProfilePage() {
     const [isWindowOpen, setIsWindowOpen] = useState(false);
 
-    // [修改] 状态类型增加 'protocol'
-    // 状态：'idle' | 'hobby' | 'timeline' | 'protocol'
-    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol'>('idle');
+    // [修改] 2. 状态类型增加 'toolbox'
+    // 状态：'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox'
+    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox'>('idle');
 
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => { setIsMounted(true); }, []);
@@ -180,10 +181,18 @@ export default function ProfilePage() {
             {/* =========================================
           Right Column 2: 每日计划 (Daily Protocol)
          ========================================= */}
-            {/* [新增] 计划板模块 */}
             <DailyProtocol
                 isActive={activeModule === 'protocol'}
                 onToggle={() => setActiveModule(prev => prev === 'protocol' ? 'idle' : 'protocol')}
+            />
+
+            {/* =========================================
+          Right Column 3: 工具箱 (Toolbox)
+         ========================================= */}
+            {/* [新增] 工具箱模块 */}
+            <ToolboxWidget
+                isActive={activeModule === 'toolbox'}
+                onToggle={() => setActiveModule(prev => prev === 'toolbox' ? 'idle' : 'toolbox')}
             />
 
             {/* =========================================
