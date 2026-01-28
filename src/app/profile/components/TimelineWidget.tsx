@@ -97,9 +97,7 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
                 {/* === 顶部标题栏 (结构保持原版，微调材质适配新背景) === */}
                 <div className="px-5 py-3 border-b border-white/30 flex items-center justify-between relative z-10 shrink-0 bg-white/10">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-white/60 rounded-md shadow-sm text-slate-500">
-                            <GitCommit size={18} />
-                        </div>
+                        <GitCommit size={20} className="text-slate-400" />
                         <span className="text-[14px] font-mono font-bold text-slate-600 tracking-[0.2em] uppercase drop-shadow-sm">
                             时间线//Timeline
                         </span>

@@ -24,6 +24,7 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
             { name: "LLM", desc: "了解原理", level: 3 },
             { name: "Python", desc: "语法入门", level: 1 },
             { name: "英语提升", desc: "考虑提升听说中", level: 2 },
+            { name: "历史", desc: "中国史和欧洲史", level: 3 },
             { name: "网页开发", desc: "就是这个网站", level: 2 },
         ]
     },
@@ -60,7 +61,7 @@ const HOBBY_DATA: Record<Category, { label: string; icon: any; items: HobbyItem[
         bg: "bg-pink-50",
         activeColor: "bg-pink-500",
         items: [
-            { name: "动漫", desc: "老二次元了😙", level: 4 },
+            { name: "动漫", desc: "最大的爱好！", level: 4 },
             { name: "漫画", desc: "还有很多准备看的", level: 3 },
             { name: "游戏", desc: "现在自己不玩了，但依然关注", level: 2 },
             { name: "轻小说", desc: "目前只看过几本，但每本都印象深刻", level: 3 },
@@ -141,12 +142,9 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
             <div className="relative flex justify-between items-center px-6 py-4 border-b border-slate-900/5 shrink-0 z-10 bg-white/20">
                 <div className="flex items-center gap-3">
                     {/* 拟物指示灯：带光晕 */}
-                    <div className="relative flex items-center justify-center w-3 h-3">
-                        <div className="absolute inset-0 bg-blue-400 rounded-full animate-pulse blur-[2px]" />
-                        <div className="relative w-2 h-2 rounded-full bg-blue-500 shadow-inner border border-blue-300" />
-                    </div>
-                    <span className="font-bold tracking-[0.2em] text-[16px] text-slate-500/80">
-                        爱好档案 // HOBBY_ARCHIVE
+                    <Library size={20} className="text-slate-400" />
+                    <span className="font-bold tracking-[0.2em] text-[15px] text-slate-500/80">
+                        爱好档案 // HOBBYARCHIVE
                     </span>
                 </div>
                 <button

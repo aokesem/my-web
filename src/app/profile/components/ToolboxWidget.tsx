@@ -1,84 +1,63 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Database,
-    BookMarked,
-    Github,
-    Figma,
-    Cloud,
-    Bot,
-    Box,
+    Wrench,
     ExternalLink,
-    Wrench
+    Box
 } from 'lucide-react';
 
 // === 数据定义 ===
 interface ToolItem {
     id: string;
     name: string;
-    desc: string; // 存储内容的说明
-    icon: any;
-    color: string; // 品牌色/强调色
-    bg: string;    // 背景色
-    url?: string;  // 跳转链接
+    desc: string;
+    simpleIcon: string;   // 路径: /images/icons/simple/...
+    colorfulIcon: string; // 路径: /images/icons/colorful/...
+    url: string;
 }
 
 const TOOLS: ToolItem[] = [
     {
         id: 'notion',
         name: 'Notion',
-        desc: '第二大脑 / 知识库 / 读书笔记',
-        icon: Database,
-        color: 'text-slate-800',
-        bg: 'bg-slate-100',
+        desc: '第二大脑 / 知识库 / 个人笔记',
+        simpleIcon: '/images/icons/simple/notion.png',
+        colorfulIcon: '/images/icons/colorful/notion.png',
         url: 'https://notion.so'
     },
     {
         id: 'zotero',
         name: 'Zotero',
-        desc: '论文文献库 / PDF 归档',
-        icon: BookMarked,
-        color: 'text-rose-600',
-        bg: 'bg-rose-50',
-        url: '#'
+        desc: '论文文献库 / PDF 归档与引用',
+        simpleIcon: '/images/icons/simple/zotero.png',
+        colorfulIcon: '/images/icons/colorful/zotero.png',
+        url: 'https://www.zotero.org'
     },
     {
-        id: 'github',
-        name: 'GitHub',
-        desc: '代码仓库 / 开源项目贡献',
-        icon: Github,
-        color: 'text-slate-900',
-        bg: 'bg-slate-200',
-        url: 'https://github.com'
+        id: 'bilibili',
+        name: 'Bilibili',
+        desc: '学习资源 / 视频创作 / 灵感来源',
+        simpleIcon: '/images/icons/simple/bilibili.png',
+        colorfulIcon: '/images/icons/colorful/bilibili.png',
+        url: 'https://www.bilibili.com'
     },
     {
-        id: 'figma',
-        name: 'Figma',
-        desc: 'UI 设计稿 / 灵感碎片',
-        icon: Figma,
-        color: 'text-purple-500',
-        bg: 'bg-purple-50',
-        url: 'https://figma.com'
+        id: 'bangumi',
+        name: 'Bangumi',
+        desc: '动画档案 / 评分 / 番剧管理',
+        simpleIcon: '/images/icons/simple/bangumi.png',
+        colorfulIcon: '/images/icons/colorful/bangumi.png',
+        url: 'https://bgm.tv'
     },
     {
-        id: 'vercel',
-        name: 'Vercel',
-        desc: '项目部署 / 域名管理',
-        icon: Cloud,
-        color: 'text-black',
-        bg: 'bg-white border-slate-200',
-        url: 'https://vercel.com'
-    },
-    {
-        id: 'gpt',
-        name: 'ChatGPT',
-        desc: 'AI 辅助 / 创意激荡',
-        icon: Bot,
-        color: 'text-emerald-600',
-        bg: 'bg-emerald-50',
-        url: 'https://chat.openai.com'
+        id: 'letterboxd',
+        name: 'Letterboxd',
+        desc: '电影日志 / 影评 / 观影记录',
+        simpleIcon: '/images/icons/simple/letterboxd.png',
+        colorfulIcon: '/images/icons/colorful/letterboxd.png',
+        url: 'https://letterboxd.com'
     },
 ];
 
@@ -103,92 +82,102 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                 rounded-2xl shadow-lg ring-1 ring-slate-900/5 overflow-hidden group 
                 hover:bg-white/95 transition-[shadow,background-color] duration-300
                 ${isActive
-                    ? 'z-50 inset-x-4 bottom-4 h-[350px] md:inset-x-[20%] md:bottom-[10%] md:h-[400px] md:w-auto'
-                    // ^ 展开时：位于屏幕下方中央的大面板
-                    : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[100px] cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
-                // ^ 收起时：紧凑的长条，放在计划板(DailyProtocol)下方
+                    ? 'z-50 inset-10 md:inset-x-[20%] md:inset-y-[15%]'
+                    : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[140px] cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
                 }
             `}
         >
+            {/* === 背景网格 === */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[20px_20px] opacity-30 pointer-events-none" />
+
             {/* === 顶部栏 === */}
-            <motion.div layout="position" className="flex items-center justify-between px-5 py-3 border-b border-slate-100/80 shrink-0 h-[50px]">
+            <motion.div layout="position" className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-[60px] relative z-10">
                 <div className="flex items-center gap-3">
-                    <Wrench size={18} className="text-slate-400" />
-                    <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-xs">
+                    <Wrench size={20} className="text-slate-400" />
+                    <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">
                         工具箱 // TOOLBOX
                     </span>
                 </div>
 
-                {/* 装饰性的小灯 */}
-                <div className="flex gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-amber-400 animate-pulse' : 'bg-slate-300'}`} />
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                        className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+                    >
+                        {isActive ? <div className="w-4 h-1 bg-slate-400 rounded-full" /> : <Box size={16} />}
+                    </button>
                 </div>
             </motion.div>
 
             {/* === 内容区域 === */}
-            <div className="flex-1 relative bg-slate-50/50 p-4 overflow-hidden">
+            <div className="flex-1 relative bg-slate-50/30 overflow-hidden">
+                <AnimatePresence mode="wait">
+                    {!isActive ? (
+                        /* 1. 收起态 (Simple Icons) */
+                        <motion.div
+                            key="idle-view"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 p-5 flex flex-col justify-center"
+                        >
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
+                                    <span>UTILITY_STORAGE</span>
+                                    <span>STABLE</span>
+                                </div>
 
-                {/* 1. 收起态：快速启动栏 */}
-                {!isActive && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex items-center justify-between px-6"
-                    >
-                        {TOOLS.slice(0, 5).map((tool, i) => (
-                            <div key={tool.id} className="relative group/icon">
-                                <div className={`p-2 rounded-lg ${tool.bg} opacity-70 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 transition-all`}>
-                                    <tool.icon size={18} className={tool.color} />
+                                <div className="flex items-center justify-between px-2">
+                                    {TOOLS.map((tool) => (
+                                        <div key={tool.id} className="relative group/icon">
+                                            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm opacity-60 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 group-hover/icon:border-blue-200 transition-all duration-300">
+                                                <img src={tool.simpleIcon} alt={tool.name} className="w-6 h-6 object-contain" />
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        ))}
-                        <div className="w-px h-6 bg-slate-200" />
-                        <Box size={18} className="text-slate-300" />
-                    </motion.div>
-                )}
+                        </motion.div>
+                    ) : (
+                        /* 2. 展开态 (Colorful Icons) */
+                        <motion.div
+                            key="active-view"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
+                            exit={{ opacity: 0 }}
+                            className="h-full p-6 overflow-y-auto custom-scrollbar"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {TOOLS.map((tool) => (
+                                    <a
+                                        key={tool.id}
+                                        href={tool.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="group/card relative bg-white/50 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 flex items-center gap-5 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                    >
+                                        {/* 图标槽位 */}
+                                        <div className="w-16 h-16 shrink-0 rounded-2xl bg-white shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)] border border-slate-100 flex items-center justify-center group-hover/card:shadow-md transition-shadow">
+                                            <img src={tool.colorfulIcon} alt={tool.name} className="w-10 h-10 object-contain" />
+                                        </div>
 
-                {/* 2. 展开态：详细网格 */}
-                {isActive && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="grid grid-cols-2 md:grid-cols-3 gap-4 h-full overflow-y-auto custom-scrollbar content-start"
-                    >
-                        {TOOLS.map((tool) => (
-                            <a
-                                key={tool.id}
-                                href={tool.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()} // 防止点击跳转时关闭窗口
-                                className="relative flex flex-col p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-200 hover:-translate-y-1 transition-all group/card cursor-pointer"
-                            >
-                                {/* 头部：图标 + 名字 */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className={`p-2.5 rounded-lg ${tool.bg}`}>
-                                        <tool.icon size={20} className={tool.color} />
-                                    </div>
-                                    <ExternalLink size={14} className="text-slate-300 opacity-0 group-hover/card:opacity-100 transition-opacity" />
-                                </div>
-
-                                {/* 名字 */}
-                                <h3 className="text-sm font-bold text-slate-700 mb-1">{tool.name}</h3>
-
-                                {/* 说明文字 */}
-                                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
-                                    {tool.desc}
-                                </p>
-
-                                {/* 装饰角标 */}
-                                <div className="absolute bottom-2 right-2 w-1 h-1 bg-slate-200 rounded-full opacity-0 group-hover/card:opacity-100 transition-opacity" />
-                            </a>
-                        ))}
-                    </motion.div>
-                )}
+                                        {/* 文字信息 */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <h3 className="text-base font-bold text-slate-800">{tool.name}</h3>
+                                                <ExternalLink size={14} className="text-slate-300 group-hover/card:text-blue-500 transition-colors" />
+                                            </div>
+                                            <p className="text-xs text-slate-500 leading-relaxed">
+                                                {tool.desc}
+                                            </p>
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </motion.div>
     );
