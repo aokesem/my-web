@@ -6,7 +6,8 @@ import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
 import TimelineWidget from './components/TimelineWidget';
 import DailyProtocol from './components/DailyProtocol';
-import ToolboxWidget from './components/ToolboxWidget'; // [新增] 1. 引入组件
+import ToolboxWidget from './components/ToolboxWidget';
+import CollectionCabinet from './components/CollectionCabinet'; // [新增] 引入柜子组件
 
 // === 格言数据 ===
 const QUOTES = [
@@ -16,8 +17,8 @@ const QUOTES = [
 
 export default function ProfilePage() {
     const [isWindowOpen, setIsWindowOpen] = useState(false);
-    // 状态：'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox'
-    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox'>('idle');
+    // 状态：'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet'
+    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet'>('idle');
     const [quoteIndex, setQuoteIndex] = useState(0);
 
     const handleNextQuote = () => {
@@ -213,6 +214,15 @@ export default function ProfilePage() {
             <ToolboxWidget
                 isActive={activeModule === 'toolbox'}
                 onToggle={() => setActiveModule(prev => prev === 'toolbox' ? 'idle' : 'toolbox')}
+            />
+
+            {/* =========================================
+          Right Column 4: 收藏柜 (Collection Cabinet)
+         ========================================= */}
+            {/* [新增] 收藏柜模块 */}
+            <CollectionCabinet
+                isActive={activeModule === 'cabinet'}
+                onToggle={() => setActiveModule(prev => prev === 'cabinet' ? 'idle' : 'cabinet')}
             />
 
             {/* =========================================

@@ -83,7 +83,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                 hover:bg-white/95 transition-[shadow,background-color] duration-300
                 ${isActive
                     ? 'z-50 inset-10 md:inset-x-[20%] md:inset-y-[15%]'
-                    : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[140px] cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
+                    : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[120px] cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
                 }
             `}
         >
@@ -123,8 +123,6 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                         >
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
-                                    <span>UTILITY_STORAGE</span>
-                                    <span>STABLE</span>
                                 </div>
 
                                 <div className="flex items-center justify-between px-2">
