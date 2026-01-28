@@ -10,11 +10,8 @@ import ToolboxWidget from './components/ToolboxWidget'; // [新增] 1. 引入组
 
 // === 格言数据 ===
 const QUOTES = [
-    { text: "悲伤的记忆，如果能忘记的话，确实会变得轻松，但是，那样的记忆，也有不能忘记的理由。" },
-    { text: "人类的赞歌是勇气的赞歌，人类的伟大是勇气的伟大！" },
-    { text: "重要的事情，大都是很麻烦的。" },
-    { text: "我们所度过的每一个日常，也许就是连续发生的奇迹。" },
-    { text: "不要温和地走进那个良夜。" },
+    { text: "种一棵树最好的时间是十年前，其次是现在" },
+    { text: "Less is more" },
 ];
 
 export default function ProfilePage() {
@@ -26,6 +23,12 @@ export default function ProfilePage() {
     const handleNextQuote = () => {
         setQuoteIndex((prev) => (prev + 1) % QUOTES.length);
     };
+
+    // --- 自动切换格言逻辑 ---
+    useEffect(() => {
+        const timer = setInterval(handleNextQuote, 5000);
+        return () => clearInterval(timer);
+    }, [quoteIndex]);
 
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => { setIsMounted(true); }, []);
@@ -139,6 +142,7 @@ export default function ProfilePage() {
                         <line x1="1" y1="-30" x2="1" y2="80" stroke="#3b82f6" strokeWidth="1" />
                         <line x1="1" y1="80" x2="30" y2="110" stroke="#3b82f6" strokeWidth="1" />
                         <motion.circle
+                            key={quoteIndex}
                             r="2"
                             fill="#3b82f6"
                             animate={{
@@ -156,8 +160,6 @@ export default function ProfilePage() {
                             initial={{ x: -10, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.5 }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
                             className="bg-white/20 backdrop-blur-xs p-5 border-l-2 border-blue-400 group hover:bg-white/10 transition-colors rounded-r-lg shadow-sm h-[140px] w-[320px] flex flex-col justify-between"
                         >
                             <div className="flex items-center gap-2 mb-2">
@@ -176,7 +178,7 @@ export default function ProfilePage() {
                                         className="w-full"
                                     >
                                         <p className="text-[22px] leading-snug text-slate-600 font-serif italic">
-                                            “{QUOTES[quoteIndex].text}”
+                                            {QUOTES[quoteIndex].text}
                                         </p>
                                     </motion.div>
                                 </AnimatePresence>

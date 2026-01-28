@@ -12,7 +12,7 @@ interface WindowViewProps {
 export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewProps) {
     return (
         <div
-            className="relative w-[60vw] max-w-[1000px] aspect-[4/3] shadow-2xl cursor-pointer group scale-90 md:scale-75 transition-all duration-700 ease-in-out"
+            className="relative w-[60vw] max-w-[1000px] aspect-4/3 shadow-2xl cursor-pointer group scale-90 md:scale-75 transition-all duration-700 ease-in-out"
             onClick={onToggle}
             style={{
                 perspective: "2000px",
@@ -26,7 +26,7 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
             <div className="absolute inset-0 overflow-hidden bg-[#e0f2fe] z-0 rounded-sm">
                 {/* 天空渐变 */}
                 <div className="absolute inset-0 bg-linear-to-b from-[#38bdf8] via-[#bae6fd] to-[#f0f9ff]" />
-                
+
                 {/* 阳光/光晕 */}
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(255,255,255,0.4)_0%,transparent_70%)] translate-x-1/3 -translate-y-1/3 blur-3xl" />
 
@@ -37,15 +37,15 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                             key={i}
                             initial={{ x: "-150%" }}
                             animate={{ x: "250%" }}
-                            transition={{ 
-                                duration: Math.random() * 60 + 40, 
-                                repeat: Infinity, 
-                                ease: "linear", 
-                                delay: Math.random() * -50 
+                            transition={{
+                                duration: Math.random() * 60 + 40,
+                                repeat: Infinity,
+                                ease: "linear",
+                                delay: Math.random() * -50
                             }}
                             className="absolute bg-white/40 blur-2xl rounded-full"
-                            style={{ 
-                                top: `${Math.random() * 80}%`, 
+                            style={{
+                                top: `${Math.random() * 80}%`,
                                 width: `${Math.random() * 400 + 200}px`,
                                 height: `${Math.random() * 100 + 50}px`,
                             }}
@@ -55,17 +55,17 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
             </div>
 
             {/* --- 2. 窗框与窗扇 (白色铝合金/银色) --- */}
-            <div className="absolute inset-[-15px] border-[15px] border-[#f1f5f9] rounded-sm z-30 shadow-[0_10px_40px_rgba(0,0,0,0.1)] pointer-events-none ring-1 ring-slate-200" />
+            <div className="absolute inset-[-15px] border-15 border-[#f1f5f9] rounded-sm z-30 shadow-[0_10px_40px_rgba(0,0,0,0.1)] pointer-events-none ring-1 ring-slate-200" />
 
             <div className="relative w-full h-full flex z-20" style={{ transformStyle: "preserve-3d" }}>
                 {/* 左窗扇 */}
                 <motion.div
                     animate={{ rotateY: isOpen ? -115 : 0 }}
                     transition={{ type: "spring", stiffness: 45, damping: 15 }}
-                    className="relative flex-1 h-full bg-white/20 border-r-[8px] border-[#e2e8f0] origin-left backdrop-blur-[2px]"
+                    className="relative flex-1 h-full bg-white/20 border-r-8 border-[#e2e8f0] origin-left backdrop-blur-[2px]"
                     style={{ transformStyle: "preserve-3d", backfaceVisibility: "hidden" }}
                 >
-                    <div className="absolute inset-0 border-[12px] border-[#f8fafc] flex items-center justify-center shadow-inner">
+                    <div className="absolute inset-0 border-12 border-[#f8fafc] flex items-center justify-center shadow-inner">
                         <div className="absolute w-full h-[8px] bg-[#e2e8f0]" />
                         <div className="absolute h-full w-[8px] bg-[#e2e8f0]" />
                         {/* 玻璃反光 */}
@@ -79,10 +79,10 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                 <motion.div
                     animate={{ rotateY: isOpen ? 115 : 0 }}
                     transition={{ type: "spring", stiffness: 45, damping: 15 }}
-                    className="relative flex-1 h-full bg-white/20 border-l-[8px] border-[#e2e8f0] origin-right backdrop-blur-[2px]"
+                    className="relative flex-1 h-full bg-white/20 border-l-8 border-[#e2e8f0] origin-right backdrop-blur-[2px]"
                     style={{ transformStyle: "preserve-3d", backfaceVisibility: "hidden" }}
                 >
-                    <div className="absolute inset-0 border-[12px] border-[#f8fafc] flex items-center justify-center shadow-inner">
+                    <div className="absolute inset-0 border-12 border-[#f8fafc] flex items-center justify-center shadow-inner">
                         <div className="absolute w-full h-[8px] bg-[#e2e8f0]" />
                         <div className="absolute h-full w-[8px] bg-[#e2e8f0]" />
                         {/* 玻璃反光 */}
