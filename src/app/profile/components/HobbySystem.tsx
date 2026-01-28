@@ -127,7 +127,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
       `}
         >
             {/* --- 材质层 (Material Layers) --- */}
-            
+
             {/* 1. 次表面散射 (Subsurface Scattering) - 内部流动的彩色光晕 */}
             <div className="absolute -top-[20%] -left-[20%] w-[140%] h-[140%] opacity-40 pointer-events-none blur-3xl saturate-150 mix-blend-multiply bg-[conic-gradient(from_0deg_at_50%_50%,#e0f2fe_0deg,#f3e8ff_120deg,#ecfccb_240deg,#e0f2fe_360deg)]" />
 
@@ -135,7 +135,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
             <div className="absolute inset-0 opacity-[0.06] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pointer-events-none mix-blend-color-burn" />
 
             {/* 3. 顶部高光 (Specular Highlight) */}
-            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80 z-20" />
+            <div className="absolute top-0 left-6 right-6 h-px bg-linear-to-r from-transparent via-white to-transparent opacity-80 z-20" />
 
             {/* 顶部控制栏 */}
             <div className="relative flex justify-between items-center px-6 py-4 border-b border-slate-900/5 shrink-0 z-10 bg-white/20">
@@ -146,7 +146,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                         <div className="relative w-2 h-2 rounded-full bg-blue-500 shadow-inner border border-blue-300" />
                     </div>
                     <span className="font-bold tracking-[0.2em] text-[16px] text-slate-500/80">
-                         爱好档案 // HOBBY_ARCHIVE
+                        爱好档案 // HOBBY_ARCHIVE
                     </span>
                 </div>
                 <button

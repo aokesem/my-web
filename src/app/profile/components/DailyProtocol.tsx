@@ -42,10 +42,10 @@ const INITIAL_TASKS: Task[] = [
 
 // === 配置表 ===
 const CATEGORY_CONFIG: Record<Category, { label: string; color: string; bg: string; indicator: string; icon: any }> = {
-    knowledge: { label: 'Knowledge', color: 'text-blue-600', bg: 'bg-blue-50', indicator: 'bg-blue-500', icon: BookOpen },
-    sports: { label: 'Sports', color: 'text-rose-600', bg: 'bg-rose-50', indicator: 'bg-rose-500', icon: Zap },
-    arts: { label: 'Arts', color: 'text-emerald-600', bg: 'bg-emerald-50', indicator: 'bg-emerald-500', icon: Palette },
-    social: { label: 'Social', color: 'text-purple-600', bg: 'bg-purple-50', indicator: 'bg-purple-500', icon: Users },
+    knowledge: { label: 'Knowledge', color: 'text-blue-600', bg: 'bg-blue-100', indicator: 'bg-blue-500', icon: BookOpen },
+    sports: { label: 'Sports', color: 'text-rose-600', bg: 'bg-rose-100', indicator: 'bg-rose-500', icon: Zap },
+    arts: { label: 'Arts', color: 'text-emerald-600', bg: 'bg-emerald-100', indicator: 'bg-emerald-500', icon: Palette },
+    social: { label: 'Social', color: 'text-purple-600', bg: 'bg-purple-100', indicator: 'bg-purple-500', icon: Users },
 };
 
 interface DailyProtocolProps {
@@ -103,6 +103,9 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
                 }
             `}
         >
+            {/* === 背景网格 === */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[20px_20px] opacity-30 pointer-events-none" />
+
             {/* === 顶部栏 === */}
             {/* 顶部栏使用 layout="position" 确保它在容器变形时平滑移动 */}
             <motion.div layout="position" className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-[60px]">
@@ -183,8 +186,8 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
                                     </div>
 
                                     <div className="flex gap-1 h-1 w-full">
-                                        {[...Array(Math.min(tasks.length, 10))].map((_, i) => (
-                                            <div key={i} className={`flex-1 rounded-full ${i === 0 ? indicatorColor : 'bg-slate-200'}`} />
+                                        {tasks.slice(0, 10).map((task, i) => (
+                                            <div key={task.id} className={`flex-1 rounded-full ${CATEGORY_CONFIG[task.category].indicator}`} />
                                         ))}
                                     </div>
                                 </div>
@@ -213,10 +216,10 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
 
                                     return (
                                         <div key={cat} className="flex-1 flex flex-col min-w-[200px] h-full bg-white/50 rounded-xl border border-white/60 shadow-sm backdrop-blur-sm overflow-hidden group/col hover:bg-white/80 transition-colors">
-                                            <div className={`px-4 py-3 border-b border-slate-100 flex items-center gap-2 ${config.color} bg-white/40`}>
+                                            <div className={`px-4 py-3 border-b border-slate-100 flex items-center gap-2 text-white ${config.indicator}`}>
                                                 <config.icon size={16} />
                                                 <span className="font-bold tracking-wider uppercase text-base">{config.label}</span>
-                                                <span className="ml-auto text-[10px] font-mono opacity-60 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500">
+                                                <span className="ml-auto text-[10px] font-mono bg-white/20 px-1.5 py-0.5 rounded-full text-white">
                                                     {catTasks.length}
                                                 </span>
                                             </div>
@@ -269,7 +272,7 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
                                                                 </button>
                                                             </div>
                                                             {task.status === 'in_progress' && (
-                                                                <div className={`absolute inset-0 ${config.bg} opacity-30 pointer-events-none`} />
+                                                                <div className={`absolute inset-0 ${config.bg} opacity-40 pointer-events-none`} />
                                                             )}
                                                         </motion.div>
                                                     ))}
