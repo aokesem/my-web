@@ -5,14 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wrench,
     ExternalLink,
-    Box
+    Box,
+    FileText
 } from 'lucide-react';
 
 // === 数据定义 ===
 interface ToolItem {
     id: string;
     name: string;
-    desc: string;
+    tagline: string;      // 短描述：工具定位
+    usage: string;        // 详细描述：个人信息沉淀/使用习惯
     simpleIcon: string;   // 路径: /images/icons/simple/...
     colorfulIcon: string; // 路径: /images/icons/colorful/...
     url: string;
@@ -22,7 +24,8 @@ const TOOLS: ToolItem[] = [
     {
         id: 'notion',
         name: 'Notion',
-        desc: '第二大脑 / 知识库 / 个人笔记',
+        tagline: '第二大脑 // 知识库',
+        usage: '这里记录了我的完整知识图谱。包含从 2023 年开始的 300+ 篇深度学习笔记、跨学科研究文档，以及所有的项目复盘记录。是我进行思维发散与逻辑归档的核心场所。',
         simpleIcon: '/images/icons/simple/notion.png',
         colorfulIcon: '/images/icons/colorful/notion.png',
         url: 'https://notion.so'
@@ -30,7 +33,8 @@ const TOOLS: ToolItem[] = [
     {
         id: 'zotero',
         name: 'Zotero',
-        desc: '论文文献库 / PDF 归档与引用',
+        tagline: '论文文献库 // 引用管理',
+        usage: '专门用于学术归档。目前分类管理了关于 LLM 架构、认知科学以及交互设计的 500+ 篇核心论文。通过插件实现了与 Notion 的无缝同步，所有的标注都会自动转化为我的笔记素材。',
         simpleIcon: '/images/icons/simple/zotero.png',
         colorfulIcon: '/images/icons/colorful/zotero.png',
         url: 'https://www.zotero.org'
@@ -38,7 +42,8 @@ const TOOLS: ToolItem[] = [
     {
         id: 'bilibili',
         name: 'Bilibili',
-        desc: '学习资源 / 视频创作 / 灵感来源',
+        tagline: '灵感源泉 // 内容创作',
+        usage: '除了日常学习，也是我 MAD 制作的投稿地。收藏夹内沉淀了大量剪辑转场参考、审美趋势分析视频。同时也记录并关注着业界顶尖的视觉设计博主动向。',
         simpleIcon: '/images/icons/simple/bilibili.png',
         colorfulIcon: '/images/icons/colorful/bilibili.png',
         url: 'https://www.bilibili.com'
@@ -46,7 +51,8 @@ const TOOLS: ToolItem[] = [
     {
         id: 'bangumi',
         name: 'Bangumi',
-        desc: '动画档案 / 评分 / 番剧管理',
+        tagline: '番剧档案 // 评分系统',
+        usage: '二次元生活的完整数字化记录。记录了我看过、正在看以及想看的所有番剧。每一部高分作品都附带了简短的个人锐评，是我构建角色与叙事审美参考的重要数据库。',
         simpleIcon: '/images/icons/simple/bangumi.png',
         colorfulIcon: '/images/icons/colorful/bangumi.png',
         url: 'https://bgm.tv'
@@ -54,7 +60,8 @@ const TOOLS: ToolItem[] = [
     {
         id: 'letterboxd',
         name: 'Letterboxd',
-        desc: '电影日志 / 影评 / 观影记录',
+        tagline: '电影日志 // 影评归档',
+        usage: '作为影迷的自留地。详细记录了每部电影的观影日期、地点以及长篇影评。通过数据墙直观展示我的年度观影趋势，是分析个人叙述节奏与构图偏好的工具。',
         simpleIcon: '/images/icons/simple/letterboxd.png',
         colorfulIcon: '/images/icons/colorful/letterboxd.png',
         url: 'https://letterboxd.com'
@@ -72,9 +79,9 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             layout
             transition={{
                 type: "spring",
-                stiffness: 120,
-                damping: 25,
-                mass: 1
+                stiffness: 100,
+                damping: 22,
+                mass: 1.2
             }}
             onClick={!isActive ? onToggle : undefined}
             className={`
@@ -82,16 +89,16 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                 rounded-2xl shadow-lg ring-1 ring-slate-900/5 overflow-hidden group 
                 hover:bg-white/95 transition-[shadow,background-color] duration-300
                 ${isActive
-                    ? 'z-50 inset-10 md:inset-x-[20%] md:inset-y-[15%]'
-                    : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[120px] cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
+                    ? 'z-50 inset-10 md:inset-x-[15%] md:inset-y-[12%]'
+                    : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[120px] cursor-pointer shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2),inset_0_1px_4px_rgba(0,0,0,0.02)]'
                 }
             `}
         >
-            {/* === 背景网格 === */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[20px_20px] opacity-30 pointer-events-none" />
+            {/* === 背景点阵 (Dot Matrix) === */}
+            <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] bg-size-[16px_16px] opacity-20 pointer-events-none" />
 
             {/* === 顶部栏 === */}
-            <motion.div layout="position" className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-[60px] relative z-10">
+            <motion.div layout="position" className="flex items-center justify-between px-6 py-4 border-b border-slate-100/80 shrink-0 h-[64px] relative z-10">
                 <div className="flex items-center gap-3">
                     <Wrench size={20} className="text-slate-400" />
                     <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">
@@ -99,7 +106,10 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                    {isActive && (
+                        <span className="text-[10px] font-mono font-black text-slate-300 tracking-widest uppercase hidden md:inline">Personal_Records_Vault</span>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); onToggle(); }}
                         className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
@@ -110,7 +120,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             </motion.div>
 
             {/* === 内容区域 === */}
-            <div className="flex-1 relative bg-slate-50/30 overflow-hidden">
+            <div className="flex-1 relative bg-slate-50/20 overflow-hidden">
                 <AnimatePresence mode="wait">
                     {!isActive ? (
                         /* 1. 收起态 (Simple Icons) */
@@ -121,57 +131,78 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                             exit={{ opacity: 0 }}
                             className="absolute inset-0 p-5 flex flex-col justify-center"
                         >
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
-                                </div>
-
-                                <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center justify-between px-2">
+                                {TOOLS.map((tool) => (
+                                    <div key={tool.id} className="relative group/icon">
+                                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm opacity-60 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 group-hover/icon:border-blue-200 transition-all duration-300">
+                                            <img src={tool.simpleIcon} alt={tool.name} className="w-6 h-6 object-contain" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    ) : (
+                        /* 2. 展开态：详细档案排版 (Personal Notes Style) */
+                        <motion.div
+                            key="active-view"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="h-full p-8 overflow-y-auto custom-scrollbar"
+                        >
+                            <div className="max-w-6xl mx-auto">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {TOOLS.map((tool) => (
-                                        <div key={tool.id} className="relative group/icon">
-                                            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm opacity-60 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 group-hover/icon:border-blue-200 transition-all duration-300">
-                                                <img src={tool.simpleIcon} alt={tool.name} className="w-6 h-6 object-contain" />
+                                        <div
+                                            key={tool.id}
+                                            className="group/card relative flex flex-col sm:flex-row gap-6 bg-white/40 border border-slate-100 rounded-2xl p-6 hover:bg-white hover:shadow-xl transition-all duration-300 overflow-hidden"
+                                        >
+                                            {/* 背景装饰 */}
+                                            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover/card:opacity-[0.08] transition-opacity">
+                                                <FileText size={80} />
+                                            </div>
+
+                                            {/* 左侧：拟物图标 + 链接 */}
+                                            <div className="flex flex-col items-center gap-4 shrink-0">
+                                                <div className="w-20 h-20 rounded-2xl bg-white shadow-md border border-slate-50 flex items-center justify-center p-3 relative">
+                                                    <img src={tool.colorfulIcon} alt={tool.name} className="w-full h-full object-contain" />
+                                                </div>
+                                                <a
+                                                    href={tool.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] bg-blue-50 px-3 py-1 rounded-full border border-blue-100/50"
+                                                >
+                                                    Access <ExternalLink size={10} />
+                                                </a>
+                                            </div>
+
+                                            {/* 右侧：详细记录 */}
+                                            <div className="flex-1 min-w-0 pt-1">
+                                                <div className="flex items-baseline gap-2 mb-2">
+                                                    <h3 className="text-lg font-black text-slate-800 tracking-tight">{tool.name}</h3>
+                                                    <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest">{tool.tagline}</span>
+                                                </div>
+                                                <div className="relative">
+                                                    {/* 修饰竖线 */}
+                                                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-100/60 rounded-full" />
+                                                    <p className="pl-4 text-xs text-slate-500 leading-relaxed font-medium">
+                                                        {tool.usage}
+                                                    </p>
+                                                </div>
+
+                                                {/* 底部装饰 */}
+                                                <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
+                                                    <span className="text-[9px] font-mono text-slate-300 font-bold uppercase">Archive_Status: ACTIVE</span>
+                                                    <div className="flex gap-1">
+                                                        {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-slate-200" />)}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        </motion.div>
-                    ) : (
-                        /* 2. 展开态 (Colorful Icons) */
-                        <motion.div
-                            key="active-view"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
-                            exit={{ opacity: 0 }}
-                            className="h-full p-6 overflow-y-auto custom-scrollbar"
-                        >
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {TOOLS.map((tool) => (
-                                    <a
-                                        key={tool.id}
-                                        href={tool.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="group/card relative bg-white/50 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 flex items-center gap-5 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                                    >
-                                        {/* 图标槽位 */}
-                                        <div className="w-16 h-16 shrink-0 rounded-2xl bg-white shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)] border border-slate-100 flex items-center justify-center group-hover/card:shadow-md transition-shadow">
-                                            <img src={tool.colorfulIcon} alt={tool.name} className="w-10 h-10 object-contain" />
-                                        </div>
-
-                                        {/* 文字信息 */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <h3 className="text-base font-bold text-slate-800">{tool.name}</h3>
-                                                <ExternalLink size={14} className="text-slate-300 group-hover/card:text-blue-500 transition-colors" />
-                                            </div>
-                                            <p className="text-xs text-slate-500 leading-relaxed">
-                                                {tool.desc}
-                                            </p>
-                                        </div>
-                                    </a>
-                                ))}
                             </div>
                         </motion.div>
                     )}

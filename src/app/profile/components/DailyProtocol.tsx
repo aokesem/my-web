@@ -31,13 +31,13 @@ interface Task {
 
 // === 初始数据 ===
 const INITIAL_TASKS: Task[] = [
-    { id: '1', title: '阅读 Paper 30min', category: 'knowledge', status: 'in_progress', startDate: '2026-01-26' },
-    { id: '2', title: '整理笔记', category: 'knowledge', status: 'todo', startDate: '2026-01-26' },
-    { id: '3', title: '晨跑 5km', category: 'sports', status: 'todo', startDate: '2026-01-27' },
-    { id: '4', title: '核心力量训练', category: 'sports', status: 'todo', startDate: '2026-01-28' },
-    { id: '5', title: '吉他爬格子', category: 'arts', status: 'in_progress', startDate: '2026-01-25' },
-    { id: '6', title: '观看经典电影', category: 'arts', status: 'todo', startDate: '2026-02-01' },
-    { id: '7', title: '约朋友周末吃饭', category: 'social', status: 'todo', startDate: '2026-01-30' },
+    { id: '1', title: 'AI Agent开发学习', category: 'knowledge', status: 'in_progress', startDate: '2026-01-28' },
+    { id: '2', title: '训练简单Transformer模型', category: 'knowledge', status: 'todo', startDate: '2026-01-28' },
+    { id: '3', title: '跑步机/公园 跑步', category: 'sports', status: 'todo', startDate: '2026-01-28' },
+    { id: '4', title: '投篮练习', category: 'sports', status: 'todo', startDate: '2026-01-28' },
+    { id: '5', title: '口琴练习', category: 'arts', status: 'in_progress', startDate: '2026-01-28' },
+    { id: '6', title: '千年女优Mad制作', category: 'arts', status: 'todo', startDate: '2026-01-28' },
+    { id: '7', title: '暂无', category: 'social', status: 'todo', startDate: '2026-01-30' },
 ];
 
 // === 配置表 ===
