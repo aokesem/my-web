@@ -8,12 +8,24 @@ import TimelineWidget from './components/TimelineWidget';
 import DailyProtocol from './components/DailyProtocol';
 import ToolboxWidget from './components/ToolboxWidget'; // [新增] 1. 引入组件
 
+// === 格言数据 ===
+const QUOTES = [
+    { text: "悲伤的记忆，如果能忘记的话，确实会变得轻松，但是，那样的记忆，也有不能忘记的理由。" },
+    { text: "人类的赞歌是勇气的赞歌，人类的伟大是勇气的伟大！" },
+    { text: "重要的事情，大都是很麻烦的。" },
+    { text: "我们所度过的每一个日常，也许就是连续发生的奇迹。" },
+    { text: "不要温和地走进那个良夜。" },
+];
+
 export default function ProfilePage() {
     const [isWindowOpen, setIsWindowOpen] = useState(false);
-
-    // [修改] 2. 状态类型增加 'toolbox'
     // 状态：'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox'
     const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox'>('idle');
+    const [quoteIndex, setQuoteIndex] = useState(0);
+
+    const handleNextQuote = () => {
+        setQuoteIndex((prev) => (prev + 1) % QUOTES.length);
+    };
 
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => { setIsMounted(true); }, []);
@@ -112,9 +124,9 @@ export default function ProfilePage() {
             </div>
 
             {/* =========================================
-          2.5 悬浮：HUD 科技标注 (DATA_ANNOTATION)
+          2.5 悬浮：HUD 科技标注 (DATA_ANNOTATION) -> 交互式格言卡片
          ========================================= */}
-            <div className="absolute left-10 md:left-12 top-[15.5%] z-20 pointer-events-none select-none">
+            <div className="absolute left-10 md:left-12 top-[15.5%] z-20 select-none">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -122,14 +134,10 @@ export default function ProfilePage() {
                     className="relative flex items-start"
                 >
                     {/* 1. HUD 引线系统 */}
-                    <svg width="40" height="120" className="opacity-35 overflow-visible">
-                        {/* 1. 斜连线：从头像边缘拉向垂直引线的高点 */}
+                    <svg width="40" height="120" className="opacity-35 overflow-visible pointer-events-none">
                         <line x1="52" y1="-70" x2="1" y2="-30" stroke="#3b82f6" strokeWidth="1" />
-
-                        {/* 2. 垂直主引线：向下延伸并连接 */}
                         <line x1="1" y1="-30" x2="1" y2="80" stroke="#3b82f6" strokeWidth="1" />
                         <line x1="1" y1="80" x2="30" y2="110" stroke="#3b82f6" strokeWidth="1" />
-
                         <motion.circle
                             r="2"
                             fill="#3b82f6"
@@ -142,30 +150,40 @@ export default function ProfilePage() {
                         />
                     </svg>
 
-                    {/* 2. 数据展示块 */}
-                    <div className="mt-20 -ml-2 pointer-events-auto">
+                    {/* 2. 数据展示块 (固定高度，防止跳动) */}
+                    <div className="mt-20 -ml-2 pointer-events-auto cursor-pointer" onClick={handleNextQuote}>
                         <motion.div
                             initial={{ x: -10, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.5 }}
-                            className="bg-white/20 backdrop-blur-xs p-4 border-l-2 border-blue-400 group hover:bg-white/10 transition-colors"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="bg-white/20 backdrop-blur-xs p-5 border-l-2 border-blue-400 group hover:bg-white/10 transition-colors rounded-r-lg shadow-sm h-[140px] w-[320px] flex flex-col justify-between"
                         >
-                            <div className="flex items-center gap-2 mb-3">
+                            <div className="flex items-center gap-2 mb-2">
                                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                                <span className="text-[12px] font-mono text-slate-400 tracking-widest uppercase">Phrase Collection</span>
+                                <span className="text-[12px] font-mono text-slate-400 tracking-widest uppercase">Phrase Collection // 0{quoteIndex + 1}</span>
                             </div>
 
-                            <div className="max-w-[300px]">
-                                <p className="text-[22px] leading-relaxed text-slate-600 font-serif italic">
-                                    “种一棵树最好的时间是十年前，其次是现在”
-                                </p>
-                            </div>
-
-                            <div className="mt-4 flex items-center justify-between text-[9px] font-mono text-slate-400/60 uppercase">
+                            <div className="relative flex-1 flex flex-col justify-center">
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={quoteIndex}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="w-full"
+                                    >
+                                        <p className="text-[22px] leading-snug text-slate-600 font-serif italic">
+                                            “{QUOTES[quoteIndex].text}”
+                                        </p>
+                                    </motion.div>
+                                </AnimatePresence>
                             </div>
                         </motion.div>
 
-                        <div className="h-10 ml-37 w-px bg-linear-to-b from-slate-300 to-transparent mt-0 relative z-50 -translate-y-[20px]" />
+                        <div className="h-10 ml-37 w-px bg-linear-to-b from-slate-300 to-transparent mt-0 relative z-50 -translate-y-[20px] pointer-events-none" />
                     </div>
                 </motion.div>
             </div>
