@@ -56,6 +56,32 @@ export default function ProfilePage() {
 
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                :root {
+                    color-scheme: light !important;
+                }
+                ::-webkit-scrollbar {
+                    width: 8px;
+                    height: 8px;
+                }
+                ::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                ::-webkit-scrollbar-thumb {
+                    background: #e2e8f0 !important;
+                    border-radius: 10px;
+                    border: 2px solid transparent;
+                    background-clip: content-box;
+                }
+                ::-webkit-scrollbar-thumb:hover {
+                    background: #cbd5e1 !important;
+                }
+                * {
+                    scrollbar-width: thin;
+                    scrollbar-color: #e2e8f0 transparent !important;
+                }
+            ` }} />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f1f5f9_70%)] opacity-100 pointer-events-none" />
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[40px_40px] opacity-40 pointer-events-none" />
 
@@ -73,7 +99,7 @@ export default function ProfilePage() {
                         href="/"
                         onMouseEnter={() => setBackBtnHover(true)}
                         onMouseLeave={() => setBackBtnHover(false)}
-                        className="absolute right-[calc(50%+13rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
+                        className="absolute right-[calc(50%+12rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
                         style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8)' }}
                     >
                         <motion.div className="absolute inset-0 bg-linear-to-b from-white/90 to-slate-50/80 rounded-2xl border-t border-l border-white border-b border-r transition-all duration-500"
@@ -96,16 +122,36 @@ export default function ProfilePage() {
                         CYZ's <span className="font-mono text-blue-600">Room</span>
                     </h1>
 
-                    {/* [修改] 按钮常驻显示，作为登录入口 */}
-                    <button
-                        onClick={() => router.push('/admin/room')}
-                        className="absolute left-[calc(50%+13rem)] hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 backdrop-blur-md border border-white/60 hover:bg-white hover:shadow-md transition-all text-slate-500 hover:text-blue-600 group translate-y-8"
-                    >
-                        <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
-                        <span className="text-xs font-mono font-bold uppercase tracking-widest">
-                            {isAdmin ? "Manage Data" : "Admin Login"}
-                        </span>
-                    </button>
+                    {/* [Redesign v3] Admin Entry: Minimalist integrated style */}
+                    <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-6 group">
+                        <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse" />
+                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em]">Admin</span>
+                        </div>
+                        <button
+                            onClick={() => router.push('/admin/room')}
+                            className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
+                        >
+                            {/* Hover Backdrop Effect */}
+                            <div className="absolute inset-0 bg-white/0 group-hover:bg-white/40 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />
+
+                            <div className="absolute inset-0 bg-linear-to-r from-blue-400/0 via-blue-400/5 to-blue-400/0 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1500" />
+
+                            <div className="relative z-10 flex items-center gap-2.5">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-blue-500/10 transition-colors duration-500">
+                                    <Settings size={15} className="text-slate-400 group-hover:text-blue-500 group-hover:rotate-45 transition-all duration-700" />
+                                </div>
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[12px] font-bold text-slate-500 group-hover:text-slate-800 tracking-wider transition-colors duration-500">
+                                        {isAdmin ? "MANAGE_DATA" : "ADMIN_LOGIN"}
+                                    </span>
+                                    <span className="text-[8px] font-mono text-slate-400/60 group-hover:text-blue-500/50 transition-colors duration-500">
+                                        {isAdmin ? "SYS_ROOT_ACCESS" : "SEC_AUTH_REQ"}
+                                    </span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-4 bg-white/70 backdrop-blur-md px-6 py-2 rounded-full border border-slate-200 shadow-lg shadow-slate-200/50">

@@ -5,12 +5,13 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Plus, Quote } from 'lucide-react';
+import { Trash2, Plus, Quote, Pencil, X, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function QuotesPage() {
     const [quotes, setQuotes] = useState<any[]>([]);
     const [newText, setNewText] = useState("");
+    const [editingId, setEditingId] = useState<number | null>(null); // [新增] 编辑状态
 
     const fetchQuotes = async () => {
         const { data } = await supabase.from('profile_quotes').select('*').order('id', { ascending: true });
@@ -19,14 +20,39 @@ export default function QuotesPage() {
 
     useEffect(() => { fetchQuotes(); }, []);
 
-    const addQuote = async () => {
+    // [修改] 统一处理保存（新增或更新）
+    const handleSave = async () => {
         if (!newText.trim()) return;
-        const { error } = await supabase.from('profile_quotes').insert({ text: newText });
-        if (!error) {
-            setNewText("");
-            fetchQuotes();
-            toast.success("Quote added");
+
+        if (editingId) {
+            // 更新模式
+            const { error } = await supabase.from('profile_quotes').update({ text: newText }).eq('id', editingId);
+            if (!error) {
+                toast.success("Quote updated");
+                cancelEdit();
+                fetchQuotes();
+            }
+        } else {
+            // 新增模式
+            const { error } = await supabase.from('profile_quotes').insert({ text: newText });
+            if (!error) {
+                setNewText("");
+                toast.success("Quote added");
+                fetchQuotes();
+            }
         }
+    };
+
+    // [新增] 进入编辑模式
+    const startEdit = (quote: any) => {
+        setEditingId(quote.id);
+        setNewText(quote.text);
+    };
+
+    // [新增] 取消编辑
+    const cancelEdit = () => {
+        setEditingId(null);
+        setNewText("");
     };
 
     const deleteQuote = async (id: number) => {
@@ -35,6 +61,7 @@ export default function QuotesPage() {
         if (!error) {
             fetchQuotes();
             toast.success("Quote deleted");
+            if (editingId === id) cancelEdit(); // 如果删除了正在编辑的项
         }
     };
 
@@ -47,13 +74,22 @@ export default function QuotesPage() {
 
             <div className="flex gap-4">
                 <Input
-                    placeholder="Enter new quote..."
+                    placeholder="Enter quote text..."
                     value={newText}
                     onChange={e => setNewText(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addQuote()}
+                    onKeyDown={e => e.key === 'Enter' && handleSave()}
                     className="bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-zinc-700"
                 />
-                <Button onClick={addQuote} className="bg-white text-black hover:bg-zinc-200"><Plus size={16} className="mr-2" /> Add</Button>
+
+                {/* [修改] 按钮组 */}
+                {editingId ? (
+                    <>
+                        <Button onClick={handleSave} className="bg-blue-600 text-white hover:bg-blue-700"><Save size={16} className="mr-2" /> Update</Button>
+                        <Button onClick={cancelEdit} variant="ghost" className="text-zinc-400 hover:text-white"><X size={16} /></Button>
+                    </>
+                ) : (
+                    <Button onClick={handleSave} className="bg-white text-black hover:bg-zinc-200"><Plus size={16} className="mr-2" /> Add</Button>
+                )}
             </div>
 
             <div className="border border-zinc-800 rounded-lg overflow-hidden">
@@ -67,12 +103,15 @@ export default function QuotesPage() {
                     </TableHeader>
                     <TableBody>
                         {quotes.map((q) => (
-                            <TableRow key={q.id} className="border-zinc-800 hover:bg-zinc-900/30">
+                            <TableRow key={q.id} className={`border-zinc-800 hover:bg-zinc-900/30 ${editingId === q.id ? 'bg-zinc-900/80' : ''}`}>
                                 <TableCell className="font-mono text-zinc-600">{q.id}</TableCell>
                                 <TableCell className="font-medium text-zinc-300">{q.text}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right space-x-2">
+                                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={() => startEdit(q)}>
+                                        <Pencil size={14} />
+                                    </Button>
                                     <Button variant="ghost" size="sm" className="text-red-900 hover:text-red-400 hover:bg-red-950/30" onClick={() => deleteQuote(q.id)}>
-                                        <Trash2 size={16} />
+                                        <Trash2 size={14} />
                                     </Button>
                                 </TableCell>
                             </TableRow>

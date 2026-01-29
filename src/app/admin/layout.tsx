@@ -13,7 +13,9 @@ import {
     // [新增] 引入 Room 管理相关的图标
     Quote,
     GitCommitHorizontal,
-    ListTodo
+    ListTodo,
+    Cpu,
+    Wrench,
 } from "lucide-react";
 
 // 定义原有导航菜单项 (Home Data)
@@ -27,7 +29,9 @@ const HOME_NAV_ITEMS = [
 // [新增] 定义 Room 管理菜单项
 const ROOM_NAV_ITEMS = [
     { title: "格言管理", href: "/admin/room/quotes", icon: Quote },
+    { title: "爱好档案", href: "/admin/room/hobbies", icon: Cpu },
     { title: "时间线", href: "/admin/room/timeline", icon: GitCommitHorizontal },
+    { title: "工具箱", href: "/admin/room/tools", icon: Wrench },
     { title: "习惯配置", href: "/admin/room/habits", icon: ListTodo },
 ];
 
