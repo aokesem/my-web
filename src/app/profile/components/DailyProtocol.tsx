@@ -19,6 +19,7 @@ import {
     Check
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 // === 类型定义 ===
 type Category = 'knowledge' | 'sports' | 'arts' | 'social';
@@ -43,9 +44,10 @@ const CATEGORY_CONFIG: Record<Category, { label: string; color: string; bg: stri
 interface DailyProtocolProps {
     isActive: boolean;
     onToggle: () => void;
+    isAdmin: boolean;
 }
 
-export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps) {
+export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProtocolProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
 
     // [新增] 添加任务相关的状态
@@ -85,6 +87,7 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
 
     // 切换状态
     const toggleStatus = async (id: number, currentStatus: TaskStatus) => {
+        if (!isAdmin) return toast.warning("只有本人才能修改状态");
         const newStatus = currentStatus === 'todo' ? 'in_progress' : 'todo';
         setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
         const { error } = await supabase.from('profile_tasks').update({ status: newStatus }).eq('id', id);
@@ -94,6 +97,7 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
     // 归档任务
     const archiveTask = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!isAdmin) return toast.warning("只有本人才能修改状态");
         setTasks(prev => prev.filter(t => t.id !== id));
         const { error } = await supabase.from('profile_tasks').update({ status: 'archived' }).eq('id', id);
         if (error) console.error("Archive failed:", error);
@@ -101,6 +105,7 @@ export default function DailyProtocol({ isActive, onToggle }: DailyProtocolProps
 
     // [新增] 启动添加模式
     const startAdding = (category: Category) => {
+        if (!isAdmin) return toast.warning("只有本人才能修改状态");
         setAddingCategory(category);
         setNewTaskTitle("");
     };

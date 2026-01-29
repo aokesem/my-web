@@ -17,6 +17,9 @@ import {
     Cpu,
     Wrench,
 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 
 // 定义原有导航菜单项 (Home Data)
 const HOME_NAV_ITEMS = [
@@ -40,6 +43,46 @@ export default function AdminLayout({
 }: {
     children: React.ReactNode;
 }) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
+
+    React.useEffect(() => {
+        const checkAuth = async () => {
+            // 如果已经在登录页，不需要检查，直接允许显示
+            if (pathname === '/admin/login') {
+                setIsAuthenticated(true);
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                router.push('/admin/login');
+            } else {
+                setIsAuthenticated(true);
+            }
+        };
+        checkAuth();
+    }, [router, pathname]);
+    const handleLogout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            toast.error("退出失败: " + error.message);
+        } else {
+            toast.success("已安全退出");
+            router.push("/");
+            router.refresh();
+        }
+    };
+    if (isAuthenticated === null) {
+        return <div className="min-h-screen bg-black" />; // 防止未授权内容闪烁
+    }
+
+    // 如果是登录页面，不显示侧边栏布局，直接渲染内容
+    if (pathname === '/admin/login') {
+        return <>{children}</>;
+    }
+
     return (
         <div className="flex min-h-screen bg-black text-white font-sans">
             {/* 左侧侧边栏 */}
@@ -66,6 +109,11 @@ export default function AdminLayout({
 
                 {/* 2. 中间导航菜单区 */}
                 <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
+                    {/* [新增] Lab Space 小标题 */}
+                    <div className="px-4 mb-2 text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
+                        Lab Space
+                    </div>
+
                     {/* 原有 Home 管理 */}
                     {HOME_NAV_ITEMS.map((item) => (
                         <Link key={item.href} href={item.href}>
@@ -106,7 +154,7 @@ export default function AdminLayout({
                     <Button
                         variant="ghost"
                         className="w-full justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-950/30"
-                    // onClick={() => ...} // 这里后续绑定退出登录逻辑
+                        onClick={handleLogout}
                     >
                         <LogOut size={18} />
                         退出登录

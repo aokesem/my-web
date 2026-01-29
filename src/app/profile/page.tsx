@@ -55,7 +55,7 @@ export default function ProfilePage() {
     }, [quoteIndex, quotes.length]);
 
     return (
-        <div className="relative w-screen h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
+        <div className="relative w-full h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
             <style dangerouslySetInnerHTML={{
                 __html: `
                 :root {
@@ -230,9 +230,9 @@ export default function ProfilePage() {
             </div>
 
             <TimelineWidget isActive={activeModule === 'timeline'} onToggle={() => setActiveModule(prev => prev === 'timeline' ? 'idle' : 'timeline')} />
-            <DailyProtocol isActive={activeModule === 'protocol'} onToggle={() => setActiveModule(prev => prev === 'protocol' ? 'idle' : 'protocol')} />
+            <DailyProtocol isActive={activeModule === 'protocol'} onToggle={() => setActiveModule(prev => prev === 'protocol' ? 'idle' : 'protocol')} isAdmin={isAdmin} />
             <ToolboxWidget isActive={activeModule === 'toolbox'} onToggle={() => setActiveModule(prev => prev === 'toolbox' ? 'idle' : 'toolbox')} />
-            <CollectionCabinet isActive={activeModule === 'cabinet'} onToggle={() => setActiveModule(prev => prev === 'cabinet' ? 'idle' : 'cabinet')} />
+            <CollectionCabinet isActive={activeModule === 'cabinet'} onToggle={() => setActiveModule(prev => prev === 'cabinet' ? 'idle' : 'cabinet')} isAdmin={isAdmin} />
             <HobbySystem isActive={activeModule === 'hobby'} onToggle={() => setActiveModule(prev => prev === 'hobby' ? 'idle' : 'hobby')} />
 
             <div className={`transition-all duration-1000 ${activeModule !== 'idle' ? 'pointer-events-none' : ''}`}>

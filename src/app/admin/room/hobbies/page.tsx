@@ -90,7 +90,16 @@ export default function HobbiesPage() {
                     <TableBody>
                         {hobbies.map((h) => (
                             <TableRow key={h.id} className={`border-zinc-800 hover:bg-zinc-900/30 ${editingId === h.id ? 'bg-zinc-900/80' : ''}`}>
-                                <TableCell className="uppercase text-xs text-zinc-500">{h.category}</TableCell>
+                                <TableCell>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase
+                                        ${h.category === 'knowledge' ? 'bg-blue-950/30 text-blue-400 border-blue-900/50' :
+                                            h.category === 'sports' ? 'bg-orange-950/30 text-orange-400 border-orange-900/50' :
+                                                h.category === 'arts' ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900/50' :
+                                                    'bg-pink-950/30 text-pink-400 border-pink-900/50'}
+                                    `}>
+                                        {h.category}
+                                    </span>
+                                </TableCell>
                                 <TableCell className="font-bold text-zinc-300">{h.name}</TableCell>
                                 <TableCell className="text-zinc-500 text-sm truncate max-w-[200px]">{h.description}</TableCell>
                                 <TableCell>{h.level}</TableCell>

@@ -15,6 +15,7 @@ import {
     Film
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 // === 类型定义 ===
 interface RoutineItem {
@@ -40,6 +41,7 @@ const ICON_MAP: Record<string, { icon: any, color: string, bg: string }> = {
 interface CollectionCabinetProps {
     isActive: boolean;
     onToggle: () => void;
+    isAdmin: boolean;
 }
 
 // === 子组件：翻页数字 (保持不变) ===
@@ -64,7 +66,7 @@ const FlipUnit = ({ value, label, large = false }: { value: number, label: strin
     );
 };
 
-export default function CollectionCabinet({ isActive, onToggle }: CollectionCabinetProps) {
+export default function CollectionCabinet({ isActive, onToggle, isAdmin }: CollectionCabinetProps) {
     // 状态：习惯列表
     const [routines, setRoutines] = useState<RoutineItem[]>([]);
 
@@ -135,6 +137,7 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
     const minutes = Math.floor((elapsedSeconds % 3600) / 60);
 
     const handleStart = () => {
+        if (!isAdmin) return toast.warning("只有本人才能修改状态");
         const taskName = prompt("请输入当前计时的任务：");
         if (!taskName || taskName.trim() === "") return;
         setCurrentTask(taskName);
@@ -143,6 +146,7 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
     };
 
     const handleEnd = () => {
+        if (!isAdmin) return toast.warning("只有本人才能修改状态");
         setIsTimerActive(false);
         setElapsedSeconds(0);
         setStartTime(null);
@@ -150,6 +154,7 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
 
     // [核心] 切换打卡状态
     const toggleRoutine = async (id: number, currentCompleted: boolean) => {
+        if (!isAdmin) return toast.warning("只有本人才能修改状态");
         const today = getTodayStr();
 
         // 1. 乐观更新 UI
