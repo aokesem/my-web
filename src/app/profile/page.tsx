@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Link from 'next/link';
+import { Origami } from 'lucide-react';
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
 import TimelineWidget from './components/TimelineWidget';
@@ -14,6 +16,7 @@ const QUOTES = [
     { text: "种一棵树最好的时间是十年前，其次是现在" },
     { text: "Less is more" },
     { text: "Calm-Think-Improve" },
+    { text: "专注胜于一切" },
 ];
 
 export default function ProfilePage() {
@@ -28,8 +31,11 @@ export default function ProfilePage() {
 
     // --- 自动切换格言逻辑 ---
     useEffect(() => {
-        const timer = setInterval(handleNextQuote, 5000);
-        return () => clearInterval(timer);
+        // 使用 setTimeout 并监听 quoteIndex，实现“手动切换后重新计秒”的效果
+        const timer = setTimeout(() => {
+            setQuoteIndex((prev) => (prev + 1) % QUOTES.length);
+        }, 5000);
+        return () => clearTimeout(timer);
     }, [quoteIndex]);
 
     const [isMounted, setIsMounted] = useState(false);
@@ -38,7 +44,6 @@ export default function ProfilePage() {
 
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
-
             {/* 环境光 / 背景渐变 - 明亮洁净 */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f1f5f9_70%)] opacity-100 pointer-events-none" />
 
@@ -56,11 +61,42 @@ export default function ProfilePage() {
                     pointerEvents: activeModule === 'idle' ? 'auto' : 'none'
                 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="absolute top-[8%] z-20 flex flex-col items-center gap-6"
+                className="absolute top-[8%] z-40 flex flex-col items-center gap-6"
             >
-                <h1 className="text-3xl md:text-5xl font-bold tracking-tighter text-slate-800 font-sans uppercase drop-shadow-sm">
-                    CYZ's <span className="font-mono text-blue-600">Room</span>
-                </h1>
+                <div className="relative flex items-center justify-center min-w-[300px] md:min-w-[600px]">
+                    {/* 返回按钮 - 绝对定位，不影响标题居中 */}
+                    <Link
+                        href="/"
+                        className="absolute right-[calc(50%+13rem)] hidden md:flex items-center gap-4 px-4 py-2 rounded-xl transition-all duration-500 group translate-y-9"
+                    >
+                        {/* 整个区域的背景亮起效果 - 现设为常驻 */}
+                        <motion.div
+                            className="absolute inset-0 bg-blue-50/40 group-hover:bg-blue-50/80 rounded-xl border border-blue-200/90 group-hover:border-blue-200/60 transition-all duration-500 shadow-[0_2px_10px_rgba(59,130,246,0.02)]"
+                            whileHover={{ scale: 1.02 }}
+                        />
+
+                        <div className="flex flex-col items-end relative z-10">
+                            <span className="text-[9px] font-mono text-slate-400 leading-none tracking-[0.2em] mb-1">SYSTEM_BACK</span>
+                            <span className="text-[13px] font-bold text-slate-700 tracking-tighter uppercase whitespace-nowrap">
+                                [ <span className="text-blue-600/60 uppercase group-hover:text-blue-600 transition-colors">Lab_Archive</span> ]
+                            </span>
+                        </div>
+                        <div className="relative z-10 text-slate-700/80 group-hover:text-slate-900 transition-colors">
+                            <Origami size={26} className="stroke-[1.5] group-hover:rotate-12 transition-transform" />
+                            {/* 图标处的额外呼吸点燃效果 */}
+                            <motion.div
+                                className="absolute -inset-1 bg-blue-400/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                animate={{ scale: [1, 1.2, 1] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                            />
+                        </div>
+                    </Link>
+
+                    <h1 className="text-3xl md:text-5xl font-bold tracking-tighter text-slate-800 font-sans uppercase drop-shadow-sm px-10">
+                        CYZ's <span className="font-mono text-blue-600">Room</span>
+                    </h1>
+                </div>
+
                 {/* 状态栏 */}
                 <div className="flex items-center gap-4 bg-white/70 backdrop-blur-md px-6 py-2 rounded-full border border-slate-200 shadow-lg shadow-slate-200/50">
                     <div className="flex gap-2">
@@ -184,6 +220,17 @@ export default function ProfilePage() {
                                         </p>
                                     </motion.div>
                                 </AnimatePresence>
+                            </div>
+
+                            {/* --- 新增：格言进度指示器 (显示跟着数据走) --- */}
+                            <div className="flex gap-1 mt-4">
+                                {QUOTES.map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className={`h-1 rounded-full transition-all duration-300 ${i === quoteIndex ? 'w-6 bg-blue-500' : 'w-2 bg-slate-200'
+                                            }`}
+                                    />
+                                ))}
                             </div>
                         </motion.div>
 

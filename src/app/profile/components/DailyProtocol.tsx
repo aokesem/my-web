@@ -33,11 +33,12 @@ interface Task {
 const INITIAL_TASKS: Task[] = [
     { id: '1', title: 'AI Agent开发学习', category: 'knowledge', status: 'in_progress', startDate: '2026-01-28' },
     { id: '2', title: '训练简单Transformer模型', category: 'knowledge', status: 'todo', startDate: '2026-01-28' },
-    { id: '3', title: '跑步机/公园 跑步', category: 'sports', status: 'todo', startDate: '2026-01-28' },
-    { id: '4', title: '投篮练习', category: 'sports', status: 'todo', startDate: '2026-01-28' },
-    { id: '5', title: '口琴练习', category: 'arts', status: 'in_progress', startDate: '2026-01-28' },
-    { id: '6', title: '千年女优Mad制作', category: 'arts', status: 'todo', startDate: '2026-01-28' },
-    { id: '7', title: '暂无', category: 'social', status: 'todo', startDate: '2026-01-30' },
+    { id: '3', title: '学一门新外语', category: 'knowledge', status: 'todo', startDate: '2026-01-28' },
+    { id: '4', title: '跑步机/公园 跑步', category: 'sports', status: 'todo', startDate: '2026-01-28' },
+    { id: '5', title: '投篮练习', category: 'sports', status: 'todo', startDate: '2026-01-28' },
+    { id: '6', title: '口琴练习', category: 'arts', status: 'in_progress', startDate: '2026-01-28' },
+    { id: '7', title: '千年女优Mad制作', category: 'arts', status: 'todo', startDate: '2026-01-28' },
+    { id: '8', title: '暂无', category: 'social', status: 'todo', startDate: '2026-01-30' },
 ];
 
 // === 配置表 ===

@@ -1,12 +1,14 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wrench,
     ExternalLink,
     Box,
-    FileText
+    FileText,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 
 // === 数据定义 ===
@@ -49,6 +51,15 @@ const TOOLS: ToolItem[] = [
         url: 'https://www.bilibili.com'
     },
     {
+        id: 'calibre',
+        name: 'Calibre',
+        tagline: '电子书仓库 // 私有书架',
+        usage: '本地书籍管理的终极方案。管理着我的 1000+ 本 ePub/PDF 藏书，涵盖了大量已经绝版的人文社科类书籍，并通过一键推送功能将书籍同步到全平台。',
+        simpleIcon: '/images/icons/simple/calibreweb.png',
+        colorfulIcon: '/images/icons/colorful/calibre.png',
+        url: 'https://calibre-ebook.com/'
+    },
+    {
         id: 'bangumi',
         name: 'Bangumi',
         tagline: '番剧档案 // 评分系统',
@@ -56,6 +67,15 @@ const TOOLS: ToolItem[] = [
         simpleIcon: '/images/icons/simple/bangumi.png',
         colorfulIcon: '/images/icons/colorful/bangumi.png',
         url: 'https://bgm.tv'
+    },
+    {
+        id: 'osm',
+        name: 'OSM',
+        tagline: '开放地图 // 地理信息',
+        usage: '作为一个地理信息爱好者，OpenStreetMap 是我观察真实世界数字孪生的窗口。我在这里记录了自己旅行过的航迹信息，并关注着城市空间的微小变迁。',
+        simpleIcon: '/images/icons/simple/openstreetmap.png',
+        colorfulIcon: '/images/icons/colorful/openstreetmap.png',
+        url: 'https://www.openstreetmap.org'
     },
     {
         id: 'letterboxd',
@@ -74,6 +94,24 @@ interface ToolboxWidgetProps {
 }
 
 export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps) {
+    // 轮播状态：当前的起始索引
+    const [startIndex, setStartIndex] = useState(0);
+    const VISIBLE_COUNT = 5; // 每次展示 5 个
+
+    const handleNext = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (startIndex + VISIBLE_COUNT < TOOLS.length) {
+            setStartIndex(prev => prev + 1);
+        }
+    };
+
+    const handlePrev = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (startIndex > 0) {
+            setStartIndex(prev => prev - 1);
+        }
+    };
+
     return (
         <motion.div
             layout
@@ -86,16 +124,16 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             onClick={!isActive ? onToggle : undefined}
             className={`
                 fixed flex flex-col backdrop-blur-xl bg-white/80 border border-white/60 
-                rounded-2xl shadow-lg ring-1 ring-slate-900/5 overflow-hidden group 
+                rounded-2xl ring-1 ring-slate-900/5 overflow-hidden group 
                 hover:bg-white/95 transition-[shadow,background-color] duration-300
                 ${isActive
-                    ? 'z-50 inset-10 md:inset-x-[15%] md:inset-y-[12%]'
+                    ? 'z-50 inset-10 md:inset-x-[15%] md:inset-y-[12%] shadow-2xl'
                     : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[120px] cursor-pointer shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2),inset_0_1px_4px_rgba(0,0,0,0.02)]'
                 }
             `}
         >
             {/* === 背景点阵 (Dot Matrix) === */}
-            <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] bg-size-[16px_16px] opacity-20 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] bg-size-[16px_16px] opacity-30 pointer-events-none" />
 
             {/* === 顶部栏 === */}
             <motion.div layout="position" className="flex items-center justify-between px-6 py-4 border-b border-slate-100/80 shrink-0 h-[64px] relative z-10">
@@ -123,23 +161,57 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             <div className="flex-1 relative bg-slate-50/20 overflow-hidden">
                 <AnimatePresence mode="wait">
                     {!isActive ? (
-                        /* 1. 收起态 (Simple Icons) */
+                        /* 1. 收起态：Logo 轮播 (Carousel View) */
                         <motion.div
                             key="idle-view"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 p-5 flex flex-col justify-center"
+                            className="absolute inset-0 p-5 flex items-center justify-between group/carousel"
                         >
-                            <div className="flex items-center justify-between px-2">
-                                {TOOLS.map((tool) => (
-                                    <div key={tool.id} className="relative group/icon">
-                                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm opacity-60 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 group-hover/icon:border-blue-200 transition-all duration-300">
-                                            <img src={tool.simpleIcon} alt={tool.name} className="w-6 h-6 object-contain" />
-                                        </div>
+                            {/* 左切换按钮 */}
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={handlePrev}
+                                disabled={startIndex === 0}
+                                className={`p-1 rounded-full bg-white/80 shadow-sm border border-slate-100 text-slate-400 hover:text-blue-500 z-20 transition-opacity ${startIndex === 0 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/carousel:opacity-100'}`}
+                            >
+                                <ChevronLeft size={16} strokeWidth={3} />
+                            </motion.button>
+
+                            {/* 窗口裁剪区域 */}
+                            <div className="flex-1 overflow-hidden px-2">
+                                <motion.div
+                                    className="flex items-center justify-between"
+                                    animate={{ x: 0 }} // 此处使用 flex 布局的自然排列，通过 startIndex 过滤展示
+                                >
+                                    <div className="flex items-center gap-3 mx-auto">
+                                        {TOOLS.slice(startIndex, startIndex + VISIBLE_COUNT).map((tool) => (
+                                            <motion.div
+                                                layoutId={tool.id}
+                                                key={tool.id}
+                                                className="relative group/icon shrink-0"
+                                            >
+                                                <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm opacity-60 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 group-hover/icon:border-blue-200 transition-all duration-300">
+                                                    <img src={tool.simpleIcon} alt={tool.name} className="w-6 h-6 object-contain" />
+                                                </div>
+                                            </motion.div>
+                                        ))}
                                     </div>
-                                ))}
+                                </motion.div>
                             </div>
+
+                            {/* 右切换按钮 */}
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={handleNext}
+                                disabled={startIndex + VISIBLE_COUNT >= TOOLS.length}
+                                className={`p-1 rounded-full bg-white/80 shadow-sm border border-slate-100 text-slate-400 hover:text-blue-500 z-20 transition-opacity ${startIndex + VISIBLE_COUNT >= TOOLS.length ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/carousel:opacity-100'}`}
+                            >
+                                <ChevronRight size={16} strokeWidth={3} />
+                            </motion.button>
                         </motion.div>
                     ) : (
                         /* 2. 展开态：详细档案排版 (Personal Notes Style) */
@@ -193,7 +265,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                                                 </div>
 
                                                 {/* 底部装饰 */}
-                                                <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
+                                                <div className="mt-4 pt-3 border-t border-slate-100/50 flex items-center justify-between">
                                                     <span className="text-[9px] font-mono text-slate-300 font-bold uppercase">Archive_Status: ACTIVE</span>
                                                     <div className="flex gap-1">
                                                         {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-slate-200" />)}
