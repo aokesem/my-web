@@ -107,7 +107,7 @@ export default function AnimeArchive() {
     // 注意：这里查找 selectedAnime 时要用 sortedAnimes 还是原始 animes 都可以，只要 ID 唯一即可
     const selectedAnime = animes.find(a => a.id === selectedId);
 
-    if (!mounted) return null;
+    // if (!mounted) return null;
 
     return (
         <div className="h-screen w-full bg-[#020202] text-white overflow-hidden selection:bg-blue-500/30 font-sans">
@@ -119,7 +119,7 @@ export default function AnimeArchive() {
                        ========================================================== */
                     <motion.div
                         key="archive-view"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        exit={{ opacity: 0 }}
                         className="flex h-full w-full"
                     >
                         {/* --- 左侧容器 (75%) --- */}

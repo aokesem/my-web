@@ -122,10 +122,10 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                 mass: 1.2
             }}
             onClick={!isActive ? onToggle : undefined}
+            whileHover={!isActive ? { backgroundColor: "rgba(255, 255, 255, 0.95)" } : {}}
             className={`
                 fixed flex flex-col backdrop-blur-xl bg-white/80 border border-white/60 
                 rounded-2xl ring-1 ring-slate-900/5 overflow-hidden group 
-                hover:bg-white/95 transition-[shadow,background-color] duration-300
                 ${isActive
                     ? 'z-50 inset-10 md:inset-x-[15%] md:inset-y-[12%] shadow-2xl'
                     : 'z-30 top-[540px] right-[2.5%] w-[360px] h-[120px] cursor-pointer shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2),inset_0_1px_4px_rgba(0,0,0,0.02)]'

@@ -425,10 +425,10 @@ export default function LabPortal() {
 
       <div className="w-full max-w-7xl mb-12 flex justify-between items-end relative">
         <div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-4">
             <div className="h-px w-6 bg-blue-500" />
             <span className="text-[10px] font-mono tracking-[0.3em] text-blue-500 uppercase">System Active</span>
-          </motion.div>
+          </div>
 
           {/* New Entry Point Implementation */}
           <div className="flex items-baseline gap-6 group/title">
@@ -447,10 +447,7 @@ export default function LabPortal() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+        <div
           className="absolute left-[72%] -translate-x-1/2 -bottom-4 flex items-center gap-8"
         >
           {/* Bilibili */}
@@ -496,7 +493,7 @@ export default function LabPortal() {
             </div>
             <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Letterboxd</span>
           </a>
-        </motion.div>
+        </div>
 
         <div className="hidden md:block text-[10px] font-mono text-gray-600 tracking-[0.4em] uppercase pb-2">
           Ready to Explore © 2026

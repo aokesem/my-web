@@ -24,6 +24,7 @@ export default function ProfilePage() {
     // 状态：'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet'
     const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet'>('idle');
     const [quoteIndex, setQuoteIndex] = useState(0);
+    const [backBtnHover, setBackBtnHover] = useState(false);
 
     const handleNextQuote = () => {
         setQuoteIndex((prev) => (prev + 1) % QUOTES.length);
@@ -38,9 +39,9 @@ export default function ProfilePage() {
         return () => clearTimeout(timer);
     }, [quoteIndex]);
 
-    const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => { setIsMounted(true); }, []);
-    if (!isMounted) return null;
+    // const [isMounted, setIsMounted] = useState(false);
+    // useEffect(() => { setIsMounted(true); }, []);
+    // if (!isMounted) return null;
 
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
@@ -67,12 +68,34 @@ export default function ProfilePage() {
                     {/* 返回按钮 - 绝对定位，不影响标题居中 */}
                     <Link
                         href="/"
-                        className="absolute right-[calc(50%+13rem)] hidden md:flex items-center gap-4 px-4 py-2 rounded-xl transition-all duration-500 group translate-y-9"
+                        onMouseEnter={() => setBackBtnHover(true)}
+                        onMouseLeave={() => setBackBtnHover(false)}
+                        className="absolute right-[calc(50%+13rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
+                        style={{
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8)'
+                        }}
                     >
-                        {/* 整个区域的背景亮起效果 - 现设为常驻 */}
+                        {/* 物理模块背景 - 带厚度感 */}
                         <motion.div
-                            className="absolute inset-0 bg-blue-50/40 group-hover:bg-blue-50/80 rounded-xl border border-blue-200/90 group-hover:border-blue-200/60 transition-all duration-500 shadow-[0_2px_10px_rgba(59,130,246,0.02)]"
-                            whileHover={{ scale: 1.02 }}
+                            className="absolute inset-0 bg-linear-to-b from-white/90 to-slate-50/80 rounded-2xl border-t border-l border-white border-b border-r transition-all duration-500"
+                            animate={{
+                                backgroundColor: backBtnHover ? 'rgba(239, 246, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+                                boxShadow: backBtnHover ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                            }}
+                        />
+
+                        {/* 蓝光漫反射 - 现作为内部底层光泽 */}
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_70%)]" />
+
+                        {/* 反光光效 (Shimmer Effect) - 使用蓝光且受状态控制 */}
+                        <motion.div
+                            className="absolute inset-0 z-20 pointer-events-none"
+                            initial={{ x: '-150%', skewX: -25 }}
+                            animate={{ x: backBtnHover ? '150%' : '-150%' }}
+                            transition={{ duration: 0.8, ease: "easeInOut" }}
+                            style={{
+                                background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent)',
+                            }}
                         />
 
                         <div className="flex flex-col items-end relative z-10">
@@ -82,7 +105,7 @@ export default function ProfilePage() {
                             </span>
                         </div>
                         <div className="relative z-10 text-slate-700/80 group-hover:text-slate-900 transition-colors">
-                            <Origami size={26} className="stroke-[1.5] group-hover:rotate-12 transition-transform" />
+                            <Origami size={28} className="stroke-[1.5] group-hover:rotate-12 transition-transform" />
                             {/* 图标处的额外呼吸点燃效果 */}
                             <motion.div
                                 className="absolute -inset-1 bg-blue-400/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"

@@ -208,20 +208,14 @@ export default function ReadingArchive() {
 
                 <div className="w-full max-w-[1500px] h-[70vh] min-h-[500px] relative">
                     <AnimatePresence initial={false} custom={direction} mode="wait">
-                        <motion.div
+                        <div
                             key={currentPage}
-                            custom={direction}
-                            variants={slideVariants}
-                            initial="enter"
-                            animate="center"
-                            exit="exit"
-                            transition={{ x: { type: "spring", stiffness: 200, damping: 28 }, opacity: { duration: 0.25 } }}
                             className="absolute inset-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-center justify-items-center"
                         >
                             {currentBooks.map((book) => (
                                 <RealisticBookCard key={book.id} book={book} onClick={() => setSelectedBook(book)} />
                             ))}
-                        </motion.div>
+                        </div>
                     </AnimatePresence>
                 </div>
             </div>

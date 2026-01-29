@@ -66,7 +66,7 @@ export default function CinemaArchive() {
         setStillIdx(0);
     }, [selectedIdx]);
 
-    if (!mounted) return null;
+    // if (!mounted) return null;
 
     if (loading) {
         return (
@@ -216,8 +216,6 @@ export default function CinemaArchive() {
                 <section className="flex-1 px-16 flex flex-col justify-center">
                     <motion.div
                         key={current.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
                         className="grid grid-cols-12 gap-12"
                     >
                         {/* 核心文本区 */}
