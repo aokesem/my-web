@@ -139,3 +139,39 @@
     -webkit-mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
   }
 }
+
+/* === Aurora Animation (用于 TimelineWidget) === */
+@keyframes aurora-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-aurora {
+  background-size: 200% 200%;
+  animation: aurora-flow 15s ease infinite;
+}
+
+/* === NProgress Color Override === */
+:root {
+  --nprogress-color: #000000;
+  /* 默认黑色，对应你主页的风格 */
+}
+
+/* 强制覆盖 nprogress 插件的颜色 */
+#nprogress .bar {
+  background: var(--nprogress-color) !important;
+}
+
+#nprogress .spinner-icon {
+  border-top-color: var(--nprogress-color) !important;
+  border-left-color: var(--nprogress-color) !important;
+}

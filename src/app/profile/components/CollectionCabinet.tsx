@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Clock,
     Check,
-    Box,
     Play,
     Square,
     Footprints,
@@ -13,29 +12,29 @@ import {
     Citrus,
     Dumbbell,
     BookOpen,
-    Film,
-    Circle
+    Film
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 // === 类型定义 ===
-type RoutineType = 'walking' | 'drink' | 'fruit' | 'sports' | 'reading' | 'media';
-
 interface RoutineItem {
-    id: RoutineType;
-    label: string;
-    icon: any;
-    color: string;
-    bg: string;
-    isCompleted: boolean;
+    id: number;
+    key: string; // 数据库中的 key，用于匹配图标
+    label: string; // 数据库中的 label
+    isCompleted: boolean; // 根据日志计算得出
 }
 
-const ROUTINE_CONFIG: Record<RoutineType, { label: string, icon: any, color: string, bg: string }> = {
-    walking: { label: '出门散步', icon: Footprints, color: 'text-emerald-500', bg: 'bg-emerald-50/50' },
-    drink: { label: '喝茶/咖啡', icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50/50' },
-    fruit: { label: '吃个水果', icon: Citrus, color: 'text-yellow-500', bg: 'bg-yellow-50/50' },
-    sports: { label: '每日运动', icon: Dumbbell, color: 'text-rose-500', bg: 'bg-rose-50/50' },
-    reading: { label: '静心阅读', icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50/50' },
-    media: { label: '影音娱乐', icon: Film, color: 'text-purple-500', bg: 'bg-purple-50/50' },
+// === 图标映射表 ===
+// 这里的 key 必须与数据库 profile_habits 表中的 key 字段对应
+const ICON_MAP: Record<string, { icon: any, color: string, bg: string }> = {
+    walking: { icon: Footprints, color: 'text-emerald-500', bg: 'bg-emerald-50/50' },
+    drink: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50/50' },
+    fruit: { icon: Citrus, color: 'text-yellow-500', bg: 'bg-yellow-50/50' },
+    sports: { icon: Dumbbell, color: 'text-rose-500', bg: 'bg-rose-50/50' },
+    reading: { icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50/50' },
+    media: { icon: Film, color: 'text-purple-500', bg: 'bg-purple-50/50' },
+    // 默认兜底配置，防止数据库加了新key但前端没配图标
+    default: { icon: Clock, color: 'text-slate-500', bg: 'bg-slate-50/50' }
 };
 
 interface CollectionCabinetProps {
@@ -43,7 +42,7 @@ interface CollectionCabinetProps {
     onToggle: () => void;
 }
 
-// === 子组件：翻页数字 ===
+// === 子组件：翻页数字 (保持不变) ===
 const FlipUnit = ({ value, label, large = false }: { value: number, label: string, large?: boolean }) => {
     return (
         <div className="flex flex-col items-center gap-1.5">
@@ -66,25 +65,61 @@ const FlipUnit = ({ value, label, large = false }: { value: number, label: strin
 };
 
 export default function CollectionCabinet({ isActive, onToggle }: CollectionCabinetProps) {
-    // 状态：日常清单
-    const [routines, setRoutines] = useState<Record<RoutineType, boolean>>({
-        walking: false,
-        drink: true,
-        fruit: false,
-        sports: false,
-        reading: true,
-        media: false,
-    });
+    // 状态：习惯列表
+    const [routines, setRoutines] = useState<RoutineItem[]>([]);
 
+    // 计时器状态 (保持本地)
     const [isTimerActive, setIsTimerActive] = useState(false);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [currentTask, setCurrentTask] = useState("");
 
-    const days = Math.floor(elapsedSeconds / (24 * 3600));
-    const hours = Math.floor((elapsedSeconds % (24 * 3600)) / 3600);
-    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+    // 获取今天的日期字符串 (YYYY-MM-DD)，用于数据库查询
+    // 使用 toLocaleDateString 避免时区问题导致“今天”变成“昨天”
+    const getTodayStr = () => {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
+    // [核心] 初始化数据
+    useEffect(() => {
+        const fetchRoutines = async () => {
+            const today = getTodayStr();
+
+            // 1. 获取所有习惯定义
+            const { data: habits } = await supabase
+                .from('profile_habits')
+                .select('*')
+                .order('sort_order', { ascending: true });
+
+            if (!habits) return;
+
+            // 2. 获取今天的打卡记录
+            const { data: logs } = await supabase
+                .from('profile_habit_logs')
+                .select('habit_id')
+                .eq('completed_at', today);
+
+            // 创建一个 Set 方便快速查找哪些 ID 已经完成了
+            const completedIds = new Set(logs?.map((log: any) => log.habit_id));
+
+            // 3. 合并数据
+            const mappedRoutines = habits.map((h: any) => ({
+                id: h.id,
+                key: h.key,
+                label: h.label,
+                isCompleted: completedIds.has(h.id)
+            }));
+
+            setRoutines(mappedRoutines);
+        };
+        fetchRoutines();
+    }, []);
+
+    // 计时器逻辑
     useEffect(() => {
         let timer: any;
         if (isTimerActive && startTime) {
@@ -95,10 +130,13 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
         return () => clearInterval(timer);
     }, [isTimerActive, startTime]);
 
+    const days = Math.floor(elapsedSeconds / (24 * 3600));
+    const hours = Math.floor((elapsedSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+
     const handleStart = () => {
         const taskName = prompt("请输入当前计时的任务：");
-        if (!taskName || taskName.trim() === "") return; // 如果未输入或取消，则不开始
-
+        if (!taskName || taskName.trim() === "") return;
         setCurrentTask(taskName);
         setStartTime(Date.now());
         setIsTimerActive(true);
@@ -110,21 +148,41 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
         setStartTime(null);
     };
 
-    const toggleRoutine = (type: RoutineType) => {
-        setRoutines(prev => ({ ...prev, [type]: !prev[type] }));
+    // [核心] 切换打卡状态
+    const toggleRoutine = async (id: number, currentCompleted: boolean) => {
+        const today = getTodayStr();
+
+        // 1. 乐观更新 UI
+        setRoutines(prev => prev.map(r =>
+            r.id === id ? { ...r, isCompleted: !currentCompleted } : r
+        ));
+
+        if (!currentCompleted) {
+            // 动作：打卡 (Insert)
+            const { error } = await supabase
+                .from('profile_habit_logs')
+                .insert({ habit_id: id, completed_at: today });
+
+            if (error) console.error("Check-in failed:", error);
+        } else {
+            // 动作：取消打卡 (Delete)
+            const { error } = await supabase
+                .from('profile_habit_logs')
+                .delete()
+                .eq('habit_id', id)
+                .eq('completed_at', today);
+
+            if (error) console.error("Uncheck failed:", error);
+        }
     };
 
-    const completedCount = Object.values(routines).filter(Boolean).length;
+    const completedCount = routines.filter(r => r.isCompleted).length;
+    const totalCount = routines.length;
 
     return (
         <motion.div
             layout
-            transition={{
-                type: "spring",
-                stiffness: 100,
-                damping: 22,
-                mass: 1.2
-            }}
+            transition={{ type: "spring", stiffness: 100, damping: 22, mass: 1.2 }}
             onClick={!isActive ? onToggle : undefined}
             className={`
                 fixed flex flex-col overflow-hidden
@@ -136,7 +194,7 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
         >
             <AnimatePresence mode="wait">
                 {!isActive ? (
-                    /* 1. 收起态：悬浮翻页时钟 (斜纹已移除) */
+                    /* 1. 收起态：悬浮翻页时钟 */
                     <motion.div
                         key="clock-view-idle"
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -144,7 +202,6 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
                         exit={{ opacity: 0, scale: 0.9 }}
                         className="absolute inset-0 flex flex-col items-center justify-center -mb-8 overflow-hidden"
                     >
-                        {/* 顶部任务小字 */}
                         <div className="mb-4 flex flex-col items-center gap-1 relative z-10">
                             <span className="text-[11px] font-bold text-slate-400 tracking-widest uppercase italic">
                                 {isTimerActive ? `RUNNING: ${currentTask}` : "DAILY_ROUTINE"}
@@ -160,7 +217,7 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
                         </div>
                     </motion.div>
                 ) : (
-                    /* 2. 展开态：每日清单矩阵 (新增斜纹背景) */
+                    /* 2. 展开态：每日清单矩阵 */
                     <motion.div
                         key="shelf-view-active"
                         initial={{ opacity: 0 }}
@@ -168,10 +225,8 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
                         exit={{ opacity: 0 }}
                         className="flex flex-col h-full overflow-hidden relative"
                     >
-                        {/* 背景斜纹装饰 */}
                         <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[repeating-linear-gradient(-45deg,#000,#000_2px,transparent_2px,transparent_15px)]" />
 
-                        {/* 顶部栏 */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 relative z-10 bg-white/40 backdrop-blur-sm">
                             <div className="flex items-center gap-3">
                                 <Check size={20} className="text-emerald-500" />
@@ -219,63 +274,69 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
                         </div>
 
                         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-                            {/* 概览统计 */}
                             <div className="flex items-baseline justify-between mb-8">
                                 <div className="flex flex-col">
                                     <h2 className="text-2xl font-black text-slate-800 tracking-wider uppercase">Today's Check</h2>
                                     <p className="text-xs text-slate-400 font-medium mt-1">坚持完成每日小事，保持生活节奏</p>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="font-mono text-emerald-500 text-lg font-black">{completedCount} / 6</span>
-                                    <span className="font-mono text-[9px] text-slate-300 uppercase tracking-tighter">Status: {completedCount === 6 ? 'PERFECT' : 'IN_PROGRESS'}</span>
+                                    <span className="font-mono text-emerald-500 text-lg font-black">{completedCount} / {totalCount}</span>
+                                    <span className="font-mono text-[9px] text-slate-300 uppercase tracking-tighter">Status: {totalCount > 0 && completedCount === totalCount ? 'PERFECT' : 'IN_PROGRESS'}</span>
                                 </div>
                             </div>
 
-                            {/* 清单网格 */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                {(Object.keys(ROUTINE_CONFIG) as RoutineType[]).map((type) => {
-                                    const config = ROUTINE_CONFIG[type];
-                                    const isDone = routines[type];
-                                    return (
-                                        <button
-                                            key={type}
-                                            onClick={() => toggleRoutine(type)}
-                                            className={`
-                                                group relative flex items-center gap-4 p-5 rounded-3xl border-2 transition-all duration-300
-                                                ${isDone
-                                                    ? 'bg-white border-emerald-500 shadow-lg shadow-emerald-500/10'
-                                                    : 'bg-slate-50 border-slate-100 hover:border-slate-200 hover:bg-white'}
-                                            `}
-                                        >
-                                            <div className={`
-                                                w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500
-                                                ${isDone ? config.bg : 'bg-white shadow-inner'}
-                                            `}>
-                                                <config.icon size={28} className={isDone ? config.color : 'text-slate-300'} />
-                                            </div>
+                                {routines.length > 0 ? (
+                                    routines.map((routine) => {
+                                        // 根据数据库的 key 查找图标配置，找不到就用默认的
+                                        const config = ICON_MAP[routine.key] || ICON_MAP.default;
+                                        const isDone = routine.isCompleted;
+                                        const Icon = config.icon;
 
-                                            <div className="flex flex-col items-start min-w-0">
-                                                <span className={`text-sm font-bold transition-colors ${isDone ? 'text-slate-800' : 'text-slate-400'}`}>
-                                                    {config.label}
-                                                </span>
-                                                <span className={`text-[10px] font-black uppercase tracking-widest mt-0.5 ${isDone ? 'text-emerald-500' : 'text-slate-300'}`}>
-                                                    {isDone ? 'Completed' : 'Todo'}
-                                                </span>
-                                            </div>
-
-                                            {isDone && (
-                                                <div className="ml-auto">
-                                                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                                        <Check size={14} strokeWidth={4} />
-                                                    </div>
+                                        return (
+                                            <button
+                                                key={routine.id}
+                                                onClick={() => toggleRoutine(routine.id, isDone)}
+                                                className={`
+                                                    group relative flex items-center gap-4 p-5 rounded-3xl border-2 transition-all duration-300
+                                                    ${isDone
+                                                        ? 'bg-white border-emerald-500 shadow-lg shadow-emerald-500/10'
+                                                        : 'bg-slate-50 border-slate-100 hover:border-slate-200 hover:bg-white'}
+                                                `}
+                                            >
+                                                <div className={`
+                                                    w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500
+                                                    ${isDone ? config.bg : 'bg-white shadow-inner'}
+                                                `}>
+                                                    <Icon size={28} className={isDone ? config.color : 'text-slate-300'} />
                                                 </div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
+
+                                                <div className="flex flex-col items-start min-w-0">
+                                                    <span className={`text-sm font-bold transition-colors ${isDone ? 'text-slate-800' : 'text-slate-400'}`}>
+                                                        {routine.label}
+                                                    </span>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest mt-0.5 ${isDone ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                                        {isDone ? 'Completed' : 'Todo'}
+                                                    </span>
+                                                </div>
+
+                                                {isDone && (
+                                                    <div className="ml-auto">
+                                                        <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                                                            <Check size={14} strokeWidth={4} />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="col-span-full py-10 text-center text-slate-400 font-mono text-sm">
+                                        Loading Habits...
+                                    </div>
+                                )}
                             </div>
 
-                            {/* 底部备注 */}
                             <div className="mt-12 p-6 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
@@ -286,8 +347,9 @@ export default function CollectionCabinet({ isActive, onToggle }: CollectionCabi
                                     </p>
                                 </div>
                                 <div className="flex gap-1">
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i <= completedCount ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                                    {/* 这里简单展示5个点，或者也可以根据 totalCount 动态生成 */}
+                                    {Array.from({ length: totalCount > 0 ? totalCount : 5 }).slice(0, 5).map((_, i) => (
+                                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < completedCount ? 'bg-emerald-400' : 'bg-slate-200'}`} />
                                     ))}
                                 </div>
                             </div>
