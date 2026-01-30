@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,18 +13,23 @@ interface ImageUploadProps {
     bucket: string;
     folder: string; // e.g., "books", "anime"
     className?: string;
+    autoFocus?: boolean;
 }
 
-export function ImageUpload({ value, onChange, bucket, folder, className }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, bucket, folder, className, autoFocus }: ImageUploadProps) {
     const [uploading, setUploading] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    useEffect(() => {
+        if (autoFocus && !value && containerRef.current) {
+            containerRef.current.focus();
+        }
+    }, [autoFocus, value]);
+
+    const uploadFile = async (file: File) => {
         try {
             setUploading(true);
-            const file = event.target.files?.[0];
-            if (!file) return;
-
-            const fileExt = file.name.split('.').pop();
+            const fileExt = file.name.split('.').pop() || 'png';
             const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
             const filePath = `${folder}/${fileName}`;
 
@@ -32,12 +37,9 @@ export function ImageUpload({ value, onChange, bucket, folder, className }: Imag
                 .from(bucket)
                 .upload(filePath, file);
 
-            if (uploadError) {
-                throw uploadError;
-            }
+            if (uploadError) throw uploadError;
 
             const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-
             onChange(data.publicUrl);
             toast.success('Image uploaded successfully');
         } catch (error: any) {
@@ -47,12 +49,37 @@ export function ImageUpload({ value, onChange, bucket, folder, className }: Imag
         }
     };
 
+    const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) await uploadFile(file);
+    };
+
+    const handlePaste = async (event: React.ClipboardEvent) => {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    await uploadFile(file);
+                    break;
+                }
+            }
+        }
+    };
+
     const handleRemove = () => {
         onChange('');
     };
 
     return (
-        <div className={`flex flex-col gap-4 ${className}`}>
+        <div
+            ref={containerRef}
+            tabIndex={0}
+            onPaste={handlePaste}
+            className={`flex flex-col gap-4 focus:outline-hidden group ${className}`}
+        >
             {value ? (
                 <div className="relative w-40 h-56 rounded-md overflow-hidden border border-zinc-800 group">
                     <img src={value} alt="Cover" className="object-cover w-full h-full" />
@@ -70,7 +97,7 @@ export function ImageUpload({ value, onChange, bucket, folder, className }: Imag
                 </div>
             ) : (
                 <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-zinc-800 border-dashed rounded-lg cursor-pointer bg-zinc-950/50 hover:bg-zinc-900 transition-colors">
+                    <div className="flex flex-col items-center justify-center w-full h-32 border-2 border-zinc-800 border-dashed rounded-lg bg-zinc-950/50 hover:bg-zinc-900 focus-within:border-blue-500 focus-within:bg-zinc-900 transition-all cursor-default">
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                             {uploading ? (
                                 <>
@@ -80,18 +107,21 @@ export function ImageUpload({ value, onChange, bucket, folder, className }: Imag
                             ) : (
                                 <>
                                     <Upload className="w-8 h-8 mb-3 text-zinc-500" />
-                                    <p className="text-sm text-zinc-500">Click to upload cover</p>
+                                    <p className="text-sm text-zinc-500">Paste here or</p>
+                                    <label className="text-sm text-blue-500 hover:text-blue-400 font-medium cursor-pointer underline underline-offset-4 mt-1">
+                                        Browse files
+                                        <Input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleUpload}
+                                            disabled={uploading}
+                                        />
+                                    </label>
                                 </>
                             )}
                         </div>
-                        <Input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleUpload}
-                            disabled={uploading}
-                        />
-                    </label>
+                    </div>
                 </div>
             )}
         </div>

@@ -123,14 +123,14 @@ export default function ProfilePage() {
                     </h1>
 
                     {/* [Redesign v3] Admin Entry: Minimalist integrated style */}
-                    <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-6 group">
+                    <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-8 group">
                         <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse" />
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em]">Admin</span>
                         </div>
                         <button
                             onClick={() => router.push('/admin/room')}
-                            className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
+                            className="flex items-center gap-3 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
                         >
                             {/* Hover Backdrop Effect */}
                             <div className="absolute inset-0 bg-white/0 group-hover:bg-white/40 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />

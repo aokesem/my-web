@@ -183,6 +183,7 @@ export default function MoviesAdmin() {
                                                     bucket="covers"
                                                     folder="cinema_photo"
                                                     value={still}
+                                                    autoFocus={!still}
                                                     onChange={(url) => {
                                                         const newStills = [...(currentMovie.stills || [])];
                                                         newStills[idx] = url;
