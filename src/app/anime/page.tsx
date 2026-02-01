@@ -83,13 +83,13 @@ export default function AnimeArchive() {
         {
             bvid: "BV13x4y1y7Bq",
             title: "重启咲良田-神圣的重生",
-            desc: "Visual Log // 2026 Season Opener",
-            cover: "/images/mad_cover/神圣的重生.png",
+            desc: "制作周期 // 2023.1 - 2025.7",
+            cover: "/images/mad_cover/rebirth.png",
         },
         {
-            bvid: "BV16f4y1M7mB",
+            bvid: "~",
             title: "敬请期待",
-            desc: "Visual Log // Mid Summer",
+            desc: "制作周期 // ~",
             cover: "https://images.unsplash.com/photo-1578632288102-45e0586e9690?q=80&w=1200",
         },
     ];
@@ -334,7 +334,20 @@ export default function AnimeArchive() {
                             <div className="h-[2px] w-full bg-linear-to-r from-white/40 via-white/20 to-transparent" />
                         </header>
 
-                        <main className="flex-1 flex items-center justify-center p-12 relative">
+                        <main className="flex-1 flex flex-col items-center justify-center p-12 relative">
+                            {/* [新增] 原始来源链接 */}
+                            <div className="w-full max-w-6xl mb-4 flex justify-end px-12">
+                                <a
+                                    href={`https://www.bilibili.com/video/${VIDEO_DATA[currentVideoIndex].bvid}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[20px] font-mono text-gray-500 hover:text-blue-500 transition-colors flex items-center gap-2 tracking-[0.2em] uppercase group/link"
+                                >
+                                    <span className="w-1.5 h-px bg-gray-700 group-hover/link:bg-blue-500 transition-colors" />
+                                    Original_Source // {VIDEO_DATA[currentVideoIndex].bvid}
+                                </a>
+                            </div>
+
                             {/* 左切换按钮 */}
                             <button
                                 onClick={handlePrev}
