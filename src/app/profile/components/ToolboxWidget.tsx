@@ -10,7 +10,7 @@ import {
     ChevronLeft,
     ChevronRight
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient'; // [新增]
+import { supabase } from '@/lib/supabaseClient';
 
 // === 数据定义 ===
 // 1. 数据库结构
@@ -109,8 +109,8 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             {/* 背景点阵 */}
             <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] bg-size-[16px_16px] opacity-30 pointer-events-none" />
 
-            {/* 顶部栏 */}
-            <motion.div layout="position" className="flex items-center justify-between px-6 py-4 border-b border-slate-100/80 shrink-0 h-[64px] relative z-10">
+            {/* 顶部栏 - [修改] 改为普通 div，移除 layout="position" 以消除抖动 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100/80 shrink-0 h-[64px] relative z-10">
                 <div className="flex items-center gap-3">
                     <Wrench size={20} className="text-slate-400" />
                     <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">
@@ -129,7 +129,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                         {isActive ? <div className="w-4 h-1 bg-slate-400 rounded-full" /> : <Box size={16} />}
                     </button>
                 </div>
-            </motion.div>
+            </div>
 
             {/* 内容区域 */}
             <div className="flex-1 relative bg-slate-50/20 overflow-hidden">
@@ -216,15 +216,23 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                                                 <div className="w-20 h-20 rounded-2xl bg-white shadow-md border border-slate-50 flex items-center justify-center p-3 relative">
                                                     <img src={tool.colorfulIcon} alt={tool.name} className="w-full h-full object-contain" />
                                                 </div>
-                                                <a
-                                                    href={tool.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] bg-blue-50 px-3 py-1 rounded-full border border-blue-100/50"
-                                                >
-                                                    Access <ExternalLink size={10} />
-                                                </a>
+                                                {tool.url ? (
+                                                    <a
+                                                        href={tool.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] bg-blue-50 px-3 py-1 rounded-full border border-blue-100/50"
+                                                    >
+                                                        Access <ExternalLink size={10} />
+                                                    </a>
+                                                ) : (
+                                                    <span
+                                                        className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-100/50 border border-slate-200/50 uppercase tracking-[0.2em] px-3 py-1 rounded-full cursor-not-allowed select-none"
+                                                    >
+                                                        No Link <ExternalLink size={10} />
+                                                    </span>
+                                                )}
                                             </div>
 
                                             <div className="flex-1 min-w-0 pt-1">

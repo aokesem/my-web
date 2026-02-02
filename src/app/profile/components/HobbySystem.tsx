@@ -233,7 +233,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                     <div className="h-1 w-12 bg-slate-200 rounded-full overflow-hidden">
                         <div className="h-full w-2/3 bg-blue-500/50" />
                     </div>
-                    <span className="text-[9px] text-slate-400 tracking-widest font-bold">V2.4.1</span>
+                    <span className="text-[9px] text-slate-400 tracking-widest font-bold">V3.14</span>
                 </div>
             </div>
         </motion.div>

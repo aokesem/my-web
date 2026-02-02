@@ -197,10 +197,16 @@ export default function AnimeArchive() {
                                             whileHover={{ scale: 1.03 }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={() => setSelectedId(item.id)}
-                                            className={`relative aspect-2/3 cursor-pointer rounded-3xl overflow-hidden border transition-all duration-700 ${selectedId === item.id
-                                                ? 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50'
-                                                : 'border-white/5 opacity-50 hover:opacity-100 grayscale hover:grayscale-0'
-                                                }`}
+                                            className={`relative aspect-2/3 cursor-pointer rounded-3xl overflow-hidden border transition-all duration-700 
+                                                ${item.rating === 100
+                                                    ? 'border-yellow-500/80 shadow-[0_0_30px_rgba(234,179,8,0.3)] opacity-100 grayscale-0'
+                                                    : selectedId === item.id
+                                                        ? item.rating >= 90
+                                                            ? 'border-white/90 shadow-[0_0_30px_rgba(255,255,255,0.25),0_0_15px_rgba(0,255,255,0.15)] ring-1 ring-cyan-200/50 opacity-100 grayscale-0'
+                                                            : 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50 opacity-100 grayscale-0'
+                                                        : 'border-white/5 opacity-50 grayscale hover:grayscale-0 hover:opacity-100'
+                                                }
+                                                ${selectedId === item.id && item.rating === 100 ? 'ring-2 ring-yellow-400/50' : ''}`}
                                         >
                                             <img src={item.cover} alt={item.title} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-80" />

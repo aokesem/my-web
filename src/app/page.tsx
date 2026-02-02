@@ -26,12 +26,13 @@ const MOVIE_STILLS = [
 ];
 const RAIN_WORDS = [
   "春琦，重启吧", "于是，魔女敲响了爱人的窗", "髣髴兮若轻云之蔽月，飘飖兮若流风之回雪",
-  "寄蜉蝣于天地，渺沧海之一粟", "有善始者实繁，能克终者盖寡", "虽复尘埋无所用，犹能夜夜气冲天",
+  "有善始者实繁，能克终者盖寡", "虽复尘埋无所用，犹能夜夜气冲天",
   "悟已往之不谏，知来者之可追", "究天人之际，通古今之变，成一家之言", "念谁为之戕贼，亦何恨乎秋声",
   "重重碎锦，片片真花。纷披草树，散乱烟霞", "伤心桥下春波绿，曾是惊鸿照影来",
   "把吴钩看了，栏杆拍遍，无人会，登临意", "推倒一世之智勇，开拓万古之心胸", "当时明月在，曾照彩云归",
   "鉴悬日月，词富山海。百龄影徂，千载心在", "花径不曾缘客扫，蓬门今始为君开", "暮春三月，江南草长。杂花生树，群莺乱飞",
-  ""
+  "有种活着的感觉", "因为我喜欢追寻着那个人的自己", "你选择的那个肯定才是正确答案", "不好，下雨了", "巴尼，已经不用再战斗了",
+  "你将对名为绝望的希望微笑"
 ];
 const READING_LIST = [
   { title: "重启咲良田", author: "河野 裕" },
@@ -203,40 +204,51 @@ const CinemaReel = () => {
 
 // ... (3. 读书组件 TextStream - 保持不变) ...
 const TextColumn = ({ colIndex, isHovered, requestToken, releaseToken }: {
-  colIndex: number; isHovered: boolean; requestToken: () => boolean; releaseToken: () => void;
+  colIndex: number; isHovered: boolean; requestToken: () => number | null; releaseToken: (index: number) => void;
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [wordIndex, setWordIndex] = useState(0);
+  const [wordIndex, setWordIndex] = useState<number | null>(null);
   const [animConfig, setAnimConfig] = useState({ duration: 15, initialY: "-20%" });
+  const isFirstRun = React.useRef(true);
 
   useEffect(() => {
     setMounted(true);
-    setWordIndex(Math.floor(Math.random() * RAIN_WORDS.length));
-    const randomStartLine = (Math.random() * 120 - 20) + "%";
-    setAnimConfig(prev => ({ ...prev, initialY: randomStartLine }));
   }, []);
 
   const tryStart = useCallback(() => {
-    if (!isPlaying && requestToken()) {
-      const currentWord = RAIN_WORDS[wordIndex];
-      const newDuration = 3 + currentWord.length * 1.2;
-      setAnimConfig({ duration: newDuration, initialY: "-20%" });
-      setIsPlaying(true);
+    if (!isPlaying) {
+      const index = requestToken();
+      if (index !== null) {
+        setWordIndex(index);
+        const currentWord = RAIN_WORDS[index];
+        const newDuration = 3 + currentWord.length * 1.2;
+        setAnimConfig({ duration: newDuration, initialY: "-20%" });
+        setIsPlaying(true);
+      }
     }
-  }, [isPlaying, wordIndex, requestToken]);
+  }, [isPlaying, requestToken]);
 
   useEffect(() => {
     if (mounted && !isPlaying) {
-      const timer = setTimeout(tryStart, Math.random() * 2500 + 500);
+      const delay = isFirstRun.current
+        ? Math.random() * 400 + 100 // 首次快速启动: 100-500ms
+        : Math.random() * 2500 + 500; // 后续正常节奏
+
+      const timer = setTimeout(() => {
+        tryStart();
+        if (isFirstRun.current) isFirstRun.current = false;
+      }, delay);
       return () => clearTimeout(timer);
     }
   }, [mounted, isPlaying, tryStart]);
 
   const handleComplete = () => {
-    setIsPlaying(false);
-    releaseToken();
-    setWordIndex((prev) => (prev + 1) % RAIN_WORDS.length);
+    if (wordIndex !== null) {
+      releaseToken(wordIndex);
+      setIsPlaying(false);
+      setWordIndex(null);
+    }
   };
 
   if (!mounted) return <div className="w-12 h-full" />;
@@ -244,7 +256,7 @@ const TextColumn = ({ colIndex, isHovered, requestToken, releaseToken }: {
   return (
     <div className="relative h-full flex justify-center w-12">
       <AnimatePresence>
-        {isPlaying && (
+        {isPlaying && wordIndex !== null && (
           <motion.span
             key={wordIndex}
             initial={{ y: animConfig.initialY, opacity: 0 }}
@@ -258,7 +270,7 @@ const TextColumn = ({ colIndex, isHovered, requestToken, releaseToken }: {
             className="absolute text-base md:text-lg font-serif italic tracking-[0.4em] text-white/40 group-hover:text-white/80 [writing-mode:vertical-rl] whitespace-nowrap select-none transition-colors duration-1000"
             style={{ textShadow: isHovered ? "0 0 8px rgba(255,255,255,0.4)" : "none" }}
           >
-            {RAIN_WORDS[wordIndex]}
+            {RAIN_WORDS[wordIndex!]}
           </motion.span>
         )}
       </AnimatePresence>
@@ -279,7 +291,7 @@ const BookHero = ({ isHovered }: { isHovered: boolean }) => {
   const currentBook = READING_LIST[index];
 
   return (
-    <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none select-none px-8 transition-all duration-1000 ${isHovered ? "opacity-90 translate-y-11" : "opacity-25 translate-y-11"
+    <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none select-none px-8 transition-all duration-1000 ${isHovered ? "opacity-90 translate-y-11" : "opacity-35 translate-y-11"
       }`}>
       <AnimatePresence mode="wait">
         <motion.div
@@ -304,23 +316,29 @@ const BookHero = ({ isHovered }: { isHovered: boolean }) => {
 
 const TextStream = ({ isHovered }: { isHovered: boolean }) => {
   const totalCols = 6;
-  const [activeCount, setActiveCount] = useState(0);
+  const [activeIndices, setActiveIndices] = useState<number[]>([]);
 
   const requestToken = useCallback(() => {
-    if (activeCount < 3) {
-      setActiveCount(prev => prev + 1);
-      return true;
-    }
-    return false;
-  }, [activeCount]);
+    if (activeIndices.length >= 3) return null;
 
-  const releaseToken = useCallback(() => {
-    setActiveCount(prev => Math.max(0, prev - 1));
+    // 获取当前未被使用的索引池
+    const availableIndices = RAIN_WORDS.map((_, i) => i)
+      .filter(i => !activeIndices.includes(i));
+
+    if (availableIndices.length === 0) return null;
+
+    const pickedIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    setActiveIndices(prev => [...prev, pickedIndex]);
+    return pickedIndex;
+  }, [activeIndices]);
+
+  const releaseToken = useCallback((index: number) => {
+    setActiveIndices(prev => prev.filter(i => i !== index));
   }, []);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#020202]">
-      <div className={`absolute inset-0 flex justify-around h-full w-full px-4 py-16 transition-opacity duration-1000 ${isHovered ? 'opacity-80' : 'opacity-40'
+      <div className={`absolute inset-0 flex justify-around h-full w-full px-4 py-16 transition-opacity duration-1000 ${isHovered ? 'opacity-80' : 'opacity-55'
         }`}>
         {Array.from({ length: totalCols }).map((_, i) => (
           <TextColumn

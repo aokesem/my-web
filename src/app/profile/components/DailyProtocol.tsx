@@ -359,7 +359,7 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                             key="active-view"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0, transition: { delay: 0.3, duration: 0.4 } }}
-                            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                            exit={{ opacity: 0, transition: { duration: 0 } }}
                             className="h-full overflow-x-auto p-6"
                         >
                             <div className="flex h-full gap-6 min-w-[800px]">
