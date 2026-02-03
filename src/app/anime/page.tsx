@@ -26,8 +26,8 @@ export default function AnimeArchive() {
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useState<'archive' | 'theater'>('archive');
 
-    // 新增：排序模式状态 ('date' | 'rating')
-    const [sortMode, setSortMode] = useState<'date' | 'rating'>('date');
+    // 新增：排序模式状态 ('default' | 'rating' | 'year')
+    const [sortMode, setSortMode] = useState<'default' | 'rating' | 'year'>('default');
 
     const [animes, setAnimes] = useState<AnimeItem[]>([]);
     const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -74,7 +74,13 @@ export default function AnimeArchive() {
             // 评分模式：按 rating 从大到小排，如果评分相同，则按 ID 排
             return b.rating - a.rating || b.id - a.id;
         }
-        // 日期模式（默认）：按 ID 从大到小排
+        if (sortMode === 'year') {
+            // 年份模式：按 year 从大到小排，没有年份的放最后
+            const yearA = a.year ? parseInt(a.year) : 0;
+            const yearB = b.year ? parseInt(b.year) : 0;
+            return yearB - yearA || b.id - a.id;
+        }
+        // 默认模式 (Default)：按 ID 从大到小排
         return b.id - a.id;
     });
 
@@ -162,16 +168,24 @@ export default function AnimeArchive() {
                                                 {/* 分割线 */}
                                                 <div className="h-4 w-px bg-white/10 mx-2" />
 
-                                                {/* --- 新增：排序切换按钮 --- */}
+                                                {/* --- 升级：排序切换按钮 (Default -> Rating -> Date) --- */}
                                                 <button
-                                                    onClick={() => setSortMode(prev => prev === 'date' ? 'rating' : 'date')}
+                                                    onClick={() => {
+                                                        const modes: ('default' | 'rating' | 'year')[] = ['default', 'rating', 'year'];
+                                                        const currentIndex = modes.indexOf(sortMode);
+                                                        setSortMode(modes[(currentIndex + 1) % modes.length]);
+                                                    }}
                                                     className="flex items-center gap-2 transition-all duration-500 group"
                                                 >
-                                                    <ArrowDownWideNarrow size={18} className={sortMode === 'rating' ? "text-yellow-500" : "text-gray-500 group-hover:text-gray-300"} />
-                                                    <span className={`${sortMode === 'rating' ? "text-white" : "text-gray-600 group-hover:text-gray-400"}`}>
-                                                        Sort: {sortMode === 'rating' ? 'Rating' : 'Date'}
+                                                    {sortMode === 'default' && <Calendar size={18} className="text-gray-500 group-hover:text-gray-300" />}
+                                                    {sortMode === 'rating' && <Star size={18} className="text-yellow-500" />}
+                                                    {sortMode === 'year' && <ArrowDownWideNarrow size={18} className="text-yellow-500" />}
+
+                                                    <span className={`${sortMode !== 'default' ? "text-white" : "text-gray-600 group-hover:text-gray-400"}`}>
+                                                        Sort: {sortMode === 'year' ? 'Date' : sortMode.charAt(0).toUpperCase() + sortMode.slice(1)}
                                                     </span>
-                                                    {sortMode === 'rating' && (
+
+                                                    {sortMode !== 'default' && (
                                                         <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 ml-1 shadow-[0_0_8px_#eab308]" />
                                                     )}
                                                 </button>
@@ -199,19 +213,29 @@ export default function AnimeArchive() {
                                             onClick={() => setSelectedId(item.id)}
                                             className={`relative aspect-2/3 cursor-pointer rounded-3xl overflow-hidden border transition-all duration-700 
                                                 ${item.rating === 100
-                                                    ? 'border-yellow-500/80 shadow-[0_0_30px_rgba(234,179,8,0.3)] opacity-100 grayscale-0'
-                                                    : selectedId === item.id
-                                                        ? item.rating >= 90
-                                                            ? 'border-white/90 shadow-[0_0_30px_rgba(255,255,255,0.25),0_0_15px_rgba(0,255,255,0.15)] ring-1 ring-cyan-200/50 opacity-100 grayscale-0'
-                                                            : 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50 opacity-100 grayscale-0'
-                                                        : 'border-white/5 opacity-50 grayscale hover:grayscale-0 hover:opacity-100'
+                                                    ? 'border-yellow-500/80 shadow-[0_0_30px_rgba(234,179,8,0.3)]'
+                                                    : item.rating >= 90
+                                                        ? 'border-white/90 shadow-[0_0_30px_rgba(255,255,255,0.25),0_0_15px_rgba(0,255,255,0.15)] ring-1 ring-cyan-200/40'
+                                                        : selectedId === item.id
+                                                            ? 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50'
+                                                            : 'border-white/5 hover:border-white/20'
                                                 }
                                                 ${selectedId === item.id && item.rating === 100 ? 'ring-2 ring-yellow-400/50' : ''}`}
                                         >
-                                            <img src={item.cover} alt={item.title} className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-80" />
+                                            {/* 内容层：负责缩放、滤镜和透明度 */}
+                                            <div className={`w-full h-full transition-all duration-700 
+                                                ${item.rating === 100
+                                                    ? 'opacity-100 grayscale-0'
+                                                    : selectedId === item.id
+                                                        ? 'opacity-100 grayscale-0'
+                                                        : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0'
+                                                }`}
+                                            >
+                                                <img src={item.cover} alt={item.title} className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-80" />
+                                            </div>
 
-                                            {/* 如果是评分排序模式，可以在卡片上显示分数 */}
+                                            {/* 评分模式角标 */}
                                             {sortMode === 'rating' && (
                                                 <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-yellow-500/30 flex items-center gap-1">
                                                     <Star size={10} className="text-yellow-500 fill-yellow-500" />
@@ -219,7 +243,14 @@ export default function AnimeArchive() {
                                                 </div>
                                             )}
 
-                                            <div className="absolute bottom-5 left-5 right-5">
+                                            {/* 年份模式角标 */}
+                                            {sortMode === 'year' && item.year && (
+                                                <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-yellow-500/30 flex items-center justify-center min-w-[34px]">
+                                                    <span className="text-[10px] font-bold text-yellow-500">{item.year}</span>
+                                                </div>
+                                            )}
+
+                                            <div className="absolute bottom-5 left-5 right-5 pointer-events-none">
                                                 <p className="text-[11px] font-bold tracking-widest uppercase truncate">{item.title}</p>
                                             </div>
                                         </motion.div>
@@ -436,7 +467,7 @@ export default function AnimeArchive() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.2);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {

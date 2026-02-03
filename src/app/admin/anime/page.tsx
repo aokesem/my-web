@@ -224,6 +224,7 @@ export default function AnimeAdmin() {
                         <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
                             <TableHead className="text-zinc-400 w-[50px]">ID</TableHead>
                             <TableHead className="text-zinc-400">标题</TableHead>
+                            <TableHead className="text-zinc-400">观看时间</TableHead>
                             <TableHead className="text-zinc-400">评分</TableHead>
                             <TableHead className="text-zinc-400">状态</TableHead>
                             <TableHead className="text-zinc-400 text-right">操作</TableHead>
@@ -246,6 +247,7 @@ export default function AnimeAdmin() {
                                         <div>{item.title}</div>
                                         <div className="text-xs text-zinc-500">{item.title_en}</div>
                                     </TableCell>
+                                    <TableCell className="text-zinc-400 font-mono">{item.year || '-'}</TableCell>
                                     <TableCell className="text-zinc-400">{item.rating}%</TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded-full text-xs border ${item.status === 'Watching' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
