@@ -169,9 +169,6 @@ export default function BooksAdmin() {
                                         placeholder="选择或输入分类"
                                     />
                                     <datalist id="categories-list">
-                                        <option value="Literature" />
-                                        <option value="LightNovel" />
-                                        <option value="SocialSci" />
                                         {uniqueCategories.map(cat => (
                                             <option key={cat} value={cat} />
                                         ))}

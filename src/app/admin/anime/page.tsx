@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash } from 'lucide-react';
+import { Plus, Pencil, Trash, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 
@@ -29,6 +29,7 @@ export default function AnimeAdmin() {
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
     const [currentAnime, setCurrentAnime] = useState<Partial<Anime> & { tagsString?: string }>({});
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Anime | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
 
     useEffect(() => {
         fetchAnimes();
@@ -113,6 +114,28 @@ export default function AnimeAdmin() {
         setCurrentAnime({ status: 'Watched', tagsString: '' });
         setIsOpen(true);
     };
+
+    const handleSort = (key: keyof Anime) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedAnimes = [...animes].sort((a, b) => {
+        if (!sortConfig.key) return 0;
+
+        const key = sortConfig.key;
+        const direction = sortConfig.direction === 'asc' ? 1 : -1;
+
+        const valA = a[key] ?? '';
+        const valB = b[key] ?? '';
+
+        if (valA < valB) return -1 * direction;
+        if (valA > valB) return 1 * direction;
+        return 0;
+    });
 
     return (
         <div className="space-y-6">
@@ -224,9 +247,24 @@ export default function AnimeAdmin() {
                         <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
                             <TableHead className="text-zinc-400 w-[50px]">ID</TableHead>
                             <TableHead className="text-zinc-400">标题</TableHead>
-                            <TableHead className="text-zinc-400">观看时间</TableHead>
-                            <TableHead className="text-zinc-400">评分</TableHead>
-                            <TableHead className="text-zinc-400">状态</TableHead>
+                            <TableHead className="text-zinc-400 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('year')}>
+                                <div className="flex items-center gap-1">
+                                    观看时间
+                                    <ArrowUpDown size={14} className={sortConfig.key === 'year' ? 'text-blue-500' : 'opacity-30'} />
+                                </div>
+                            </TableHead>
+                            <TableHead className="text-zinc-400 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('rating')}>
+                                <div className="flex items-center gap-1">
+                                    评分
+                                    <ArrowUpDown size={14} className={sortConfig.key === 'rating' ? 'text-blue-500' : 'opacity-30'} />
+                                </div>
+                            </TableHead>
+                            <TableHead className="text-zinc-400 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('status')}>
+                                <div className="flex items-center gap-1">
+                                    状态
+                                    <ArrowUpDown size={14} className={sortConfig.key === 'status' ? 'text-blue-500' : 'opacity-30'} />
+                                </div>
+                            </TableHead>
                             <TableHead className="text-zinc-400 text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -240,7 +278,7 @@ export default function AnimeAdmin() {
                                 <TableCell colSpan={5} className="text-center py-10 text-zinc-500">暂无番剧。</TableCell>
                             </TableRow>
                         ) : (
-                            animes.map((item) => (
+                            sortedAnimes.map((item) => (
                                 <TableRow key={item.id} className="border-zinc-800 hover:bg-zinc-900/50">
                                     <TableCell className="font-mono text-zinc-500">{item.id}</TableCell>
                                     <TableCell className="font-medium text-gray-200">
