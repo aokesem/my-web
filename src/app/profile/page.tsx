@@ -11,6 +11,7 @@ import TimelineWidget from './components/TimelineWidget';
 import DailyProtocol from './components/DailyProtocol';
 import ToolboxWidget from './components/ToolboxWidget';
 import CollectionCabinet from './components/CollectionCabinet';
+import StatusWidget from './components/StatusWidget';
 import { supabase } from '@/lib/supabaseClient';
 
 interface QuoteItem {
@@ -21,7 +22,7 @@ interface QuoteItem {
 export default function ProfilePage() {
     const router = useRouter();
     const [isWindowOpen, setIsWindowOpen] = useState(false);
-    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet'>('idle');
+    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet' | 'status'>('idle');
 
     const [quotes, setQuotes] = useState<QuoteItem[]>([{ id: 0, text: "Loading data..." }]);
     const [quoteIndex, setQuoteIndex] = useState(0);
@@ -85,87 +86,104 @@ export default function ProfilePage() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f1f5f9_70%)] opacity-100 pointer-events-none" />
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[40px_40px] opacity-40 pointer-events-none" />
 
-            <motion.div
-                animate={{
-                    opacity: activeModule === 'idle' ? 1 : 0,
-                    y: activeModule === 'idle' ? 0 : -50,
-                    pointerEvents: activeModule === 'idle' ? 'auto' : 'none'
-                }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="absolute top-[8%] z-40 flex flex-col items-center gap-6"
-            >
-                <div className="relative flex items-center justify-center min-w-[300px] md:min-w-[600px]">
-                    <Link
-                        href="/"
-                        onMouseEnter={() => setBackBtnHover(true)}
-                        onMouseLeave={() => setBackBtnHover(false)}
-                        className="absolute right-[calc(50%+12rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
-                        style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8)' }}
-                    >
-                        <motion.div className="absolute inset-0 bg-linear-to-b from-white/90 to-slate-50/80 rounded-2xl border-t border-l border-white border-b border-r transition-all duration-500"
-                            animate={{ backgroundColor: backBtnHover ? 'rgba(239, 246, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)', boxShadow: backBtnHover ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_70%)]" />
-                        <motion.div className="absolute inset-0 z-20 pointer-events-none" initial={{ x: '-150%', skewX: -25 }} animate={{ x: backBtnHover ? '150%' : '-150%' }} transition={{ duration: 0.8, ease: "easeInOut" }} style={{ background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent)', }} />
-                        <div className="flex flex-col items-end relative z-10">
-                            <span className="text-[9px] font-mono text-slate-400 leading-none tracking-[0.2em] mb-1">SYSTEM_BACK</span>
-                            <span className="text-[13px] font-bold text-slate-700 tracking-tighter uppercase whitespace-nowrap">
-                                [ <span className="text-blue-600/60 uppercase group-hover:text-blue-600 transition-colors">Lab_Archive</span> ]
-                            </span>
-                        </div>
-                        <div className="relative z-10 text-slate-700/80 group-hover:text-slate-900 transition-colors">
-                            <Origami size={28} className="stroke-[1.5] group-hover:rotate-12 transition-transform" />
-                            <motion.div className="absolute -inset-1 bg-blue-400/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} />
-                        </div>
-                    </Link>
+            {/* Header Container - Restore Flex Layout for correct positioning */}
+            <div className="absolute top-[8%] z-40 flex flex-col items-center gap-6 pointer-events-none w-full">
 
-                    <h1 className="text-3xl md:text-5xl font-bold tracking-tighter text-slate-800 font-sans uppercase drop-shadow-sm px-10">
-                        CYZ's <span className="font-mono text-blue-600">Room</span>
-                    </h1>
-
-                    {/* [Redesign v3] Admin Entry: Minimalist integrated style */}
-                    <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-8 group">
-                        <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse" />
-                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em]">Admin</span>
-                        </div>
-                        <button
-                            onClick={() => router.push('/admin/room')}
-                            className="flex items-center gap-3 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
+                {/* Title Section Wrapper - Animates independently */}
+                <motion.div
+                    animate={{
+                        opacity: activeModule === 'idle' ? 1 : 0,
+                        y: activeModule === 'idle' ? 0 : -50,
+                        pointerEvents: activeModule === 'idle' ? 'auto' : 'none'
+                    }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className="flex flex-col items-center gap-6 pointer-events-auto"
+                >
+                    <div className="relative flex items-center justify-center min-w-[300px] md:min-w-[600px]">
+                        <Link
+                            href="/"
+                            onMouseEnter={() => setBackBtnHover(true)}
+                            onMouseLeave={() => setBackBtnHover(false)}
+                            className="absolute right-[calc(50%+12rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
+                            style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8)' }}
                         >
-                            {/* Hover Backdrop Effect */}
-                            <div className="absolute inset-0 bg-white/0 group-hover:bg-white/40 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />
-
-                            <div className="absolute inset-0 bg-linear-to-r from-blue-400/0 via-blue-400/5 to-blue-400/0 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1500" />
-
-                            <div className="relative z-10 flex items-center gap-2.5">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-blue-500/10 transition-colors duration-500">
-                                    <Settings size={15} className="text-slate-400 group-hover:text-blue-500 group-hover:rotate-45 transition-all duration-700" />
-                                </div>
-                                <div className="flex flex-col items-start">
-                                    <span className="text-[12px] font-bold text-slate-500 group-hover:text-slate-800 tracking-wider transition-colors duration-500">
-                                        {isAdmin ? "MANAGE_DATA" : "ADMIN_LOGIN"}
-                                    </span>
-                                    <span className="text-[8px] font-mono text-slate-400/60 group-hover:text-blue-500/50 transition-colors duration-500">
-                                        {isAdmin ? "SYS_ROOT_ACCESS" : "SEC_AUTH_REQ"}
-                                    </span>
-                                </div>
+                            <motion.div className="absolute inset-0 bg-linear-to-b from-white/90 to-slate-50/80 rounded-2xl border-t border-l border-white border-b border-r transition-all duration-500"
+                                animate={{ backgroundColor: backBtnHover ? 'rgba(239, 246, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)', boxShadow: backBtnHover ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_70%)]" />
+                            <motion.div className="absolute inset-0 z-20 pointer-events-none" initial={{ x: '-150%', skewX: -25 }} animate={{ x: backBtnHover ? '150%' : '-150%' }} transition={{ duration: 0.8, ease: "easeInOut" }} style={{ background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent)', }} />
+                            <div className="flex flex-col items-end relative z-10">
+                                <span className="text-[9px] font-mono text-slate-400 leading-none tracking-[0.2em] mb-1">SYSTEM_BACK</span>
+                                <span className="text-[13px] font-bold text-slate-700 tracking-tighter uppercase whitespace-nowrap">
+                                    [ <span className="text-blue-600/60 uppercase group-hover:text-blue-600 transition-colors">Lab_Archive</span> ]
+                                </span>
                             </div>
-                        </button>
-                    </div>
-                </div>
+                            <div className="relative z-10 text-slate-700/80 group-hover:text-slate-900 transition-colors">
+                                <Origami size={28} className="stroke-[1.5] group-hover:rotate-12 transition-transform" />
+                                <motion.div className="absolute -inset-1 bg-blue-400/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} />
+                            </div>
+                        </Link>
 
-                <div className="flex items-center gap-4 bg-white/70 backdrop-blur-md px-6 py-2 rounded-full border border-slate-200 shadow-lg shadow-slate-200/50">
-                    <div className="flex gap-2">
-                        <div className="w-2 h-2 rounded-full bg-slate-300" />
-                        <div className="w-2 h-2 rounded-full bg-slate-300" />
-                        <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
+                        <h1 className="text-3xl md:text-5xl font-bold tracking-tighter text-slate-800 font-sans uppercase drop-shadow-sm px-10">
+                            CYZ's <span className="font-mono text-blue-600">Room</span>
+                        </h1>
+
+                        {/* [Redesign v3] Admin Entry: Minimalist integrated style */}
+                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-8 group">
+                            <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse" />
+                                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em]">Admin</span>
+                            </div>
+                            <button
+                                onClick={() => router.push('/admin/room')}
+                                className="flex items-center gap-3 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
+                            >
+                                {/* Hover Backdrop Effect */}
+                                <div className="absolute inset-0 bg-white/0 group-hover:bg-white/40 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />
+
+                                <div className="absolute inset-0 bg-linear-to-r from-blue-400/0 via-blue-400/5 to-blue-400/0 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1500" />
+
+                                <div className="relative z-10 flex items-center gap-2.5">
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-blue-500/10 transition-colors duration-500">
+                                        <Settings size={15} className="text-slate-400 group-hover:text-blue-500 group-hover:rotate-45 transition-all duration-700" />
+                                    </div>
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-[12px] font-bold text-slate-500 group-hover:text-slate-800 tracking-wider transition-colors duration-500">
+                                            {isAdmin ? "MANAGE_DATA" : "ADMIN_LOGIN"}
+                                        </span>
+                                        <span className="text-[8px] font-mono text-slate-400/60 group-hover:text-blue-500/50 transition-colors duration-500">
+                                            {isAdmin ? "SYS_ROOT_ACCESS" : "SEC_AUTH_REQ"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
                     </div>
-                    <div className="w-px h-3 bg-slate-300" />
-                    <span className="text-xs font-mono text-slate-500 tracking-widest uppercase">
-                        Status: <span className="text-blue-600 font-semibold">Daylight</span>
-                    </span>
-                </div>
-            </motion.div>
+                </motion.div>
+
+                {/* Status Widget (Idle State Only) */}
+                {/* Render here ONLY if not active status, so it's part of the proper layout flow */}
+                {/* When activeModule === 'status', this unmounts and the Root one mounts, creating the morph */}
+                {activeModule !== 'status' && (
+                    <div className="pointer-events-auto">
+                        <StatusWidget
+                            isActive={false}
+                            isIdle={activeModule === 'idle'}
+                            onToggle={() => setActiveModule(prev => prev === 'status' ? 'idle' : 'status')}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Status Widget (Expanded State Only) - Root Level z-index 50 */}
+            <AnimatePresence>
+                {activeModule === 'status' && (
+                    <StatusWidget
+                        isActive={true}
+                        isIdle={false}
+                        onToggle={() => setActiveModule('idle')}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Profile 页面主体内容 */}
             <div className="absolute left-10 md:left-25 top-[2%] z-30 flex flex-col items-center">
