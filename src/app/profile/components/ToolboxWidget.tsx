@@ -158,24 +158,20 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                             <div className="flex-1 overflow-hidden px-2">
                                 {/* [修改] 增加空数据判断 */}
                                 {tools.length > 0 ? (
-                                    <motion.div
-                                        className="flex items-center justify-between"
-                                        animate={{ x: 0 }}
-                                    >
+                                    <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3 mx-auto">
                                             {tools.slice(startIndex, startIndex + VISIBLE_COUNT).map((tool) => (
-                                                <motion.div
-                                                    layoutId={`icon-${tool.id}`} // 确保 layoutId 唯一
+                                                <div
                                                     key={tool.id}
                                                     className="relative group/icon shrink-0"
                                                 >
                                                     <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm opacity-60 grayscale group-hover/icon:grayscale-0 group-hover/icon:opacity-100 group-hover/icon:border-blue-200 transition-all duration-300">
                                                         <img src={tool.simpleIcon} alt={tool.name} className="w-6 h-6 object-contain" />
                                                     </div>
-                                                </motion.div>
+                                                </div>
                                             ))}
                                         </div>
-                                    </motion.div>
+                                    </div>
                                 ) : (
                                     <div className="text-center text-[10px] text-slate-400 font-mono">LOADING...</div>
                                 )}
