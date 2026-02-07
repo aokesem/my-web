@@ -16,6 +16,7 @@ import {
     ListTodo,
     Cpu,
     Wrench,
+    Activity, // [新增]
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -31,6 +32,7 @@ const HOME_NAV_ITEMS = [
 
 // [新增] 定义 Room 管理菜单项
 const ROOM_NAV_ITEMS = [
+    { title: "状态管理", href: "/admin/status", icon: Activity },
     { title: "格言管理", href: "/admin/room/quotes", icon: Quote },
     { title: "爱好档案", href: "/admin/room/hobbies", icon: Cpu },
     { title: "时间线", href: "/admin/room/timeline", icon: GitCommitHorizontal },
