@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
-import { Origami, Settings } from 'lucide-react'; // Settings 图标
+import { Origami, Settings, Database } from 'lucide-react'; // Settings 图标
 import { useRouter } from 'next/navigation'; // 路由
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
@@ -127,31 +127,48 @@ export default function ProfilePage() {
                             CYZ's <span className="font-mono text-blue-600">Room</span>
                         </h1>
 
-                        {/* [Redesign v3] Admin Entry: Minimalist integrated style */}
-                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-8 group">
-                            <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse" />
-                                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em]">Admin</span>
-                            </div>
+                        {/* [Redesign v3] Admin Entry (Moved Up) */}
+                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 -translate-y-16 group">
                             <button
                                 onClick={() => router.push('/admin/room')}
+                                className="flex items-center gap-2 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn opacity-60 hover:opacity-100"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100/50 group-hover:bg-slate-200/50 transition-colors duration-500">
+                                        <Settings size={12} className="text-slate-400 group-hover:text-slate-600 group-hover:rotate-45 transition-all duration-700" />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-600 tracking-wider transition-colors duration-500">
+                                        ADMIN_ROOT
+                                    </span>
+                                </div>
+                            </button>
+                        </div>
+
+                        {/* [NEW] Workshop Entry: Prime Position */}
+                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-8 group">
+                            <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)] animate-pulse" />
+                                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em] group-hover:text-cyan-500 transition-colors">Workshop</span>
+                            </div>
+                            <button
+                                onClick={() => router.push('/workshop')}
                                 className="flex items-center gap-3 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
                             >
-                                {/* Hover Backdrop Effect */}
-                                <div className="absolute inset-0 bg-white/0 group-hover:bg-white/40 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />
+                                {/* Hover Backdrop Effect - Cyan Tint */}
+                                <div className="absolute inset-0 bg-white/0 group-hover:bg-cyan-50/50 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />
 
-                                <div className="absolute inset-0 bg-linear-to-r from-blue-400/0 via-blue-400/5 to-blue-400/0 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1500" />
+                                <div className="absolute inset-0 bg-linear-to-r from-cyan-400/0 via-cyan-400/5 to-cyan-400/0 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1500" />
 
                                 <div className="relative z-10 flex items-center gap-2.5">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-blue-500/10 transition-colors duration-500">
-                                        <Settings size={15} className="text-slate-400 group-hover:text-blue-500 group-hover:rotate-45 transition-all duration-700" />
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-cyan-500/10 transition-colors duration-500">
+                                        <Database size={15} className="text-slate-400 group-hover:text-cyan-600 transition-all duration-700" />
                                     </div>
                                     <div className="flex flex-col items-start">
                                         <span className="text-[12px] font-bold text-slate-500 group-hover:text-slate-800 tracking-wider transition-colors duration-500">
-                                            {isAdmin ? "MANAGE_DATA" : "ADMIN_LOGIN"}
+                                            DATA_NEXUS
                                         </span>
-                                        <span className="text-[8px] font-mono text-slate-400/60 group-hover:text-blue-500/50 transition-colors duration-500">
-                                            {isAdmin ? "SYS_ROOT_ACCESS" : "SEC_AUTH_REQ"}
+                                        <span className="text-[8px] font-mono text-slate-400/60 group-hover:text-cyan-600/50 transition-colors duration-500">
+                                            ENTER_LAB
                                         </span>
                                     </div>
                                 </div>

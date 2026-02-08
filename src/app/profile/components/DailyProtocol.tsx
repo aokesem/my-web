@@ -341,7 +341,7 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                         </div>
                                     </div>
                                     <div className="flex gap-1 h-1 w-full">
-                                        {tasks.slice(0, 10).map((task) => (
+                                        {tasks.filter(t => t.status === 'in_progress').slice(0, 10).map((task) => (
                                             <div key={task.id} className={`flex-1 rounded-full ${CATEGORY_CONFIG[task.category]?.indicator || 'bg-slate-200'}`} />
                                         ))}
                                     </div>
