@@ -370,7 +370,7 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                     const isAddingThisCat = addingCategory === cat;
 
                                     return (
-                                        <div key={cat} className="flex-1 flex flex-col min-w-[200px] h-full bg-white/50 rounded-xl border border-white/60 shadow-sm backdrop-blur-sm overflow-hidden group/col hover:bg-white/80 transition-colors">
+                                        <div key={cat} className={`flex-1 flex flex-col min-w-[200px] h-full rounded-xl border border-white/60 shadow-sm backdrop-blur-sm overflow-hidden group/col transition-colors ${config.indicator.replace('bg-', 'bg-')}/10`}>
                                             {/* 列标题 */}
                                             <div className={`px-4 py-3 border-b border-slate-100 flex items-center gap-2 text-white ${config.indicator}`}>
                                                 <config.icon size={16} />
@@ -442,7 +442,7 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                                                 ) : (
                                                                     // === 普通展示模式 UI ===
                                                                     <div className="flex items-start justify-between gap-2 relative z-10">
-                                                                        <div className="flex items-start gap-2.5 min-w-0">
+                                                                        <div className="flex items-start gap-2.5 min-w-0 pr-0">
                                                                             <div className={`mt-0.5 transition-colors ${task.status === 'in_progress' ? config.color : 'text-slate-300'}`}>
                                                                                 {task.status === 'in_progress' ? <Play size={14} fill="currentColor" /> : <Circle size={14} />}
                                                                             </div>
@@ -452,21 +452,9 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                                                             </div>
                                                                         </div>
 
-                                                                        {/* 右侧：标签 + 操作按钮 */}
+                                                                        {/* 右侧：操作按钮 (标签已改为绝对定位) */}
                                                                         <div className="flex flex-col items-end gap-1 shrink-0">
                                                                             <div className="flex items-center gap-1">
-                                                                                {task.task_type && (
-                                                                                    <span className={`
-                                                                                        text-[15px] font-mono tracking-widest uppercase px-1.5 py-0.5 rounded border transition-all duration-300 bg-transparent font-black
-                                                                                        ${TYPE_STYLE_MAP[task.category][task.task_type]}
-                                                                                        ${task.status === 'in_progress' ? 'opacity-100 brightness-110' : 'opacity-40'}
-                                                                                    `}>
-                                                                                        {task.task_type === 'course' && '课程'}
-                                                                                        {task.task_type === 'project' && '项目'}
-                                                                                        {task.task_type === 'plan' && '计划'}
-                                                                                    </span>
-                                                                                )}
-                                                                                {/* 操作组：编辑 + 归档 */}
                                                                                 <div className="flex opacity-0 group-hover/card:opacity-100 transition-all duration-300 gap-1.5">
                                                                                     <button
                                                                                         onClick={(e) => startEditing(task, e)}
@@ -486,6 +474,18 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                                                             </div>
                                                                         </div>
                                                                     </div>
+                                                                )}
+                                                                {!isEditing && task.task_type && (
+                                                                    <span className={`
+                                                                        absolute top-3 right-3 text-[14px] font-mono tracking-widest uppercase px-1.5 py-0.5 rounded border transition-all duration-200 bg-transparent font-black z-20 pointer-events-none
+                                                                        ${TYPE_STYLE_MAP[task.category][task.task_type]}
+                                                                        ${task.status === 'in_progress' ? 'opacity-100 brightness-110' : 'opacity-40'}
+                                                                        group-hover/card:opacity-0
+                                                                    `}>
+                                                                        {task.task_type === 'course' && '课程'}
+                                                                        {task.task_type === 'project' && '项目'}
+                                                                        {task.task_type === 'plan' && '计划'}
+                                                                    </span>
                                                                 )}
                                                                 {!isEditing && task.status === 'in_progress' && <div className={`absolute inset-0 ${config.bg} opacity-40 pointer-events-none`} />}
                                                             </motion.div>

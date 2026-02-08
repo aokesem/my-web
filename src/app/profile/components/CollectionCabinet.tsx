@@ -117,6 +117,20 @@ export default function CollectionCabinet({ isActive, onToggle, isAdmin }: Colle
             }));
 
             setRoutines(mappedRoutines);
+
+            // 4. [新增] 获取计时器状态
+            const { data: timerState } = await supabase
+                .from('profile_timer_state')
+                .select('*')
+                .single();
+
+            if (timerState) {
+                setCurrentTask(timerState.task_name);
+                const startTimeMs = new Date(timerState.start_time).getTime();
+                setStartTime(startTimeMs);
+                setElapsedSeconds(Math.floor((Date.now() - startTimeMs) / 1000));
+                setIsTimerActive(true);
+            }
         };
         fetchRoutines();
     }, []);
@@ -136,20 +150,46 @@ export default function CollectionCabinet({ isActive, onToggle, isAdmin }: Colle
     const hours = Math.floor((elapsedSeconds % (24 * 3600)) / 3600);
     const minutes = Math.floor((elapsedSeconds % 3600) / 60);
 
-    const handleStart = () => {
+    const handleStart = async () => {
         if (!isAdmin) return toast.warning("只有本人才能修改状态");
         const taskName = prompt("请输入当前计时的任务：");
         if (!taskName || taskName.trim() === "") return;
+
+        const now = Date.now();
         setCurrentTask(taskName);
-        setStartTime(Date.now());
+        setStartTime(now);
         setIsTimerActive(true);
+
+        // [新增] 持久化到 Supabase
+        const { error } = await supabase
+            .from('profile_timer_state')
+            .upsert({
+                id: 1,
+                task_name: taskName,
+                start_time: new Date(now).toISOString()
+            });
+
+        if (error) {
+            console.error("Failed to save timer state:", error);
+            toast.error("保存计时状态失败");
+        }
     };
 
-    const handleEnd = () => {
+    const handleEnd = async () => {
         if (!isAdmin) return toast.warning("只有本人才能修改状态");
         setIsTimerActive(false);
         setElapsedSeconds(0);
         setStartTime(null);
+
+        // [新增] 从 Supabase 清除
+        const { error } = await supabase
+            .from('profile_timer_state')
+            .delete()
+            .eq('id', 1);
+
+        if (error) {
+            console.error("Failed to clear timer state:", error);
+        }
     };
 
     // [核心] 切换打卡状态

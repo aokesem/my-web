@@ -44,6 +44,26 @@ const CATEGORY_OPTIONS: Record<string, { value: string; label: string }[]> = {
         { value: 'control', label: '情绪控制' }
     ]
 };
+const CATEGORY_STYLE: Record<string, string> = {
+    knowledge: "text-blue-500 border-blue-500/20 bg-blue-500/10",
+    focus: "text-indigo-500 border-indigo-500/20 bg-indigo-500/10",
+    goals: "text-sky-500 border-sky-500/20 bg-sky-500/10",
+    health: "text-emerald-500 border-emerald-500/20 bg-emerald-500/10",
+    exercise: "text-green-500 border-green-200/20 bg-green-500/10",
+    diet: "text-teal-500 border-teal-500/20 bg-teal-500/10",
+    emotion: "text-rose-500 border-rose-500/20 bg-rose-500/10",
+    social: "text-pink-500 border-pink-500/20 bg-pink-500/10",
+    control: "text-purple-500 border-purple-500/20 bg-purple-500/10",
+};
+
+const DOMAIN_ORDER = ['learning', 'body', 'mind'];
+
+const CATEGORY_ORDER: Record<string, string[]> = {
+    learning: ['knowledge', 'focus', 'goals'],
+    body: ['health', 'exercise', 'diet'],
+    mind: ['emotion', 'social', 'control']
+};
+
 
 export default function StatusAdmin() {
     const [items, setItems] = useState<StatusItem[]>([]);
@@ -69,7 +89,20 @@ export default function StatusAdmin() {
             toast.error('Failed to fetch items');
             console.error(error);
         } else {
-            setItems(data || []);
+            // 自定义排序：
+            // 1. 领域顺序：学习 (learning) -> 身体 (body) -> 心绪 (mind)
+            // 2. 内部顺序：各领域内按预设分类顺序
+            const sortedData = (data || []).sort((a, b) => {
+                const domainDiff = DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain);
+                if (domainDiff !== 0) return domainDiff;
+
+                const catOrder = CATEGORY_ORDER[a.domain] || [];
+                const catDiff = catOrder.indexOf(a.category) - catOrder.indexOf(b.category);
+                if (catDiff !== 0) return catDiff;
+
+                return (a.sort_order || 0) - (b.sort_order || 0);
+            });
+            setItems(sortedData);
         }
         setLoading(false);
     };
@@ -268,7 +301,7 @@ export default function StatusAdmin() {
                                 <TableRow key={item.id} className="border-zinc-800 hover:bg-zinc-900/50">
                                     <TableCell className="font-mono text-zinc-500 text-xs uppercase">{item.domain}</TableCell>
                                     <TableCell>
-                                        <span className="px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
+                                        <span className={`px-2 py-0.5 rounded-full border text-[11px] transition-all ${CATEGORY_STYLE[item.category] || "bg-zinc-900 border-zinc-800 text-zinc-300"}`}>
                                             {CATEGORY_OPTIONS[item.domain]?.find(c => c.value === item.category)?.label || item.category}
                                         </span>
                                     </TableCell>
