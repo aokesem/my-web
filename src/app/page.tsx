@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock, DoorOpen } from 'lucide-react';
+import { IoLibraryOutline } from "react-icons/io5";
 
 // ... (0. 常量与工具函数定义 - 保持不变) ...
 const ANIME_IMAGES = [
@@ -455,13 +456,23 @@ export default function LabPortal() {
             </h1>
 
             {/* The Invisible Door - visible on group hover or subtle default */}
-            <Link
-              href="/profile"
-              className="opacity-50 hover:opacity-100 transition-all duration-500 flex items-center gap-2 text-yellow-500 -translate-y-1 hover:translate-x-2"
-            >
-              <span className="hidden md:inline text-[18px] font-mono tracking-widest uppercase text-yellow-500/70 hover:text-yellow-400">[ My Room ]</span>
-              <DoorOpen size={32} className="stroke-[1.5]" />
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/profile"
+                className="opacity-50 hover:opacity-100 transition-all duration-500 flex items-center gap-2 text-yellow-500 -translate-y-1 hover:translate-x-2"
+              >
+                <span className="hidden md:inline text-[18px] font-mono tracking-widest uppercase text-yellow-500/70 hover:text-yellow-400">[ My Room ]</span>
+                <DoorOpen size={32} className="stroke-[1.5]" />
+              </Link>
+
+              <Link
+                href="/library"
+                className="opacity-50 hover:opacity-100 transition-all duration-500 flex items-center gap-2 text-orange-500 -translate-y-1 hover:translate-x-2"
+              >
+                <span className="hidden md:inline text-[18px] font-mono tracking-widest uppercase text-orange-500/70 hover:text-orange-400">[ Library ]</span>
+                <IoLibraryOutline size={28} className="stroke-[1.5]" />
+              </Link>
+            </div>
           </div>
         </div>
 

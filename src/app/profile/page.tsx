@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
-import { Origami, Settings, Database } from 'lucide-react'; // Settings 图标
-import { useRouter } from 'next/navigation'; // 路由
+import { Origami, Settings, Database } from 'lucide-react';
+import { IoLibrary } from "react-icons/io5";
+import { useRouter } from 'next/navigation';
 import WindowView from './components/WindowView';
 import HobbySystem from './components/HobbySystem';
 import TimelineWidget from './components/TimelineWidget';
@@ -127,53 +128,51 @@ export default function ProfilePage() {
                             CYZ's <span className="font-mono text-blue-600">Room</span>
                         </h1>
 
-                        {/* [Redesign v3] Admin Entry (Moved Up) */}
-                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 -translate-y-16 group">
+                        {/* [Redesign v3] Admin Entry (Moved Up & Larger) */}
+                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 -translate-y-12 group">
                             <button
                                 onClick={() => router.push('/admin/room')}
-                                className="flex items-center gap-2 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn opacity-60 hover:opacity-100"
+                                className="flex items-center gap-2 px-5 py-2 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn opacity-60 hover:opacity-100"
                             >
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100/50 group-hover:bg-slate-200/50 transition-colors duration-500">
-                                        <Settings size={12} className="text-slate-400 group-hover:text-slate-600 group-hover:rotate-45 transition-all duration-700" />
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-slate-200/50 transition-colors duration-500">
+                                        <Settings size={16} className="text-slate-400 group-hover:text-slate-600 group-hover:rotate-45 transition-all duration-700" />
                                     </div>
-                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-600 tracking-wider transition-colors duration-500">
+                                    <span className="text-[12px] font-bold text-slate-400 group-hover:text-slate-600 tracking-wider transition-colors duration-500">
                                         ADMIN_ROOT
                                     </span>
                                 </div>
                             </button>
                         </div>
 
-                        {/* [NEW] Workshop Entry: Prime Position */}
-                        <div className="absolute left-[calc(50%+13.5rem)] hidden md:flex flex-col items-start gap-0.5 translate-y-8 group">
-                            <div className="flex items-center gap-1.5 px-1 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity duration-500 scale-[0.85] origin-bottom-left translate-x-4 translate-y-2 relative z-20">
-                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)] animate-pulse" />
-                                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em] group-hover:text-cyan-500 transition-colors">Workshop</span>
+                        {/* [NEW] Library Entry: New Style (Matching Lab Archive) */}
+                        <button
+                            onClick={() => router.push('/library')}
+                            onMouseEnter={() => setBackBtnHover(true)} // Reuse hover state for continuity
+                            onMouseLeave={() => setBackBtnHover(false)}
+                            className="absolute left-[calc(50%+13.5rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
+                            style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8)' }}
+                        >
+                            {/* Glass Background */}
+                            <motion.div className="absolute inset-0 bg-linear-to-b from-white/90 to-slate-50/80 rounded-2xl border-t border-l border-white border-b border-r transition-all duration-500"
+                                animate={{ backgroundColor: backBtnHover ? 'rgba(255, 247, 237, 0.95)' : 'rgba(255, 255, 255, 0.9)', boxShadow: backBtnHover ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} />
+
+                            {/* Inner Decoration */}
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(249,115,22,0.05),transparent_70%)]" />
+                            <motion.div className="absolute inset-0 z-20 pointer-events-none" initial={{ x: '-150%', skewX: -25 }} animate={{ x: backBtnHover ? '150%' : '-150%' }} transition={{ duration: 0.8, ease: "easeInOut" }} style={{ background: 'linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.2), transparent)', }} />
+
+                            {/* Content: Icon Left, Text Right */}
+                            <div className="relative z-10 text-slate-700/80 group-hover:text-orange-600 transition-colors">
+                                <IoLibrary size={24} className="group-hover:-rotate-12 transition-transform" />
                             </div>
-                            <button
-                                onClick={() => router.push('/workshop')}
-                                className="flex items-center gap-3 px-3 py-1 rounded-xl transition-all duration-500 relative overflow-hidden active:scale-95 group/btn"
-                            >
-                                {/* Hover Backdrop Effect - Cyan Tint */}
-                                <div className="absolute inset-0 bg-white/0 group-hover:bg-cyan-50/50 group-hover:backdrop-blur-md transition-all duration-500 rounded-xl" />
 
-                                <div className="absolute inset-0 bg-linear-to-r from-cyan-400/0 via-cyan-400/5 to-cyan-400/0 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1500" />
-
-                                <div className="relative z-10 flex items-center gap-2.5">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100/50 group-hover:bg-cyan-500/10 transition-colors duration-500">
-                                        <Database size={15} className="text-slate-400 group-hover:text-cyan-600 transition-all duration-700" />
-                                    </div>
-                                    <div className="flex flex-col items-start">
-                                        <span className="text-[12px] font-bold text-slate-500 group-hover:text-slate-800 tracking-wider transition-colors duration-500">
-                                            DATA_NEXUS
-                                        </span>
-                                        <span className="text-[8px] font-mono text-slate-400/60 group-hover:text-cyan-600/50 transition-colors duration-500">
-                                            ENTER_LAB
-                                        </span>
-                                    </div>
-                                </div>
-                            </button>
-                        </div>
+                            <div className="flex flex-col items-start relative z-10">
+                                <span className="text-[9px] font-mono text-slate-400 leading-none tracking-[0.2em] mb-1">DATA_NEXUS</span>
+                                <span className="text-[13px] font-bold text-slate-700 tracking-tighter uppercase whitespace-nowrap">
+                                    [ <span className="text-orange-500/60 uppercase group-hover:text-orange-500 transition-colors">Library</span> ]
+                                </span>
+                            </div>
+                        </button>
                     </div>
                 </motion.div>
 
