@@ -28,6 +28,7 @@ export default function ProfilePage() {
     const [quotes, setQuotes] = useState<QuoteItem[]>([{ id: 0, text: "Loading data..." }]);
     const [quoteIndex, setQuoteIndex] = useState(0);
     const [backBtnHover, setBackBtnHover] = useState(false);
+    const [libHover, setLibHover] = useState(false);
 
     // 依然保留 isAdmin 状态，为了传给子组件做内联编辑的权限控制
     const [isAdmin, setIsAdmin] = useState(false);
@@ -145,21 +146,21 @@ export default function ProfilePage() {
                             </button>
                         </div>
 
-                        {/* [NEW] Library Entry: New Style (Matching Lab Archive) */}
+                        {/* Library Entrance (Scheme B Style) */}
                         <button
                             onClick={() => router.push('/library')}
-                            onMouseEnter={() => setBackBtnHover(true)} // Reuse hover state for continuity
-                            onMouseLeave={() => setBackBtnHover(false)}
+                            onMouseEnter={() => setLibHover(true)}
+                            onMouseLeave={() => setLibHover(false)}
                             className="absolute left-[calc(50%+13.5rem)] hidden md:flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-500 group translate-y-8 overflow-hidden backdrop-blur-xl"
                             style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8)' }}
                         >
                             {/* Glass Background */}
                             <motion.div className="absolute inset-0 bg-linear-to-b from-white/90 to-slate-50/80 rounded-2xl border-t border-l border-white border-b border-r transition-all duration-500"
-                                animate={{ backgroundColor: backBtnHover ? 'rgba(255, 247, 237, 0.95)' : 'rgba(255, 255, 255, 0.9)', boxShadow: backBtnHover ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} />
+                                animate={{ backgroundColor: libHover ? 'rgba(255, 247, 237, 0.95)' : 'rgba(255, 255, 255, 0.9)', boxShadow: libHover ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} />
 
                             {/* Inner Decoration */}
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(249,115,22,0.05),transparent_70%)]" />
-                            <motion.div className="absolute inset-0 z-20 pointer-events-none" initial={{ x: '-150%', skewX: -25 }} animate={{ x: backBtnHover ? '150%' : '-150%' }} transition={{ duration: 0.8, ease: "easeInOut" }} style={{ background: 'linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.2), transparent)', }} />
+                            <motion.div className="absolute inset-0 z-20 pointer-events-none" initial={{ x: '-150%', skewX: -25 }} animate={{ x: libHover ? '150%' : '-150%' }} transition={{ duration: 0.8, ease: "easeInOut" }} style={{ background: 'linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.2), transparent)', }} />
 
                             {/* Content: Icon Left, Text Right */}
                             <div className="relative z-10 text-slate-700/80 group-hover:text-orange-600 transition-colors">
