@@ -21,16 +21,16 @@ import { useRouter } from 'next/navigation';
 const MODULES = [
     {
         id: 'prompt',
-        title: 'Prompt Notebook',
+        title: '提示词仓库',
         path: '/library/prompt',
-        description: 'Collection of cognitive protocols and LLM directives.',
+        description: '对于实用提示词的存储和分类',
         type: 'notebook'
     },
     {
         id: 'mindmap',
-        title: 'Mind Map Projector',
+        title: '思维导图',
         path: '/library/mindmap',
-        description: 'Visualize ideas in infinite 2D space.',
+        description: '个人思维导图整理',
         type: 'projector'
     },
     {
