@@ -19,7 +19,10 @@ import ReactFlow, {
     Edge,
     Node,
     XYPosition,
-    NodeResizer
+    NodeResizer,
+    ReactFlowProvider,
+    useReactFlow,
+    useUpdateNodeInternals
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,15 +43,42 @@ import {
     ArrowRightCircle,
     Square,
     StickyNote,
-    Frame
+    Frame,
+    Palette,
+    Type,
+    Bold,
+    Check,
+    GitGraph,   // For Tree Layout
+    Route       // For Flow Layout
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import rough from 'roughjs';
+import dagre from 'dagre';
+import { toPng } from 'html-to-image';
+
+// === Styling Constants ===
+const STYLE_PRESETS = {
+    colors: [
+        { id: 'default', label: '默认', bg: 'rgba(255, 255, 255, 0.95)', stroke: '#4a4a4a' },
+        { id: 'sky', label: '天蓝', bg: 'rgba(186, 230, 253, 0.6)', stroke: '#0284c7' },
+        { id: 'sage', label: '草本', bg: 'rgba(187, 247, 208, 0.6)', stroke: '#16a34a' },
+        { id: 'clay', label: '砖红', bg: 'rgba(254, 202, 202, 0.6)', stroke: '#dc2626' },
+        { id: 'amber', label: '琥珀', bg: 'rgba(253, 230, 138, 0.6)', stroke: '#d97706' },
+    ],
+    borderWeights: [
+        { id: 'normal', label: '标准', width: 1.2, roughness: 1.5 },
+        { id: 'heavy', label: '强调', width: 2.8, roughness: 2.8 },
+    ]
+};
 
 // === Custom Hand-drawn Node Component ===
 const RoughNode = ({ data, selected }: NodeProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Extract styles from data or use defaults
+    const activeColor = STYLE_PRESETS.colors.find(c => c.id === data.colorId) || STYLE_PRESETS.colors[0];
+    const activeWeight = STYLE_PRESETS.borderWeights.find(w => w.id === data.borderWeightId) || STYLE_PRESETS.borderWeights[0];
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -57,18 +87,28 @@ const RoughNode = ({ data, selected }: NodeProps) => {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw hand-drawn rectangle
+        // Draw hand-drawn rectangle with dynamic styling
         rc.rectangle(2, 2, 196, 76, {
-            roughness: 1.5,
-            stroke: selected ? '#0284c7' : '#4a4a4a',
-            strokeWidth: selected ? 2 : 1.2,
-            fill: selected ? 'rgba(2, 132, 199, 0.05)' : 'rgba(255, 255, 255, 0.8)',
+            roughness: activeWeight.roughness,
+            stroke: activeColor.stroke, // Keep custom color even when selected
+            strokeWidth: activeWeight.width,
+            fill: activeColor.bg,
             fillStyle: 'hachure',
-            fillWeight: 0.5,
-            hachureAngle: 60,
-            hachureGap: 10
+            fillWeight: 1.5, // Heavier fill weight for visibility
+            hachureAngle: 65,
+            hachureGap: 6, // Tighter gap for better color visibility
         });
-    }, [selected]);
+
+        // Add a secondary "Selection Glow/Outline" if selected
+        if (selected) {
+            rc.rectangle(0, 0, 200, 80, {
+                roughness: 2.5,
+                stroke: '#0ea5e9', // Sky-500 for selection indicator
+                strokeWidth: 2,
+                strokeLineDash: [5, 5],
+            });
+        }
+    }, [selected, data.colorId, data.borderWeightId, activeColor, activeWeight]);
 
     return (
         <div className="relative group perspective-1000">
@@ -80,14 +120,30 @@ const RoughNode = ({ data, selected }: NodeProps) => {
             />
             <div className="relative z-10 w-[200px] h-[80px] flex flex-col items-center justify-center p-4 text-center">
                 <span className="text-[10px] font-mono text-stone-300 absolute top-2 left-4 uppercase tracking-tighter opacity-40">node_log_0x{data.id}</span>
-                <Handle type="target" position={Position.Top} className="opacity-0 w-20 h-2" style={{ top: 0 }} />
-                <h3 className="font-serif font-bold text-stone-800 text-sm leading-tight group-hover:text-sky-600 transition-colors">
+
+                {/* Dynamic Handles based on Layout Direction */}
+                {/* Target Handle: Top (Tree) or Left (Flow) */}
+                <Handle
+                    type="target"
+                    position={data.layoutDirection === 'LR' ? Position.Left : Position.Top}
+                    className="opacity-0 w-2 h-2"
+                    style={data.layoutDirection === 'LR' ? { left: 0 } : { top: 0 }}
+                />
+
+                <h3 className={`font-serif text-stone-800 text-sm leading-tight group-hover:text-sky-600 transition-colors ${data.fontWeight === 'bold' ? 'font-black' : 'font-bold'}`}>
                     {data.label}
                 </h3>
                 <p className="text-[9px] font-mono text-stone-400 mt-1 uppercase tracking-widest opacity-60">
                     {data.type || 'logical_unit'}
                 </p>
-                <Handle type="source" position={Position.Bottom} className="opacity-0 w-20 h-2" style={{ bottom: 0 }} />
+
+                {/* Source Handle: Bottom (Tree) or Right (Flow) */}
+                <Handle
+                    type="source"
+                    position={data.layoutDirection === 'LR' ? Position.Right : Position.Bottom}
+                    className="opacity-0 w-2 h-2"
+                    style={data.layoutDirection === 'LR' ? { right: 0 } : { bottom: 0 }}
+                />
             </div>
 
             {/* Tech Annotation Overlays */}
@@ -130,8 +186,8 @@ const RoughEdge = ({
         <>
             <path
                 id={id}
-                style={style}
-                className="react-flow__edge-path fill-none stroke-stone-300 stroke-[1.5px] opacity-40 hover:opacity-100 transition-opacity"
+                style={{ ...style, stroke: '#78716c', strokeWidth: 2, fill: 'none' }}
+                className="react-flow__edge-path opacity-60 hover:opacity-100 transition-opacity"
                 d={edgePath}
                 markerEnd={markerEnd}
             />
@@ -248,16 +304,19 @@ const useHistory = (initialNodes: Node[], initialEdges: Edge[]) => {
         setNodes(nextState.nodes);
         setEdges(nextState.edges);
         setRedoStack(prev => prev.slice(0, -1));
-    }, [redoStack, nodes, edges, setNodes, setEdges]);
+    }, [redoStack, nodes, edges, setNodes, setEdges, setHistory]);
 
     return { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, undo, redo, saveToHistory, history, canUndo: history.length > 0, canRedo: redoStack.length > 0 };
 };
 
-export default function MindMapDetailPage() {
+// === Main Mind Map Component ===
+const MindMapBoard = () => {
     const params = useParams();
     const categoryId = params.category as string;
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+    const { fitView } = useReactFlow();
+    const updateNodeInternals = useUpdateNodeInternals();
 
     // Tool States
     const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('pan');
@@ -271,6 +330,7 @@ export default function MindMapDetailPage() {
     } = useHistory(INITIAL_NODES, INITIAL_EDGES);
 
     // Track selection order for intelligent connectivity
+    // Defined BEFORE onLayout so it can be used if needed (though not directly used in onLayout currently)
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const onSelectionChange = useCallback(({ nodes }: { nodes: Node[] }) => {
         const ids = nodes.map(n => n.id);
@@ -281,6 +341,66 @@ export default function MindMapDetailPage() {
             return [...stillSelected, ...newlySelected];
         });
     }, []);
+
+    // Layout Engine
+    const getLayoutedElements = useCallback((nds: Node[], eds: Edge[], direction = 'TB') => {
+        const dagreGraph = new dagre.graphlib.Graph();
+        dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+        const isHorizontal = direction === 'LR';
+        dagreGraph.setGraph({ rankdir: direction });
+
+        nds.forEach((node) => {
+            // RoughNode standard size is 200x80, RoughGroup is variable but we use style or default
+            const width = node.type === 'roughGroup' ? (node.style?.width as number || 400) : 200;
+            const height = node.type === 'roughGroup' ? (node.style?.height as number || 240) : 80;
+            dagreGraph.setNode(node.id, { width, height });
+        });
+
+        eds.forEach((edge) => {
+            dagreGraph.setEdge(edge.source, edge.target);
+        });
+
+        dagre.layout(dagreGraph);
+
+        return nds.map((node) => {
+            const nodeWithPosition = dagreGraph.node(node.id);
+            const width = node.type === 'roughGroup' ? (node.style?.width as number || 400) : 200;
+            const height = node.type === 'roughGroup' ? (node.style?.height as number || 240) : 80;
+
+            return {
+                ...node,
+                position: {
+                    x: nodeWithPosition.x - width / 2,
+                    y: nodeWithPosition.y - height / 2,
+                },
+            };
+        });
+    }, []);
+
+    const onLayout = useCallback((direction: string) => {
+        saveToHistory();
+        const layoutedNodes = getLayoutedElements(nodes, edges, direction);
+
+        // Update nodes with new positions AND layout direction for handle switching
+        const updatedNodes = layoutedNodes.map(node => ({
+            ...node,
+            data: { ...node.data, layoutDirection: direction }
+        }));
+
+        setNodes(updatedNodes);
+
+        // Force update handles for all nodes
+        requestAnimationFrame(() => {
+            updatedNodes.forEach(node => {
+                updateNodeInternals(node.id);
+            });
+
+            if (reactFlowInstance) {
+                reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+            }
+        });
+    }, [nodes, edges, getLayoutedElements, setNodes, saveToHistory, reactFlowInstance, updateNodeInternals]);
 
     const onConnect = useCallback((params: Connection) => {
         saveToHistory();
@@ -367,6 +487,13 @@ export default function MindMapDetailPage() {
         setEdges(eds => addEdge(newEdge, eds));
     }, [selectedIds, setEdges, saveToHistory]);
 
+    const updateSelectedNodesStyle = useCallback((styleUpdates: any) => {
+        saveToHistory();
+        setNodes(nds => nds.map(node =>
+            node.selected ? { ...node, data: { ...node.data, ...styleUpdates } } : node
+        ));
+    }, [setNodes, saveToHistory]);
+
     const deleteSelected = useCallback(() => {
         if (nodes.some(n => n.selected) || edges.some(e => e.selected)) {
             saveToHistory();
@@ -399,10 +526,98 @@ export default function MindMapDetailPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [undo, redo, createChildNode, deleteSelected]);
 
+    // === Export Logic ===
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+    const downloadImage = useCallback(() => {
+        if (reactFlowWrapper.current === null) {
+            return;
+        }
+
+        toPng(reactFlowWrapper.current, {
+            cacheBust: true,
+            backgroundColor: '#fdfbf7',
+            filter: (node) => {
+                // Filter out any element with the 'no-export' class
+                if (node.classList?.contains('no-export')) return false;
+                // Filter out React Flow controls/panels/attribution
+                if (node.classList?.contains('react-flow__controls') ||
+                    node.classList?.contains('react-flow__panel') ||
+                    node.classList?.contains('react-flow__attribution')) return false;
+                return true;
+            }
+        })
+            .then((dataUrl) => {
+                const link = document.createElement('a');
+                link.download = `mindmap-${categoryId}-${Date.now()}.png`;
+                link.href = dataUrl;
+                link.click();
+            })
+            .catch((err) => {
+                console.error('oops, something went wrong!', err);
+            })
+            .finally(() => {
+                setIsExportMenuOpen(false);
+            });
+    }, [reactFlowWrapper, categoryId]);
+
+    const exportToMarkdown = useCallback(() => {
+        // Recursive function to build markdown tree
+        const buildMarkdown = (nodeId: string, depth: number = 0): string => {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return '';
+
+            const indent = '  '.repeat(depth);
+            let md = `${indent}- ${node.data.label}\n`;
+
+            // Find children: edges where source is this node
+            const childrenIds = edges
+                .filter(e => e.source === nodeId)
+                .map(e => e.target);
+
+            // Sort children by Y position for logical reading order
+            const childrenNodes = nodes.filter(n => childrenIds.includes(n.id))
+                .sort((a, b) => a.position.y - b.position.y);
+
+            childrenNodes.forEach(child => {
+                md += buildMarkdown(child.id, depth + 1);
+            });
+
+            return md;
+        };
+
+        // Find root nodes (no incoming edges)
+        const rootNodes = nodes.filter(n => !edges.some(e => e.target === n.id));
+        let fullMarkdown = `# Mind Map: ${categoryId}\n\n`;
+
+        rootNodes.sort((a, b) => a.position.y - b.position.y).forEach(root => {
+            fullMarkdown += buildMarkdown(root.id);
+        });
+
+        const blob = new Blob([fullMarkdown], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `mindmap-${categoryId}-${Date.now()}.md`;
+        link.href = url;
+        link.click();
+        setIsExportMenuOpen(false);
+    }, [nodes, edges, categoryId]);
+
+    const exportToJSON = useCallback(() => {
+        const data = JSON.stringify({ nodes, edges }, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `mindmap-${categoryId}-${Date.now()}.json`;
+        link.href = url;
+        link.click();
+        setIsExportMenuOpen(false);
+    }, [nodes, edges, categoryId]);
+
     return (
         <div className="relative w-full h-screen bg-[#fdfbf7] overflow-hidden" ref={reactFlowWrapper}>
             {/* --- Global Controls UI --- */}
-            <div className="absolute top-8 left-8 z-50 flex items-center gap-4">
+            <div className="absolute top-8 left-8 z-50 flex items-center gap-4 no-export">
                 <Link
                     href="/library/mindmap"
                     className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-stone-200/60 backdrop-blur-md shadow-sm hover:bg-white transition-all"
@@ -419,7 +634,7 @@ export default function MindMapDetailPage() {
             </div>
 
             {/* --- Advanced Toolbar --- */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-2 py-2 bg-stone-800/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-2 py-2 bg-stone-800/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl no-export">
                 {/* Mode Switchers */}
                 <div className="flex bg-stone-900/50 rounded-xl p-0.5 border border-white/5">
                     <button
@@ -498,10 +713,115 @@ export default function MindMapDetailPage() {
                 </button>
             </div>
 
-            <div className="absolute top-8 right-8 z-50">
-                <button className="p-3 rounded-full bg-stone-800 text-white shadow-xl hover:scale-110 transition-transform flex items-center justify-center">
-                    <Share2 size={18} />
-                </button>
+            {/* --- Style Toolbar (Conditional) --- */}
+            <AnimatePresence mode="wait">
+                {selectedIds.length > 0 && !nodes.find(n => n.id === selectedIds[0] && n.type === 'roughGroup') && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: -20, x: '-50%' }}
+                        className="absolute top-20 left-1/2 z-50 flex items-center gap-2 px-3 py-1.5 bg-stone-900/60 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl no-export"
+                    >
+                        <div className="flex items-center gap-0.5 pr-2 border-r border-white/10">
+                            <Palette size={12} strokeWidth={1.5} className="text-stone-500 mr-1" />
+                            {STYLE_PRESETS.colors.map(color => (
+                                <button
+                                    key={color.id}
+                                    onClick={() => updateSelectedNodesStyle({ colorId: color.id })}
+                                    className="w-4 h-4 rounded-full border border-white/10 transition-transform hover:scale-125"
+                                    style={{ backgroundColor: color.stroke }}
+                                    title={color.label}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-1 px-1 border-r border-white/10">
+                            {STYLE_PRESETS.borderWeights.map(weight => (
+                                <button
+                                    key={weight.id}
+                                    onClick={() => updateSelectedNodesStyle({ borderWeightId: weight.id })}
+                                    className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+                                    title={`边框: ${weight.label}`}
+                                >
+                                    <Type size={14} strokeWidth={weight.id === 'heavy' ? 3 : 1.5} />
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                const isBold = nodes.find(n => n.id === selectedIds[0])?.data?.fontWeight === 'bold';
+                                updateSelectedNodesStyle({ fontWeight: isBold ? 'normal' : 'bold' });
+                            }}
+                            className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+                            title="加粗文字"
+                        >
+                            <Bold size={14} strokeWidth={2.5} />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="absolute top-8 right-8 z-50 flex items-center gap-4 no-export">
+                {/* Layout Switches (Top Right) */}
+                <div className="flex bg-white/80 backdrop-blur-md rounded-2xl p-1 border border-stone-200/60 shadow-sm">
+                    <button
+                        onClick={() => onLayout('TB')}
+                        className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-all"
+                        title="Tree Layout (Top-Down)"
+                    >
+                        <GitGraph size={18} strokeWidth={1.5} />
+                    </button>
+                    <button
+                        onClick={() => onLayout('LR')}
+                        className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-all"
+                        title="Flow Layout (Left-Right)"
+                    >
+                        <Route size={18} strokeWidth={1.5} />
+                    </button>
+                </div>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                        className="p-3 rounded-full bg-stone-800 text-white shadow-xl hover:scale-110 transition-transform flex items-center justify-center relative z-20"
+                    >
+                        <Share2 size={18} />
+                    </button>
+
+                    <AnimatePresence>
+                        {isExportMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 10, x: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 10, x: -10 }}
+                                className="absolute top-full right-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-stone-200/60 rounded-2xl shadow-xl overflow-hidden z-10 origin-top-right flex flex-col py-1"
+                            >
+                                <button
+                                    onClick={downloadImage}
+                                    className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                >
+                                    <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                                    Download Image
+                                </button>
+                                <button
+                                    onClick={exportToMarkdown}
+                                    className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                >
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    Copy Markdown
+                                </button>
+                                <button
+                                    onClick={exportToJSON}
+                                    className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                >
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Backup JSON
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* --- React Flow Canvas --- */}
@@ -557,5 +877,13 @@ export default function MindMapDetailPage() {
                 }}
             />
         </div>
+    );
+};
+
+export default function MindMapPage() {
+    return (
+        <ReactFlowProvider>
+            <MindMapBoard />
+        </ReactFlowProvider>
     );
 }
