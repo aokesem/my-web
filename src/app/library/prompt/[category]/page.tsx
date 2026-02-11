@@ -148,7 +148,7 @@ export default function CategoryDetailPage() {
                                     <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
 
                                     <div className="p-8 md:pl-16 prose prose-stone max-w-none">
-                                        <div className="font-mono text-sm text-stone-600 leading-relaxed break-words whitespace-pre-wrap selection:bg-orange-200">
+                                        <div className="font-mono text-sm text-stone-600 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-200">
                                             <ReactMarkdown
                                                 components={{
                                                     h1: ({ node, ...props }) => <h1 className="text-2xl font-serif font-bold mt-6 mb-4 text-stone-800" {...props} />,
