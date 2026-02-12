@@ -1,86 +1,72 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
-    Search,
+    Archive,
     LayoutGrid,
-    MessageSquare,
-    SearchCode,
-    Terminal,
-    Sparkles,
-    Cpu,
-    Archive
+    Search
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { getIconComponent } from '@/lib/iconMap';
 
-const CATEGORIES = [
-    {
-        id: 'search',
-        title: '信息搜索',
-        enTitle: 'Information Search',
-        icon: SearchCode,
-        description: '用于深度搜索、信息提取及结构化分析的精准指令。',
-        color: 'text-blue-500',
-        bg: 'bg-blue-50/50',
-        status: 'Operational'
-    },
-    {
-        id: 'chat',
-        title: '对话助手',
-        enTitle: 'Chat Assistant',
-        icon: MessageSquare,
-        description: '优化日常交流细节，提升语言多样性与逻辑严密感。',
-        color: 'text-emerald-500',
-        bg: 'bg-emerald-50/50',
-        status: 'Operational'
-    },
-    {
-        id: 'coding',
-        title: '编程助手',
-        enTitle: 'Programming Guide',
-        icon: Terminal,
-        description: '涵盖重构、调试、架构设计及自动化脚本生成指令。',
-        color: 'text-orange-500',
-        bg: 'bg-orange-50/50',
-        status: 'Operational'
-    },
-    {
-        id: 'creative',
-        title: '创意写作',
-        enTitle: 'Creative Writing',
-        icon: Sparkles,
-        description: '激发文学创作、脚本构思及艺术描述的非线性提示词。',
-        color: 'text-purple-500',
-        bg: 'bg-purple-50/50',
-        status: 'Development'
-    },
-    {
-        id: 'productivity',
-        title: '效率工具',
-        enTitle: 'Productivity Tool',
-        icon: Cpu,
-        description: '表格处理、邮件撰写、日程规划等日常办公自动化指令。',
-        color: 'text-slate-500',
-        bg: 'bg-slate-50/50',
-        status: 'Operational'
-    },
-    {
-        id: 'archive',
-        title: '历史存档',
-        enTitle: 'Legacy Archive',
-        icon: Archive,
-        description: '归档已退役或特定场景下的提示词，仅作研究参考使用。',
-        color: 'text-stone-400',
-        bg: 'bg-stone-50/50',
-        status: 'Archived'
-    }
-];
+
 
 export default function PromptWarehousePage() {
     const router = useRouter();
+    const [categories, setCategories] = useState<any[]>([]);
+    const [promptCounts, setPromptCounts] = useState<Record<string, number>>({});
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // 1. Fetch Categories
+                const { data: cats, error: catError } = await supabase
+                    .from('prompt_categories')
+                    .select('*')
+                    .order('sort_order', { ascending: true });
+
+                if (catError) throw catError;
+                setCategories(cats || []);
+
+                // 2. Fetch Prompt Counts
+                const { data: prompts, error: promptError } = await supabase
+                    .from('prompts')
+                    .select('category_id');
+
+                if (promptError) throw promptError;
+
+                const counts = (prompts || []).reduce((acc: Record<string, number>, curr: any) => {
+                    acc[curr.category_id] = (acc[curr.category_id] || 0) + 1;
+                    return acc;
+                }, {});
+                setPromptCounts(counts);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Loading Skeleton
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#fdfbf7] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 animate-pulse">
+                    <div className="w-12 h-12 bg-stone-200 rounded-full" />
+                    <div className="h-4 w-32 bg-stone-200 rounded" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen bg-[#fdfbf7] text-slate-800 font-sans selection:bg-orange-100 overflow-x-hidden">
@@ -136,67 +122,70 @@ export default function PromptWarehousePage() {
             {/* --- Category Matrix (Task Manager Style) --- */}
             <main className="relative z-10 max-w-7xl mx-auto px-8 pb-32">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {CATEGORIES.map((cat, idx) => (
-                        <motion.div
-                            key={cat.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            whileHover={{ y: -4 }}
-                            onClick={() => router.push(`/library/prompt/${cat.id}`)}
-                            className="group relative bg-white/60 backdrop-blur-md border border-stone-200/60 rounded-2xl overflow-hidden cursor-pointer hover:bg-white hover:shadow-xl hover:shadow-orange-900/5 hover:border-orange-200/50 transition-all duration-300"
-                        >
-                            {/* Blueprint ID Marker */}
-                            <div className="absolute top-0 right-0 px-3 py-1 bg-stone-100 rounded-bl-xl border-l border-b border-stone-200/40">
-                                <span className="text-[9px] font-mono text-stone-400 font-bold uppercase tracking-tighter">IDX_0{idx + 1}</span>
-                            </div>
-
-                            <div className="p-8 h-full flex flex-col">
-                                <div className="flex items-start justify-between mb-8">
-                                    <div className={`p-4 rounded-2xl ${cat.bg} ${cat.color} group-hover:scale-110 transition-transform duration-500`}>
-                                        <cat.icon size={28} strokeWidth={1.5} />
-                                    </div>
-                                    <div className="text-right">
-                                        <div className={`text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-1 ${cat.status === 'Operational' ? 'text-emerald-500' : 'text-stone-400'}`}>
-                                            ● {cat.status}
-                                        </div>
-                                        <span className="text-[8px] font-mono text-stone-300 uppercase">Latency: 24ms</span>
-                                    </div>
+                    {categories.map((cat, idx) => {
+                        const Icon = getIconComponent(cat.icon);
+                        return (
+                            <motion.div
+                                key={cat.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                whileHover={{ y: -4 }}
+                                onClick={() => router.push(`/library/prompt/${cat.id}`)}
+                                className="group relative bg-white/60 backdrop-blur-md border border-stone-200/60 rounded-2xl overflow-hidden cursor-pointer hover:bg-white hover:shadow-xl hover:shadow-orange-900/5 hover:border-orange-200/50 transition-all duration-300"
+                            >
+                                {/* Blueprint ID Marker */}
+                                <div className="absolute top-0 right-0 px-3 py-1 bg-stone-100 rounded-bl-xl border-l border-b border-stone-200/40">
+                                    <span className="text-[9px] font-mono text-stone-400 font-bold uppercase tracking-tighter">IDX_0{idx + 1}</span>
                                 </div>
 
-                                <div className="space-y-4 flex-1">
-                                    <div>
-                                        <h2 className="text-2xl font-serif font-bold text-stone-800 group-hover:text-orange-600 transition-colors">
-                                            {cat.title}
-                                        </h2>
-                                        <p className="text-[10px] font-mono text-stone-400 uppercase tracking-widest mt-1">
-                                            {cat.enTitle}
+                                <div className="p-8 h-full flex flex-col">
+                                    <div className="flex items-start justify-between mb-8">
+                                        <div className={`p-4 rounded-2xl ${cat.bg || 'bg-stone-50'} ${cat.color} group-hover:scale-110 transition-transform duration-500`}>
+                                            <Icon size={28} strokeWidth={1.5} />
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-1 ${cat.status === 'Operational' ? 'text-emerald-500' : 'text-stone-400'}`}>
+                                                ● {cat.status}
+                                            </div>
+                                            <span className="text-[8px] font-mono text-stone-300 uppercase">{promptCounts[cat.id] || 0} ITEMS</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 flex-1">
+                                        <div>
+                                            <h2 className="text-2xl font-serif font-bold text-stone-800 group-hover:text-orange-600 transition-colors">
+                                                {cat.title}
+                                            </h2>
+                                            <p className="text-[10px] font-mono text-stone-400 uppercase tracking-widest mt-1">
+                                                {cat.en_title}
+                                            </p>
+                                        </div>
+
+                                        <div className="h-px w-full bg-stone-100" />
+
+                                        <p className="text-sm text-stone-500 leading-relaxed font-medium">
+                                            {cat.description}
                                         </p>
                                     </div>
 
-                                    <div className="h-px w-full bg-stone-100" />
-
-                                    <p className="text-sm text-stone-500 leading-relaxed font-medium">
-                                        {cat.description}
-                                    </p>
-                                </div>
-
-                                <div className="mt-8 flex items-center justify-between">
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3].map(i => (
-                                            <div key={i} className="w-6 h-1 rounded-full bg-stone-100 group-hover:bg-orange-100 transition-colors" />
-                                        ))}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs font-mono font-bold text-stone-300 group-hover:text-orange-500 transition-colors">
-                                        ENTER_MODULE
-                                        <div className="w-5 h-5 rounded-full border border-stone-200 flex items-center justify-center group-hover:border-orange-500 group-hover:translate-x-1 transition-all">
-                                            <ArrowLeft size={10} className="rotate-180" />
+                                    <div className="mt-8 flex items-center justify-between">
+                                        <div className="flex gap-1">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="w-6 h-1 rounded-full bg-stone-100 group-hover:bg-orange-100 transition-colors" />
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs font-mono font-bold text-stone-300 group-hover:text-orange-500 transition-colors">
+                                            ENTER_MODULE
+                                            <div className="w-5 h-5 rounded-full border border-stone-200 flex items-center justify-center group-hover:border-orange-500 group-hover:translate-x-1 transition-all">
+                                                <ArrowLeft size={10} className="rotate-180" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    ))}
+                            </motion.div>
+                        );
+                    })}
                 </div>
             </main>
 

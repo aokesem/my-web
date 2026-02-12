@@ -16,7 +16,10 @@ import {
     ListTodo,
     Cpu,
     Wrench,
-    Activity, // [新增]
+    Activity,
+    SearchCode, // [New] for Prompts
+    Layers, // [New] for MindMap
+    Sprout, // [New] for Garden
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -38,6 +41,13 @@ const ROOM_NAV_ITEMS = [
     { title: "时间线", href: "/admin/room/timeline", icon: GitCommitHorizontal },
     { title: "工具箱", href: "/admin/room/tools", icon: Wrench },
     { title: "习惯配置", href: "/admin/room/habits", icon: ListTodo },
+];
+
+// [New] Library Space Items
+const LIBRARY_NAV_ITEMS = [
+    { title: "提示词仓库", href: "/admin/library/prompts", icon: SearchCode },
+    // { title: "思维导图", href: "/admin/library/mindmap", icon: Layers }, // Future
+    // { title: "数字花园", href: "/admin/library/garden", icon: Sprout }, // Future
 ];
 
 export default function AdminLayout({
@@ -139,6 +149,26 @@ export default function AdminLayout({
 
                     {/* [新增] Room 管理项 */}
                     {ROOM_NAV_ITEMS.map((item) => (
+                        <Link key={item.href} href={item.href}>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                            >
+                                <item.icon size={18} />
+                                {item.title}
+                            </Button>
+                        </Link>
+                    ))}
+                    {/* [New] Divider */}
+                    <div className="my-4 mx-2 border-t border-white/10" />
+
+                    {/* [New] Library Space Header */}
+                    <div className="px-4 mb-2 text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
+                        Library Space
+                    </div>
+
+                    {/* [New] Library Items */}
+                    {LIBRARY_NAV_ITEMS.map((item) => (
                         <Link key={item.href} href={item.href}>
                             <Button
                                 variant="ghost"

@@ -6,87 +6,157 @@ import {
     ArrowLeft,
     Copy,
     Check,
-    FileText,
-    ExternalLink,
-    Terminal,
-    MessageSquare,
-    SearchCode,
-    Sparkles,
-    Cpu,
-    Archive,
-    ChevronUp,
-    ChevronDown,
     ChevronLeft,
     ChevronRight,
+    Archive,
+    Pencil,
+    X,
+    Save
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { supabase } from '@/lib/supabaseClient';
+import { getIconComponent } from '@/lib/iconMap';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 // === Mock Data (To be replaced by Supabase later) ===
-const MOCK_PROMPTS: Record<string, { title: string, icon: any, color: string, prompts: any[] }> = {
-    search: {
-        title: '信息搜索',
-        icon: SearchCode,
-        color: 'text-blue-500',
-        prompts: [
-            { id: 1, name: '深度学术研究', content: '## Role: 资深学术研究员\n\n### Task: 深度文献综述\n\n请针对 [关键词] 进行多维度的搜索与分析...\n\n### Constraints:\n- 引用必须包含 DOI\n- 区分核心期刊与普通期刊' },
-            { id: 2, name: '多源结构化提取', content: '## Task: 结构化信息提取\n\n从以下原始文本中提取 [实体1], [实体2] 并以 JSON 格式输出...' }
-        ]
-    },
-    chat: {
-        title: '对话助手',
-        icon: MessageSquare,
-        color: 'text-emerald-500',
-        prompts: [
-            { id: 1, name: '多重格律对话器', content: '## Setting: 维多利亚时代学者\n\n请以极度礼貌且充满装饰性辞藻的方式回答我的问题...' }
-        ]
-    },
-    coding: {
-        title: '编程助手',
-        icon: Terminal,
-        color: 'text-orange-500',
-        prompts: [
-            { id: 1, name: 'TypeScript 架构重构', content: '## Role: 资深架构师\n\n### Task: 重构提供的 TS 代码\n\n**要求：**\n1. 遵守 SOLID 原则\n2. 减少冗余依赖\n3. 增加单元测试用例' },
-            { id: 2, name: 'Git Commit 规范生成器', content: '根据以下代码变动，生成符合 Conventional Commits 规范的提交信息...' }
-        ]
-    },
-    creative: {
-        title: '创意写作',
-        icon: Sparkles,
-        color: 'text-purple-500',
-        prompts: [
-            { id: 1, name: '赛博朋克世界观构建', content: '请描述一个由大型企业统治的、充斥着霓虹灯与雨滴的贫民窟场景...' }
-        ]
-    },
-    productivity: {
-        title: '效率工具',
-        icon: Cpu,
-        color: 'text-slate-500',
-        prompts: []
-    },
-    archive: {
-        title: '历史存档',
-        icon: Archive,
-        color: 'text-stone-400',
-        prompts: []
-    }
-};
+
 
 
 export default function CategoryDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const categoryId = params.category as string;
-    const categoryData = MOCK_PROMPTS[categoryId] || MOCK_PROMPTS['archive'];
+
+    const [category, setCategory] = useState<any>(null);
+    const [prompts, setPrompts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [copiedId, setCopiedId] = useState<number | null>(null);
     const [bookmarkOpen, setBookmarkOpen] = useState(true);
+
+    // Edit Mode State
+    const [user, setUser] = useState<any>(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editForm, setEditForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
+
+    // Check Auth
+    React.useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user || null);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user || null);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // Fetch Data
+    React.useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // 1. Fetch Category Info
+                const { data: catData, error: catError } = await supabase
+                    .from('prompt_categories')
+                    .select('*')
+                    .eq('id', categoryId)
+                    .single();
+
+                if (catError) {
+                    console.error('Category not found:', catError);
+                    // Handle 404 or redirect? For now just log
+                    setLoading(false);
+                    return;
+                }
+                setCategory(catData);
+
+                // 2. Fetch Prompts
+                const { data: promptList, error: promptError } = await supabase
+                    .from('prompts')
+                    .select('*')
+                    .eq('category_id', categoryId)
+                    .order('sort_order', { ascending: true });
+
+                if (promptError) throw promptError;
+                setPrompts(promptList || []);
+
+            } catch (error) {
+                console.error('Error loading detail:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (categoryId) {
+            fetchData();
+        }
+    }, [categoryId]);
 
     const handleCopy = (id: number, content: string) => {
         navigator.clipboard.writeText(content);
         setCopiedId(id);
         setTimeout(() => setCopiedId(null), 2000);
     };
+
+    const startEditing = (prompt: any) => {
+        setEditingId(prompt.id);
+        setEditForm({ name: prompt.name, content: prompt.content });
+    };
+
+    const cancelEditing = () => {
+        setEditingId(null);
+        setEditForm({ name: '', content: '' });
+    };
+
+    const saveEditing = async (id: number) => {
+        try {
+            const { error } = await supabase
+                .from('prompts')
+                .update({
+                    name: editForm.name,
+                    content: editForm.content,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            // Update local state
+            setPrompts(prev => prev.map(p => p.id === id ? { ...p, ...editForm } : p));
+            toast.success('Prompt updated successfully');
+            setEditingId(null);
+        } catch (error) {
+            console.error('Update failed:', error);
+            toast.error('Failed to update prompt');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#fdfbf7] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 animate-pulse">
+                    <div className="w-16 h-16 bg-stone-200 rounded-2xl rotate-3" />
+                    <div className="h-4 w-40 bg-stone-200 rounded" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!category) {
+        return (
+            <div className="min-h-screen bg-[#fdfbf7] flex items-col justify-center pt-40">
+                <div className="text-stone-400 font-mono">Category Not Found</div>
+            </div>
+        );
+    }
+
+    const Icon = getIconComponent(category.icon);
 
     return (
         <div className="relative min-h-screen bg-[#fdfbf7] text-slate-800 selection:bg-orange-100 font-sans">
@@ -99,7 +169,7 @@ export default function CategoryDetailPage() {
             />
 
             {/* --- Left Bookmark Nav --- */}
-            {categoryData.prompts.length > 0 && (
+            {prompts.length > 0 && (
                 <nav className="fixed left-0 top-24 z-30 hidden lg:flex items-stretch">
                     {/* Orange accent edge - self-stretch to match content height */}
                     <div className="w-1.5 bg-linear-to-b from-orange-400 via-orange-500 to-amber-500 rounded-r-sm shrink-0" />
@@ -114,13 +184,13 @@ export default function CategoryDetailPage() {
                         <div className="py-4 px-5 pr-8 bg-white/75 backdrop-blur-md border-y border-r border-stone-200/50 rounded-r-2xl shadow-[4px_4px_20px_-6px_rgba(0,0,0,0.08)] min-w-[210px]">
                             {/* Category label */}
                             <div className="flex items-center gap-2 text-[15px] font-bold text-orange-500 mb-3">
-                                <categoryData.icon size={17} />
-                                <span className="tracking-wide whitespace-nowrap">{categoryData.title}</span>
+                                <Icon size={17} />
+                                <span className="tracking-wide whitespace-nowrap">{category.title}</span>
                             </div>
 
                             {/* Prompt links */}
                             <div className="border-t border-stone-100/60 pt-2 space-y-0.5">
-                                {categoryData.prompts.map((prompt, idx) => (
+                                {prompts.map((prompt, idx) => (
                                     <a
                                         key={prompt.id}
                                         href={`#prompt-${prompt.id}`}
@@ -158,11 +228,11 @@ export default function CategoryDetailPage() {
                 </Link>
 
                 <div className="flex items-center gap-6">
-                    <div className={`p-5 rounded-3xl bg-white shadow-sm border border-stone-100 ${categoryData.color}`}>
-                        <categoryData.icon size={32} />
+                    <div className={`p-5 rounded-3xl bg-white shadow-sm border border-stone-100 ${category.color}`}>
+                        <Icon size={32} />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-serif font-bold text-stone-800">{categoryData.title}</h1>
+                        <h1 className="text-4xl font-serif font-bold text-stone-800">{category.title}</h1>
                         <p className="text-sm font-mono text-stone-400 mt-1 uppercase tracking-widest">Module // {categoryId}_protocol</p>
                     </div>
                 </div>
@@ -171,8 +241,8 @@ export default function CategoryDetailPage() {
             {/* Content List */}
             <main className="relative z-10 max-w-5xl mx-auto px-8 pb-32">
                 <div className="grid grid-cols-1 gap-12">
-                    {categoryData.prompts.length > 0 ? (
-                        categoryData.prompts.map((prompt) => (
+                    {prompts.length > 0 ? (
+                        prompts.map((prompt) => (
                             <motion.section
                                 key={prompt.id}
                                 id={`prompt-${prompt.id}`}
@@ -181,52 +251,96 @@ export default function CategoryDetailPage() {
                                 className="group relative scroll-mt-8"
                             >
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-xl font-serif font-bold text-stone-700 flex items-center gap-3">
-                                        <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
-                                        {prompt.name}
-                                    </h2>
-                                    <button
-                                        onClick={() => handleCopy(prompt.id, prompt.content)}
-                                        className={`
-                                            flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all
-                                            ${copiedId === prompt.id
-                                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200'
-                                                : 'bg-white text-stone-400 border border-stone-200 hover:border-orange-300 hover:text-orange-500 shadow-sm'}
-                                        `}
-                                    >
-                                        {copiedId === prompt.id ? <Check size={12} /> : <Copy size={12} />}
-                                        {copiedId === prompt.id ? 'Copied' : 'Copy_Prompt'}
-                                    </button>
+                                    {editingId === prompt.id ? (
+                                        <div className="flex-1 mr-4">
+                                            <Input
+                                                value={editForm.name}
+                                                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                                className="font-serif font-bold text-lg bg-white/80"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <h2 className="text-xl font-serif font-bold text-stone-700 flex items-center gap-3">
+                                            <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
+                                            {prompt.name}
+                                        </h2>
+                                    )}
+
+                                    <div className="flex items-center gap-2">
+                                        {user && editingId !== prompt.id && (
+                                            <button
+                                                onClick={() => startEditing(prompt)}
+                                                className="p-1.5 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                                                title="Edit Prompt"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                        )}
+                                        {/* Copy Button (only show if not editing) */}
+                                        {editingId !== prompt.id && (
+                                            <button
+                                                onClick={() => handleCopy(prompt.id, prompt.content)}
+                                                className={`
+                                                    flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all
+                                                    ${copiedId === prompt.id
+                                                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200'
+                                                        : 'bg-white text-stone-400 border border-stone-200 hover:border-orange-300 hover:text-orange-500 shadow-sm'}
+                                                `}
+                                            >
+                                                {copiedId === prompt.id ? <Check size={12} /> : <Copy size={12} />}
+                                                {copiedId === prompt.id ? 'Copied' : 'Copy_Prompt'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="relative rounded-2xl bg-white/70 backdrop-blur-sm border border-stone-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] transition-all overflow-hidden">
-                                    {/* Decoration Lines */}
-                                    <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
-
-                                    <div className="p-8 md:pl-16 prose prose-stone max-w-none">
-                                        <div className="font-mono text-sm text-stone-600 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-200">
-                                            <ReactMarkdown
-                                                components={{
-                                                    h1: ({ node, ...props }) => <h1 className="text-2xl font-serif font-bold mt-6 mb-4 text-stone-800" {...props} />,
-                                                    h2: ({ node, ...props }) => <h2 className="text-xl font-serif font-bold mt-5 mb-3 text-stone-700" {...props} />,
-                                                    h3: ({ node, ...props }) => <h3 className="text-lg font-serif font-bold mt-4 mb-2 text-stone-600" {...props} />,
-                                                    code: ({ node, ...props }) => <code className="bg-stone-50 text-orange-600 px-1.5 py-0.5 rounded border border-stone-200" {...props} />,
-                                                    strong: ({ node, ...props }) => <strong className="text-stone-800 font-black" {...props} />,
-                                                    ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-4 space-y-2" {...props} />,
-                                                    li: ({ node, ...props }) => <li className="text-stone-500" {...props} />,
-                                                }}
-                                            >
-                                                {prompt.content}
-                                            </ReactMarkdown>
+                                {editingId === prompt.id ? (
+                                    <div className="relative rounded-2xl bg-white border border-orange-200 shadow-lg p-6">
+                                        <Textarea
+                                            value={editForm.content}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
+                                            className="min-h-[400px] font-mono text-sm leading-relaxed bg-stone-50/50 mb-4"
+                                            placeholder="Markdown content..."
+                                        />
+                                        <div className="flex justify-end gap-3">
+                                            <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-stone-500 hover:text-stone-800">
+                                                Cancel
+                                            </Button>
+                                            <Button size="sm" onClick={() => saveEditing(prompt.id)} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
+                                                <Save size={14} /> Save Changes
+                                            </Button>
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="relative rounded-2xl bg-white/70 backdrop-blur-sm border border-stone-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] transition-all overflow-hidden">
+                                        {/* Decoration Lines */}
+                                        <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
 
-                                    {/* Bottom Tech Bar */}
-                                    <div className="px-8 py-3 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center text-[9px] font-mono text-stone-300">
-                                        <span>ENCODING: UTF-8</span>
-                                        <span>STATUS: ACTIVE</span>
+                                        <div className="p-8 md:pl-16 prose prose-stone max-w-none">
+                                            <div className="font-mono text-sm text-stone-600 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-200">
+                                                <ReactMarkdown
+                                                    components={{
+                                                        h1: ({ node, ...props }) => <h1 className="text-2xl font-serif font-bold mt-6 mb-4 text-stone-800" {...props} />,
+                                                        h2: ({ node, ...props }) => <h2 className="text-xl font-serif font-bold mt-5 mb-3 text-stone-700" {...props} />,
+                                                        h3: ({ node, ...props }) => <h3 className="text-lg font-serif font-bold mt-4 mb-2 text-stone-600" {...props} />,
+                                                        code: ({ node, ...props }) => <code className="bg-stone-50 text-orange-600 px-1.5 py-0.5 rounded border border-stone-200" {...props} />,
+                                                        strong: ({ node, ...props }) => <strong className="text-stone-800 font-black" {...props} />,
+                                                        ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-4 space-y-2" {...props} />,
+                                                        li: ({ node, ...props }) => <li className="text-stone-500" {...props} />,
+                                                    }}
+                                                >
+                                                    {prompt.content}
+                                                </ReactMarkdown>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Tech Bar */}
+                                        <div className="px-8 py-3 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center text-[9px] font-mono text-stone-300">
+                                            <span>ENCODING: UTF-8</span>
+                                            <span>STATUS: ACTIVE</span>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </motion.section>
                         ))
                     ) : (
