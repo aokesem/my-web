@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     ArrowLeft,
     Copy,
@@ -13,7 +13,11 @@ import {
     SearchCode,
     Sparkles,
     Cpu,
-    Archive
+    Archive,
+    ChevronUp,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -69,12 +73,14 @@ const MOCK_PROMPTS: Record<string, { title: string, icon: any, color: string, pr
     }
 };
 
+
 export default function CategoryDetailPage() {
     const params = useParams();
     const categoryId = params.category as string;
     const categoryData = MOCK_PROMPTS[categoryId] || MOCK_PROMPTS['archive'];
 
     const [copiedId, setCopiedId] = useState<number | null>(null);
+    const [bookmarkOpen, setBookmarkOpen] = useState(true);
 
     const handleCopy = (id: number, content: string) => {
         navigator.clipboard.writeText(content);
@@ -91,6 +97,55 @@ export default function CategoryDetailPage() {
             <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none"
                 style={{ backgroundImage: `radial-gradient(#4a4a4a 1px, transparent 1px)`, backgroundSize: '32px 32px' }}
             />
+
+            {/* --- Left Bookmark Nav --- */}
+            {categoryData.prompts.length > 0 && (
+                <nav className="fixed left-0 top-24 z-30 hidden lg:flex items-stretch">
+                    {/* Orange accent edge - self-stretch to match content height */}
+                    <div className="w-1.5 bg-linear-to-b from-orange-400 via-orange-500 to-amber-500 rounded-r-sm shrink-0" />
+
+                    {/* Content panel - always in DOM, width animates */}
+                    <motion.div
+                        animate={{ width: bookmarkOpen ? 'auto' : 0, opacity: bookmarkOpen ? 1 : 0 }}
+                        initial={false}
+                        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                        className="overflow-hidden"
+                    >
+                        <div className="py-4 px-5 pr-8 bg-white/75 backdrop-blur-md border-y border-r border-stone-200/50 rounded-r-2xl shadow-[4px_4px_20px_-6px_rgba(0,0,0,0.08)] min-w-[210px]">
+                            {/* Category label */}
+                            <div className="flex items-center gap-2 text-[15px] font-bold text-orange-500 mb-3">
+                                <categoryData.icon size={17} />
+                                <span className="tracking-wide whitespace-nowrap">{categoryData.title}</span>
+                            </div>
+
+                            {/* Prompt links */}
+                            <div className="border-t border-stone-100/60 pt-2 space-y-0.5">
+                                {categoryData.prompts.map((prompt, idx) => (
+                                    <a
+                                        key={prompt.id}
+                                        href={`#prompt-${prompt.id}`}
+                                        className="group/item flex items-center gap-2.5 px-2 py-2 text-[15px] text-stone-500 hover:text-orange-600 rounded-lg transition-all hover:bg-orange-50/50 whitespace-nowrap"
+                                        title={prompt.name}
+                                    >
+                                        <span className="w-6 text-[13px] font-mono text-stone-300 group-hover/item:text-orange-400 transition-colors shrink-0">
+                                            {String(idx + 1).padStart(2, '0')}
+                                        </span>
+                                        <span className="truncate max-w-[170px]">{prompt.name}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Toggle button - always visible, full circle */}
+                    <button
+                        onClick={() => setBookmarkOpen(!bookmarkOpen)}
+                        className="ml-2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-stone-200/50 shadow-md flex items-center justify-center text-stone-400 hover:text-orange-500 hover:border-orange-300 hover:shadow-lg transition-all self-center"
+                    >
+                        {bookmarkOpen ? <ChevronLeft size={22} /> : <ChevronRight size={22} />}
+                    </button>
+                </nav>
+            )}
 
             {/* Header Area */}
             <header className="relative z-10 max-w-5xl mx-auto px-8 pt-16 pb-12">
@@ -120,9 +175,10 @@ export default function CategoryDetailPage() {
                         categoryData.prompts.map((prompt) => (
                             <motion.section
                                 key={prompt.id}
+                                id={`prompt-${prompt.id}`}
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="group relative"
+                                className="group relative scroll-mt-8"
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-xl font-serif font-bold text-stone-700 flex items-center gap-3">
@@ -182,8 +238,8 @@ export default function CategoryDetailPage() {
                 </div>
             </main>
 
-            {/* Floating Navigation Indicator */}
-            <div className="fixed left-8 bottom-8 z-20 pointer-events-none md:block hidden">
+            {/* Floating Navigation Indicator - hidden when sidebar is visible */}
+            <div className="fixed left-8 bottom-8 z-20 pointer-events-none md:block lg:hidden hidden">
                 <div className="h-24 w-px bg-stone-200 ml-2" />
                 <div className="text-[10px] font-mono text-stone-300 rotate-90 origin-left mt-4 uppercase tracking-[0.3em]">
                     Reading_Flow // Category: {categoryId}

@@ -303,7 +303,7 @@ export default function ArticlePage() {
                     {/* Article body with left accent line */}
                     <div className="relative pl-6 border-l-2 border-teal-100/60">
                         <div className="prose prose-stone max-w-none">
-                            <div className="text-[15px] text-stone-600 leading-[1.85] font-[400]">
+                            <div className="text-[15px] text-stone-600 leading-[1.85] font-normal">
                                 <ReactMarkdown
                                     components={{
                                         h1: ({ node, ...props }) => <h1 className="text-2xl font-serif font-bold mt-10 mb-4 text-stone-800 first:mt-0" {...props} />,
