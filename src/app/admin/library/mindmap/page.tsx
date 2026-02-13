@@ -79,7 +79,7 @@ export default function MindMapAdminPage() {
             .order("sort_order", { ascending: true });
 
         if (error) {
-            toast.error("Failed to load mind maps");
+            toast.error("加载思维导图失败");
             console.error(error);
         } else {
             setMaps(data || []);
@@ -100,9 +100,9 @@ export default function MindMapAdminPage() {
         const { error } = await supabase.from("mind_maps").insert([formData]);
 
         if (error) {
-            toast.error("Failed to create mind map: " + error.message);
+            toast.error("创建思维导图失败: " + error.message);
         } else {
-            toast.success("Mind map created successfully");
+            toast.success("思维导图创建成功");
             setIsAddOpen(false);
             fetchMaps();
             setFormData({
@@ -121,7 +121,15 @@ export default function MindMapAdminPage() {
 
     const handleEditClick = (map: MindMap) => {
         setCurrentMap(map);
-        setFormData(map);
+        setFormData({
+            ...map,
+            en_title: map.en_title || "",
+            description: map.description || "",
+            icon: map.icon || "Compass",
+            color: map.color || "text-sky-500",
+            bg_color: map.bg_color || "bg-sky-50/50",
+            status: map.status || "Draft",
+        });
         setIsEditOpen(true);
     };
 
@@ -143,9 +151,9 @@ export default function MindMapAdminPage() {
             .eq("id", currentMap.id);
 
         if (error) {
-            toast.error("Failed to update mind map");
+            toast.error("更新思维导图失败");
         } else {
-            toast.success("Mind map updated");
+            toast.success("思维导图已更新");
             setIsEditOpen(false);
             fetchMaps();
         }
@@ -157,9 +165,9 @@ export default function MindMapAdminPage() {
         const { error } = await supabase.from("mind_maps").delete().eq("id", id);
 
         if (error) {
-            toast.error("Failed to delete mind map");
+            toast.error("删除思维导图失败");
         } else {
-            toast.success("Mind map deleted");
+            toast.success("思维导图已删除");
             fetchMaps();
         }
     };
@@ -199,10 +207,10 @@ export default function MindMapAdminPage() {
                 <Table>
                     <TableHeader className="bg-zinc-900/50">
                         <TableRow className="border-zinc-800 hover:bg-transparent">
-                            <TableHead className="text-zinc-400">ID / Info</TableHead>
-                            <TableHead className="text-zinc-400">Appearance</TableHead>
-                            <TableHead className="text-zinc-400">Status</TableHead>
-                            <TableHead className="text-zinc-400 text-right">Actions</TableHead>
+                            <TableHead className="text-zinc-400">ID / 信息</TableHead>
+                            <TableHead className="text-zinc-400">外观配置</TableHead>
+                            <TableHead className="text-zinc-400">状态</TableHead>
+                            <TableHead className="text-zinc-400 text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -210,14 +218,14 @@ export default function MindMapAdminPage() {
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center text-zinc-500">
                                     <div className="flex justify-center items-center gap-2">
-                                        <Loader2 className="animate-spin" size={16} /> Loading...
+                                        <Loader2 className="animate-spin" size={16} /> 加载中...
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : filteredMaps.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-32 text-center text-zinc-500">
-                                    No mind maps found. Create one to get started.
+                                    未找到思维导图。点击“新建”开始。
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -269,40 +277,40 @@ export default function MindMapAdminPage() {
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-white sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Create Mind Map</DialogTitle>
+                        <DialogTitle>新建思维导图</DialogTitle>
                         <DialogDescription className="text-zinc-400">
-                            Create a new canvas for thinking.
+                            创建一个新的逻辑思考画布。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="id" className="text-right text-zinc-400">ID (Slug)</Label>
-                            <Input id="id" value={formData.id} onChange={e => setFormData({ ...formData, id: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" placeholder="e.g. travel-guide" />
+                            <Label htmlFor="id" className="text-right text-zinc-400">ID (别名)</Label>
+                            <Input id="id" value={formData.id} onChange={e => setFormData({ ...formData, id: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" placeholder="例如：travel-guide" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="title" className="text-right text-zinc-400">Title</Label>
+                            <Label htmlFor="title" className="text-right text-zinc-400">标题</Label>
                             <Input id="title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="en_title" className="text-right text-zinc-400">EN Title</Label>
+                            <Label htmlFor="en_title" className="text-right text-zinc-400">英文标题</Label>
                             <Input id="en_title" value={formData.en_title} onChange={e => setFormData({ ...formData, en_title: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="icon" className="text-right text-zinc-400">Icon Name</Label>
-                            <Input id="icon" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" placeholder="Lucide icon name" />
+                            <Label htmlFor="icon" className="text-right text-zinc-400">图标名称</Label>
+                            <Input id="icon" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" placeholder="Lucide 图标名称" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="color" className="text-right text-zinc-400">Color Class</Label>
+                            <Label htmlFor="color" className="text-right text-zinc-400">颜色类名</Label>
                             <Input id="color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" placeholder="text-sky-500" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="desc" className="text-right text-zinc-400">Description</Label>
+                            <Label htmlFor="desc" className="text-right text-zinc-400">描述</Label>
                             <Textarea id="desc" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" rows={3} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsAddOpen(false)} className="text-zinc-400 hover:text-white">Cancel</Button>
-                        <Button onClick={handleCreate} className="bg-sky-600 hover:bg-sky-700 text-white">Create</Button>
+                        <Button variant="ghost" onClick={() => setIsAddOpen(false)} className="text-zinc-400 hover:text-white">取消</Button>
+                        <Button onClick={handleCreate} className="bg-sky-600 hover:bg-sky-700 text-white">创建</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -311,7 +319,7 @@ export default function MindMapAdminPage() {
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-white sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Edit Mind Map</DialogTitle>
+                        <DialogTitle>编辑思维导图</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
@@ -319,33 +327,33 @@ export default function MindMapAdminPage() {
                             <div className="col-span-3 text-zinc-300 font-mono text-sm">{currentMap?.id}</div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit_title" className="text-right text-zinc-400">Title</Label>
+                            <Label htmlFor="edit_title" className="text-right text-zinc-400">标题</Label>
                             <Input id="edit_title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit_en" className="text-right text-zinc-400">EN Title</Label>
+                            <Label htmlFor="edit_en" className="text-right text-zinc-400">英文标题</Label>
                             <Input id="edit_en" value={formData.en_title} onChange={e => setFormData({ ...formData, en_title: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit_icon" className="text-right text-zinc-400">Icon</Label>
+                            <Label htmlFor="edit_icon" className="text-right text-zinc-400">图标</Label>
                             <Input id="edit_icon" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit_color" className="text-right text-zinc-400">Color</Label>
+                            <Label htmlFor="edit_color" className="text-right text-zinc-400">颜色</Label>
                             <Input id="edit_color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit_status" className="text-right text-zinc-400">Status</Label>
+                            <Label htmlFor="edit_status" className="text-right text-zinc-400">状态</Label>
                             <Input id="edit_status" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit_sort" className="text-right text-zinc-400">Sort</Label>
+                            <Label htmlFor="edit_sort" className="text-right text-zinc-400">排序</Label>
                             <Input id="edit_sort" type="number" value={formData.sort_order || 0} onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })} className="col-span-3 bg-zinc-950 border-zinc-800" />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="text-zinc-400 hover:text-white">Cancel</Button>
-                        <Button onClick={handleUpdate} className="bg-sky-600 hover:bg-sky-700 text-white">Save Changes</Button>
+                        <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="text-zinc-400 hover:text-white">取消</Button>
+                        <Button onClick={handleUpdate} className="bg-sky-600 hover:bg-sky-700 text-white">保存修改</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

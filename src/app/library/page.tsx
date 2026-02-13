@@ -14,7 +14,8 @@ import {
     BrainCircuit,
     Sparkles,
     Triangle,
-    Lightbulb
+    Lightbulb,
+    Lock
 } from 'lucide-react';
 import {
     IoLibrary
@@ -120,14 +121,14 @@ export default function LibraryPage() {
             </header>
 
             {/* --- Navigation Tabs (Center Top) --- */}
-            <div className="relative z-20 flex justify-center mb-4 shrink-0">
+            <div className="relative z-20 flex flex-col items-center gap-4 mb-4 shrink-0">
                 <div className="flex items-center gap-2 p-1.5 bg-stone-200/50 backdrop-blur-md rounded-full border border-stone-200 shadow-inner">
                     {MODULES.map((mod, idx) => (
                         <button
                             key={mod.id}
                             onClick={() => handleTabClick(idx)}
                             className={`
-                                relative px-4 py-1.5 rounded-full text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300
+                                relative px-5 py-2 rounded-full text-sm font-bold font-mono uppercase tracking-wider transition-all duration-300
                                 ${idx === activeIndex
                                     ? 'bg-white text-stone-800 shadow-sm'
                                     : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'}
@@ -140,6 +141,18 @@ export default function LibraryPage() {
                         </button>
                     ))}
                 </div>
+
+                {/* [New] 随附管理入口 */}
+                <Link
+                    href="/admin/library/prompts"
+                    className="group/admin flex items-center gap-2.5 opacity-30 hover:opacity-100 transition-all duration-300 pointer-events-auto -mt-2 px-3 py-1.5 rounded-lg"
+                >
+                    <div className="w-1.5 h-4 bg-stone-300 group-hover/admin:bg-orange-400 transition-colors" />
+                    <span className="text-[13px] font-mono text-stone-500 uppercase tracking-[0.2em] font-bold">
+                        Admin_Root
+                    </span>
+                    <Lock size={12} className="text-stone-400 group-hover/admin:text-orange-500 transition-colors" />
+                </Link>
             </div>
 
             {/* --- Main Content: Carousel --- */}

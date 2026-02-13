@@ -11,7 +11,12 @@ import {
     Coffee,
     Activity,
     Box,
-    ChevronRight
+    ChevronRight,
+    Plus,
+    Pencil,
+    Trash2,
+    Save,
+    X
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -41,6 +46,15 @@ export default function MindMapMatrixPage() {
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
     const [newMapData, setNewMapData] = React.useState({ title: '', id: '', description: '' });
     const [isCreating, setIsCreating] = React.useState(false);
+
+    const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
+    const [mapToDelete, setMapToDelete] = React.useState<any>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
+    const [isEditOpen, setIsEditOpen] = React.useState(false);
+    const [mapToEdit, setMapToEdit] = React.useState<any>(null);
+    const [editMapData, setEditMapData] = React.useState({ title: '', en_title: '', description: '', icon: '', status: '' });
+    const [isUpdating, setIsUpdating] = React.useState(false);
 
     const fetchMindMaps = React.useCallback(async () => {
         try {
@@ -107,6 +121,68 @@ export default function MindMapMatrixPage() {
         }
     };
 
+    const confirmDelete = async () => {
+        if (!mapToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase
+                .from('mind_maps')
+                .delete()
+                .eq('id', mapToDelete.id);
+
+            if (error) throw error;
+
+            toast.success("Mind Map deleted.");
+            setMindMaps(prev => prev.filter(m => m.id !== mapToDelete.id));
+            setIsDeleteOpen(false);
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Failed to delete.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleEditOpen = (map: any) => {
+        setMapToEdit(map);
+        setEditMapData({
+            title: map.title || '',
+            en_title: map.en_title || '',
+            description: map.description || '',
+            icon: map.icon || 'Zap',
+            status: map.status || 'Draft'
+        });
+        setIsEditOpen(true);
+    };
+
+    const confirmEdit = async () => {
+        if (!mapToEdit) return;
+        setIsUpdating(true);
+        try {
+            const { error } = await supabase
+                .from('mind_maps')
+                .update({
+                    title: editMapData.title,
+                    en_title: editMapData.en_title,
+                    description: editMapData.description,
+                    icon: editMapData.icon,
+                    status: editMapData.status,
+                })
+                .eq('id', mapToEdit.id);
+
+            if (error) throw error;
+            toast.success("Mind Map updated.");
+            setIsEditOpen(false);
+            fetchMindMaps();
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Failed to update.");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     return (
         <div className="relative min-h-screen bg-[#fdfbf7] text-slate-800 font-sans selection:bg-orange-100 overflow-x-hidden">
             {/* --- Blueprint Background --- */}
@@ -144,13 +220,15 @@ export default function MindMapMatrixPage() {
                 </div>
 
                 <div className="flex flex-col items-end gap-3">
-                    <button
-                        onClick={() => setIsCreateOpen(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-stone-800 text-white rounded-xl shadow-lg hover:bg-sky-600 hover:scale-105 transition-all group"
-                    >
-                        <Zap size={16} className="text-sky-400 group-hover:text-white transition-colors" />
-                        <span className="text-xs font-serif font-bold tracking-wider">NEW_CANVAS</span>
-                    </button>
+                    {user && (
+                        <button
+                            onClick={() => setIsCreateOpen(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-stone-800 text-white rounded-xl shadow-lg hover:bg-sky-600 hover:scale-105 transition-all group"
+                        >
+                            <Plus size={16} className="text-sky-400 group-hover:text-white transition-colors" />
+                            <span className="text-xs font-serif font-bold tracking-wider">NEW_CANVAS</span>
+                        </button>
+                    )}
                     <div className="px-4 py-2 bg-stone-100 rounded-lg border border-stone-200/60">
                         <span className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-widest flex items-center gap-2">
                             <Box size={12} /> Active_Canvases: {mindMaps.length}
@@ -185,9 +263,36 @@ export default function MindMapMatrixPage() {
                                     onClick={() => router.push(`/library/mindmap/${map.id}`)}
                                     className="group relative bg-white border border-stone-200/80 rounded-3xl p-10 cursor-pointer overflow-hidden hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] hover:border-sky-200 transition-all duration-500"
                                 >
-                                    {/* Blueprint ID */}
-                                    <div className="absolute top-8 right-10 text-[10px] font-mono text-stone-200 font-bold tracking-widest uppercase">
-                                        MAP_UNIT_0{idx + 1}
+                                    {/* Blueprint ID & Actions */}
+                                    <div className="absolute top-8 right-10 flex flex-col items-end gap-2 z-20">
+                                        <div className="text-[10px] font-mono text-stone-200 font-bold tracking-widest uppercase">
+                                            MAP_UNIT_0{idx + 1}
+                                        </div>
+                                        {user && (
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditOpen(map);
+                                                    }}
+                                                    className="p-2 rounded-xl text-stone-300 hover:text-sky-500 hover:bg-sky-50 transition-all duration-300 pointer-events-auto"
+                                                    title="Edit Map Info"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setMapToDelete(map);
+                                                        setIsDeleteOpen(true);
+                                                    }}
+                                                    className="p-2 rounded-xl text-stone-300 hover:text-red-500 hover:bg-red-50 transition-all duration-300 pointer-events-auto"
+                                                    title="Delete Map"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Node-like background decoration */}
@@ -315,6 +420,103 @@ export default function MindMapMatrixPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent className="bg-[#fdfbf7] border-stone-200 sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-serif text-2xl text-stone-800">编辑导图信息</DialogTitle>
+                        <DialogDescription className="font-mono text-xs text-stone-400 uppercase tracking-wider">
+                            正在修改 [ {mapToEdit?.id} ] 的外观配置
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">中文标题</Label>
+                                <Input
+                                    value={editMapData.title}
+                                    onChange={e => setEditMapData({ ...editMapData, title: e.target.value })}
+                                    className="bg-white border-stone-200 focus:border-sky-500 font-serif"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">英文标题</Label>
+                                <Input
+                                    value={editMapData.en_title}
+                                    onChange={e => setEditMapData({ ...editMapData, en_title: e.target.value })}
+                                    className="bg-white border-stone-200 focus:border-sky-500 font-mono text-xs"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">描述信息</Label>
+                            <Input
+                                value={editMapData.description}
+                                onChange={e => setEditMapData({ ...editMapData, description: e.target.value })}
+                                className="bg-white border-stone-200 focus:border-sky-500"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">图标名 (Lucide)</Label>
+                                <Input
+                                    value={editMapData.icon}
+                                    onChange={e => setEditMapData({ ...editMapData, icon: e.target.value })}
+                                    className="bg-white border-stone-200 focus:border-sky-500 font-mono text-xs"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">发布状态</Label>
+                                <select
+                                    value={editMapData.status}
+                                    onChange={e => setEditMapData({ ...editMapData, status: e.target.value })}
+                                    className="w-full h-10 px-3 rounded-md border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                                >
+                                    <option value="Draft">Draft</option>
+                                    <option value="Operational">Operational</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsEditOpen(false)} disabled={isUpdating}>取消</Button>
+                        <Button onClick={confirmEdit} disabled={isUpdating} className="bg-stone-800 hover:bg-sky-600 text-white">
+                            {isUpdating ? 'Saving...' : '保存更改'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="bg-white border-stone-200 sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-serif text-2xl text-stone-800">确认删除</DialogTitle>
+                        <DialogDescription className="font-mono text-xs text-stone-400 uppercase tracking-wider">
+                            此操作不可逆。确定要销毁逻辑空间 [ {mapToDelete?.title} ] 吗？
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsDeleteOpen(false)}
+                            className="text-stone-500 hover:text-stone-800"
+                            disabled={isDeleting}
+                        >
+                            取消
+                        </Button>
+                        <Button
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                            className="bg-red-500 hover:bg-red-600 text-white transition-colors"
+                        >
+                            {isDeleting ? 'Deleting...' : '确认销毁'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
+
     );
 }

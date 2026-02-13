@@ -92,7 +92,7 @@ export default function PromptsAdminPage() {
             .order("sort_order", { ascending: true });
 
         if (error) {
-            toast.error("Failed to load categories");
+            toast.error("加载分类失败");
             console.error(error);
         } else {
             setCategories(data || []);
@@ -113,7 +113,7 @@ export default function PromptsAdminPage() {
             .order("sort_order", { ascending: true });
 
         if (error) {
-            toast.error("Failed to load prompts");
+            toast.error("加载提示词失败");
             console.error(error);
         } else {
             setPrompts(data || []);
@@ -150,7 +150,7 @@ export default function PromptsAdminPage() {
 
     const handleSaveCategory = async () => {
         if (!categoryForm.title || !categoryForm.icon) {
-            toast.error("Title and Icon are required");
+            toast.error("标题和图标是必填项");
             return;
         }
 
@@ -161,24 +161,24 @@ export default function PromptsAdminPage() {
         const { error } = await promise;
 
         if (error) {
-            toast.error("Operation failed");
+            toast.error("操作失败");
             console.error(error);
         } else {
-            toast.success(editingCategory ? "Category updated" : "Category created");
+            toast.success(editingCategory ? "分类已更新" : "分类已创建");
             setIsCategoryDialogOpen(false);
             fetchCategories();
         }
     };
 
     const handleDeleteCategory = async (id: string) => {
-        if (!confirm("Are you sure? This will delete all prompts in this category.")) return;
+        if (!confirm("确定要删除吗？这将删除该分类下的所有提示词。")) return;
 
         const { error } = await supabase.from("prompt_categories").delete().eq("id", id);
         if (error) {
-            toast.error("Delete failed");
+            toast.error("删除失败");
             console.error(error);
         } else {
-            toast.success("Category deleted");
+            toast.success("分类已删除");
             if (selectedCategory?.id === id) setSelectedCategory(null);
             fetchCategories();
         }
@@ -202,7 +202,7 @@ export default function PromptsAdminPage() {
 
     const handleSavePrompt = async () => {
         if (!promptForm.name || !promptForm.content) {
-            toast.error("Name and Content are required");
+            toast.error("名称和内容是必填项");
             return;
         }
 
@@ -215,22 +215,22 @@ export default function PromptsAdminPage() {
         const { error } = await promise;
 
         if (error) {
-            toast.error("Operation failed");
+            toast.error("操作失败");
             console.error(error);
         } else {
-            toast.success(editingPrompt ? "Prompt updated" : "Prompt created");
+            toast.success(editingPrompt ? "提示词已更新" : "提示词已创建");
             setIsPromptDialogOpen(false);
             if (selectedCategory) fetchPrompts(selectedCategory.id);
         }
     };
 
     const handleDeletePrompt = async (id: number) => {
-        if (!confirm("Are you sure?")) return;
+        if (!confirm("确定要删除吗？")) return;
         const { error } = await supabase.from("prompts").delete().eq("id", id);
         if (error) {
-            toast.error("Delete failed");
+            toast.error("删除失败");
         } else {
-            toast.success("Prompt deleted");
+            toast.success("提示词已删除");
             if (selectedCategory) fetchPrompts(selectedCategory.id);
         }
     };
@@ -249,7 +249,7 @@ export default function PromptsAdminPage() {
                 {/* --- Left Column: Categories List --- */}
                 <Card className="md:col-span-1 bg-zinc-900 border-zinc-800 flex flex-col h-full overflow-hidden">
                     <CardHeader className="py-4 px-4 border-b border-zinc-800 flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-base font-semibold text-zinc-100">Categories</CardTitle>
+                        <CardTitle className="text-base font-semibold text-zinc-100">侧边分类</CardTitle>
                         <Button variant="ghost" size="icon" onClick={handleAddCategory} className="h-8 w-8 hover:bg-zinc-800">
                             <Plus size={16} />
                         </Button>
@@ -285,29 +285,29 @@ export default function PromptsAdminPage() {
                     <CardHeader className="py-4 px-6 border-b border-zinc-800 flex flex-row items-center justify-between space-y-0">
                         <div className="flex items-center gap-4">
                             <CardTitle className="text-lg font-semibold text-zinc-100">
-                                {selectedCategory ? selectedCategory.title : "Select a Category"}
+                                {selectedCategory ? selectedCategory.title : "请选择分类"}
                             </CardTitle>
                             {selectedCategory && (
                                 <Badge variant="secondary" className="text-xs bg-zinc-800 text-zinc-400">
-                                    {prompts.length} Prompts
+                                    {prompts.length} 条提示词
                                 </Badge>
                             )}
                         </div>
                         <Button disabled={!selectedCategory} onClick={handleAddPrompt} className="gap-2 bg-orange-600 hover:bg-orange-700 text-white">
-                            <Plus size={16} /> Add Prompt
+                            <Plus size={16} /> 新增提示词
                         </Button>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-y-auto p-6">
                         {!selectedCategory ? (
                             <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-2">
                                 <SearchCode size={48} className="opacity-20" />
-                                <p className="text-zinc-400">Select a category to manage prompts</p>
+                                <p className="text-zinc-400">选择一个分类以管理提示词</p>
                             </div>
                         ) : loadingPrompts ? (
                             <div className="flex justify-center py-10"><Loader2 className="animate-spin text-zinc-500" /></div>
                         ) : prompts.length === 0 ? (
                             <div className="text-center py-20 text-zinc-500">
-                                <p>No prompts in this category yet.</p>
+                                <p>该分类下暂无提示词。</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-4">
@@ -349,32 +349,32 @@ export default function PromptsAdminPage() {
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
+                        <DialogTitle>{editingCategory ? "编辑分类" : "新建分类"}</DialogTitle>
                         <DialogDescription className="text-zinc-400">
-                            Create sections for grouping prompts.
+                            创建文章/提示词所属的分组。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="c_title">Title (Chinese)</Label>
+                            <Label htmlFor="c_title">显示名称 (中文)</Label>
                             <Input id="c_title" value={categoryForm.title} onChange={e => setCategoryForm({ ...categoryForm, title: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="c_en">English Title</Label>
+                            <Label htmlFor="c_en">英文标识 / 标题</Label>
                             <Input id="c_en" value={categoryForm.en_title} onChange={e => setCategoryForm({ ...categoryForm, en_title: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="c_icon">Icon Name</Label>
+                                <Label htmlFor="c_icon">图标名称 (Lucide)</Label>
                                 <Input id="c_icon" value={categoryForm.icon} onChange={e => setCategoryForm({ ...categoryForm, icon: e.target.value })} className="bg-zinc-950 border-zinc-800" placeholder="SearchCode" />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="c_sort">Sort Order</Label>
+                                <Label htmlFor="c_sort">排序权重</Label>
                                 <Input id="c_sort" type="number" value={categoryForm.sort_order || 0} onChange={e => setCategoryForm({ ...categoryForm, sort_order: parseInt(e.target.value) || 0 })} className="bg-zinc-950 border-zinc-800" />
                             </div>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="c_desc">Description</Label>
+                            <Label htmlFor="c_desc">分类描述</Label>
                             <Textarea id="c_desc" value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -406,33 +406,33 @@ export default function PromptsAdminPage() {
             <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>{editingPrompt ? "Edit Prompt" : "New Prompt"}</DialogTitle>
+                        <DialogTitle>{editingPrompt ? "编辑提示词" : "新建提示词"}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-3 gap-4">
                             <div className="col-span-2 grid gap-2">
-                                <Label htmlFor="p_name">Prompt Name</Label>
+                                <Label htmlFor="p_name">提示词名称</Label>
                                 <Input id="p_name" value={promptForm.name} onChange={e => setPromptForm({ ...promptForm, name: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="p_sort">Sort</Label>
+                                <Label htmlFor="p_sort">排序</Label>
                                 <Input id="p_sort" type="number" value={promptForm.sort_order || 0} onChange={e => setPromptForm({ ...promptForm, sort_order: parseInt(e.target.value) || 0 })} className="bg-zinc-950 border-zinc-800" />
                             </div>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="p_content">Content (Markdown Supported)</Label>
+                            <Label htmlFor="p_content">具体内容 (支持 Markdown)</Label>
                             <Textarea
                                 id="p_content"
                                 value={promptForm.content}
                                 onChange={e => setPromptForm({ ...promptForm, content: e.target.value })}
                                 className="bg-zinc-950 border-zinc-800 font-mono text-sm min-h-[300px]"
-                                placeholder="## Role..."
+                                placeholder="输入模版内容..."
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsPromptDialogOpen(false)} className="border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white">Cancel</Button>
-                        <Button onClick={handleSavePrompt} className="bg-orange-600 hover:bg-orange-700 text-white">Save Prompt</Button>
+                        <Button variant="outline" onClick={() => setIsPromptDialogOpen(false)} className="border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white">取消</Button>
+                        <Button onClick={handleSavePrompt} className="bg-orange-600 hover:bg-orange-700 text-white">确定保存</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

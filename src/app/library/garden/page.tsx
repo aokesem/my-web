@@ -405,17 +405,17 @@ export default function GardenPage() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-[10px] bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 gap-1.5 px-2"
+                            className="h-7 text-[12px] bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 gap-1.5 px-3"
                             onClick={handleAdd}
                         >
-                            <Plus size={12} /> New Note
+                            <Plus size={13} /> New Note
                         </Button>
                     )}
 
                     {!isEditing && (
                         <>
                             <div className="w-px h-4 bg-white/15" />
-                            <span className="text-xs font-mono tracking-wider text-white/50">{currentSpread + 1} / {totalSpreads}</span>
+                            <span className="text-sm font-mono tracking-wider text-white/50">{currentSpread + 1} / {totalSpreads}</span>
                         </>
                     )}
                 </div>
@@ -427,7 +427,7 @@ export default function GardenPage() {
                 {/* --- SIDEBAR --- */}
                 <aside className={`flex-none w-56 bg-[#e4ece7] border-r border-[#ccd8d0] flex flex-col overflow-hidden select-none transition-opacity ${isEditing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                     <div className="px-4 py-3 border-b border-[#ccd8d0]">
-                        <span className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-[#6b8a7a]">目录</span>
+                        <span className="text-[12px] font-mono font-bold uppercase tracking-[0.2em] text-[#6b8a7a]">目录</span>
                     </div>
 
                     <nav className="flex-1 overflow-y-auto py-1 custom-scrollbar">
@@ -437,9 +437,9 @@ export default function GardenPage() {
 
                             return (
                                 <div key={board.id} className="mb-1">
-                                    <div className="px-4 py-2 flex items-center gap-2">
-                                        <Icon size={12} className="text-[#6b8a7a]" />
-                                        <span className="text-[11px] font-bold text-[#4a6b5a] uppercase tracking-wider">{board.title}</span>
+                                    <div className="px-4 py-2 mt-2 flex items-center gap-2">
+                                        <Icon size={14} className="text-[#6b8a7a]" />
+                                        <span className="text-[13px] font-extrabold text-[#4a6b5a] uppercase tracking-wider">{board.title}</span>
                                     </div>
 
                                     {boardArticles.length === 0 ? (
@@ -452,7 +452,7 @@ export default function GardenPage() {
                                                     key={article.id}
                                                     onClick={() => selectArticle(bIdx, aIdx)}
                                                     className={`
-                                                        w-full text-left px-4 pl-8 py-2 text-[12.5px] leading-snug transition-colors group relative
+                                                        w-full text-left px-4 pl-8 py-2 text-[14px] leading-snug transition-colors group relative
                                                         ${isActive
                                                             ? 'bg-[#d0ddd5] text-[#2d4a3a] font-semibold'
                                                             : 'text-[#5a7a6a] hover:bg-[#dae6df] hover:text-[#3a5a4a]'
@@ -554,12 +554,12 @@ export default function GardenPage() {
                                             className="flex items-start justify-between"
                                         >
                                             <div>
-                                                <h1 className="text-xl font-serif font-bold text-stone-800 flex items-center gap-2">
+                                                <h1 className="text-2xl font-serif font-bold text-stone-800 flex items-center gap-3">
                                                     {currentArticleData.title}
-                                                    {currentArticleData.status === 'Draft' && <Badge variant="secondary" className="text-[9px] bg-amber-100 text-amber-700">DRAFT</Badge>}
+                                                    {currentArticleData.status === 'Draft' && <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700">DRAFT</Badge>}
                                                 </h1>
-                                                <div className="flex items-center gap-3 mt-1.5">
-                                                    <span className="text-[10px] font-mono text-stone-400">{currentArticleData.date}</span>
+                                                <div className="flex items-center gap-3 mt-2">
+                                                    <span className="text-[12px] font-mono text-stone-400">{currentArticleData.date}</span>
                                                     <div className="flex gap-1.5">
                                                         {currentArticleData.tags.map(tag => (
                                                             <span key={tag} className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-600 text-[9px] font-mono font-bold tracking-wider border border-teal-100/60">
@@ -614,12 +614,12 @@ export default function GardenPage() {
                                         </div>
                                     </div>
                                     <div className="flex-none flex items-center justify-between px-6 py-2 border-t border-[#d5ddd8] bg-[#eef3f0]/80">
-                                        <button onClick={prevSpread} disabled={currentSpread === 0} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
-                                            <ChevronLeft size={14} /> Prev
+                                        <button onClick={prevSpread} disabled={currentSpread === 0} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
+                                            <ChevronLeft size={16} /> Prev
                                         </button>
                                         <div className="text-[9px] font-mono text-[#8aaa9a] tracking-[0.2em]">GARDEN_SYS // READER</div>
-                                        <button onClick={nextSpread} disabled={currentSpread >= totalSpreads - 1} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
-                                            Next <ChevronRight size={14} />
+                                        <button onClick={nextSpread} disabled={currentSpread >= totalSpreads - 1} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
+                                            Next <ChevronRight size={16} />
                                         </button>
                                     </div>
                                 </>

@@ -127,7 +127,7 @@ export default function GardenAdminPage() {
             console.error("Error fetching categories:", error);
             // Fallback for initial setup if table doesn't exist yet
             if (error.code === '42P01') {
-                toast.error("Table 'garden_categories' not found. Please run setup SQL.");
+                toast.error("未找到 'garden_categories' 表。请运行初始化 SQL。");
             }
         } else {
             setCategories(data || []);
@@ -148,7 +148,7 @@ export default function GardenAdminPage() {
         const { data, error } = await query;
 
         if (error) {
-            toast.error("Load posts failed");
+            toast.error("加载文章失败");
             console.error(error);
         } else {
             setPosts(data || []);
@@ -195,7 +195,7 @@ export default function GardenAdminPage() {
 
     const handleSavePost = async () => {
         if (!postForm.title || !postForm.content) {
-            toast.error("Title and Content are required");
+            toast.error("标题和内容为必填项");
             return;
         }
 
@@ -220,20 +220,20 @@ export default function GardenAdminPage() {
         const { error } = await promise;
 
         if (error) {
-            toast.error("Save failed: " + error.message);
+            toast.error("保存失败: " + error.message);
         } else {
-            toast.success(editingPost ? "Post updated" : "Post created");
+            toast.success(editingPost ? "文章已更新" : "文章已创建");
             setIsPostDialogOpen(false);
             fetchPosts();
         }
     };
 
     const handleDeletePost = async (id: string) => {
-        if (!confirm("Are you sure?")) return;
+        if (!confirm("确定要删除吗？")) return;
         const { error } = await supabase.from("garden_posts").delete().eq("id", id);
-        if (error) toast.error("Delete failed");
+        if (error) toast.error("删除失败");
         else {
-            toast.success("Post deleted");
+            toast.success("文章已删除");
             fetchPosts();
         }
     };
@@ -255,7 +255,7 @@ export default function GardenAdminPage() {
 
     const handleSaveCategory = async () => {
         if (!categoryForm.id || !categoryForm.title) {
-            toast.error("ID and Title are required");
+            toast.error("ID 和标题为必填项");
             return;
         }
 
@@ -266,20 +266,20 @@ export default function GardenAdminPage() {
         const { error } = await promise;
 
         if (error) {
-            toast.error("Save failed: " + error.message);
+            toast.error("保存失败: " + error.message);
         } else {
-            toast.success(editingCategory ? "Category updated" : "Category created");
+            toast.success(editingCategory ? "分类已更新" : "分类已创建");
             setIsCategoryDialogOpen(false);
             fetchCategories();
         }
     };
 
     const handleDeleteCategory = async (id: string) => {
-        if (!confirm("Delete this category? Posts in this category might become orphaned.")) return;
+        if (!confirm("确定要删除此分类吗？该分类下的文章可能会失去归属。")) return;
         const { error } = await supabase.from("garden_categories").delete().eq("id", id);
-        if (error) toast.error("Delete failed");
+        if (error) toast.error("删除失败");
         else {
-            toast.success("Category deleted");
+            toast.success("分类已删除");
             fetchCategories();
         }
     };
@@ -359,11 +359,6 @@ export default function GardenAdminPage() {
 
                     {/* List */}
                     <Card className="flex-1 bg-zinc-900 border-zinc-800 flex flex-col overflow-hidden">
-                        <CardHeader className="py-4 px-6 border-b border-zinc-800">
-                            <CardTitle className="text-sm font-medium text-zinc-400">
-                                共 {filteredPosts.length} 篇文章
-                            </CardTitle>
-                        </CardHeader>
                         <CardContent className="flex-1 overflow-y-auto p-0">
                             {loadingPosts ? (
                                 <div className="flex justify-center py-10"><Loader2 className="animate-spin text-zinc-500" /></div>
@@ -389,11 +384,11 @@ export default function GardenAdminPage() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditPost(post)} className="h-8 w-8 hover:text-teal-400">
-                                                    <Pencil size={16} />
+                                                <Button variant="ghost" size="icon" onClick={() => handleEditPost(post)} className="h-8 w-8 text-zinc-400 hover:text-teal-400 hover:bg-teal-400/10">
+                                                    <Pencil size={18} />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeletePost(post.id)} className="h-8 w-8 hover:text-red-400">
-                                                    <Trash2 size={16} />
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeletePost(post.id)} className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-400/10">
+                                                    <Trash2 size={18} />
                                                 </Button>
                                             </div>
                                         </div>
@@ -409,7 +404,7 @@ export default function GardenAdminPage() {
                     <Card className="bg-zinc-900 border-zinc-800 h-full flex flex-col">
                         <CardHeader className="py-4 px-6 border-b border-zinc-800">
                             <CardTitle className="text-sm font-medium text-zinc-400">
-                                Active Categories
+                                活跃分类
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-y-auto p-4">
@@ -428,7 +423,7 @@ export default function GardenAdminPage() {
                                                     <div>
                                                         <h3 className="font-semibold text-zinc-200">{cat.title}</h3>
                                                         <p className="text-xs text-zinc-500 font-mono mt-1">ID: {cat.id}</p>
-                                                        <p className="text-xs text-zinc-600 mt-2 line-clamp-2">{cat.description || "No description"}</p>
+                                                        <p className="text-xs text-zinc-600 mt-2 line-clamp-2">{cat.description || "暂无描述"}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -453,22 +448,22 @@ export default function GardenAdminPage() {
             <Dialog open={isPostDialogOpen} onOpenChange={setIsPostDialogOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editingPost ? "Edit Post" : "New Post"}</DialogTitle>
+                        <DialogTitle>{editingPost ? "编辑文章" : "新建文章"}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Title</Label>
+                                <Label>文章标题</Label>
                                 <Input value={postForm.title} onChange={e => setPostForm({ ...postForm, title: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Slug</Label>
-                                <Input value={postForm.slug} onChange={e => setPostForm({ ...postForm, slug: e.target.value })} placeholder="Auto-generated" className="bg-zinc-950 border-zinc-800 font-mono" />
+                                <Label>访问别名 (Slug)</Label>
+                                <Input value={postForm.slug} onChange={e => setPostForm({ ...postForm, slug: e.target.value })} placeholder="自动生成" className="bg-zinc-950 border-zinc-800 font-mono" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Category</Label>
+                                <Label>所属分类</Label>
                                 <Select value={postForm.category} onValueChange={v => setPostForm({ ...postForm, category: v })}>
                                     <SelectTrigger className="bg-zinc-950 border-zinc-800">
                                         <SelectValue />
@@ -479,25 +474,25 @@ export default function GardenAdminPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Status</Label>
+                                <Label>发布状态</Label>
                                 <div className="flex gap-2">
-                                    <Button type="button" variant="outline" className={`flex-1 border-zinc-800 ${postForm.status === 'Draft' ? 'bg-zinc-800' : 'bg-transparent text-zinc-500'}`} onClick={() => setPostForm({ ...postForm, status: 'Draft' })}>Draft</Button>
-                                    <Button type="button" variant="outline" className={`flex-1 border-zinc-800 ${postForm.status === 'Published' ? 'bg-teal-900/50 text-teal-400' : 'bg-transparent text-zinc-500'}`} onClick={() => setPostForm({ ...postForm, status: 'Published' })}>Published</Button>
+                                    <Button type="button" variant="outline" className={`flex-1 border-zinc-800 ${postForm.status === 'Draft' ? 'bg-zinc-800' : 'bg-transparent text-zinc-500'}`} onClick={() => setPostForm({ ...postForm, status: 'Draft' })}>草稿</Button>
+                                    <Button type="button" variant="outline" className={`flex-1 border-zinc-800 ${postForm.status === 'Published' ? 'bg-teal-900/50 text-teal-400' : 'bg-transparent text-zinc-500'}`} onClick={() => setPostForm({ ...postForm, status: 'Published' })}>已发布</Button>
                                 </div>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Tags</Label>
+                            <Label>文章标签</Label>
                             <Input value={tagsInput} onChange={e => setTagsInput(e.target.value)} className="bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="space-y-2">
-                            <Label>Content (Markdown)</Label>
+                            <Label>正文内容 (Markdown)</Label>
                             <Textarea value={postForm.content || ""} onChange={e => setPostForm({ ...postForm, content: e.target.value })} className="bg-zinc-950 border-zinc-800 font-mono min-h-[300px]" />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsPostDialogOpen(false)} className="border-zinc-800 text-zinc-300">Cancel</Button>
-                        <Button onClick={handleSavePost} className="bg-teal-600 hover:bg-teal-700 text-white">Save</Button>
+                        <Button variant="outline" onClick={() => setIsPostDialogOpen(false)} className="border-zinc-800 text-zinc-300">取消</Button>
+                        <Button onClick={handleSavePost} className="bg-teal-600 hover:bg-teal-700 text-white">确定保存</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -506,45 +501,45 @@ export default function GardenAdminPage() {
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
+                        <DialogTitle>{editingCategory ? "编辑分类" : "新建分类"}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label>ID (Unique Identifier)</Label>
+                            <Label>ID (唯一标识符)</Label>
                             <Input
                                 value={categoryForm.id}
                                 onChange={e => setCategoryForm({ ...categoryForm, id: e.target.value })}
-                                placeholder="e.g. learning, tech"
+                                placeholder="例如：learning, tech"
                                 className="bg-zinc-950 border-zinc-800 font-mono"
                                 disabled={!!editingCategory} // ID cannot be changed after creation
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Title</Label>
+                            <Label>分类名称</Label>
                             <Input value={categoryForm.title} onChange={e => setCategoryForm({ ...categoryForm, title: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label>Icon Name (Lucide)</Label>
+                                <Label>图标名称 (Lucide)</Label>
                                 <Input value={categoryForm.icon} onChange={e => setCategoryForm({ ...categoryForm, icon: e.target.value })} className="bg-zinc-950 border-zinc-800" />
                             </div>
                             <div className="grid gap-2">
-                                <Label>Sort Order</Label>
+                                <Label>排序权重</Label>
                                 <Input type="number" value={categoryForm.sort_order} onChange={e => setCategoryForm({ ...categoryForm, sort_order: parseInt(e.target.value) || 0 })} className="bg-zinc-950 border-zinc-800" />
                             </div>
                         </div>
                         <div className="grid gap-2">
-                            <Label>Color Class (Tailwind)</Label>
+                            <Label>文本颜色 (Tailwind 类)</Label>
                             <Input value={categoryForm.color} onChange={e => setCategoryForm({ ...categoryForm, color: e.target.value })} className="bg-zinc-950 border-zinc-800" placeholder="text-blue-500" />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Description</Label>
+                            <Label>描述</Label>
                             <Textarea value={categoryForm.description || ""} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} className="bg-zinc-950 border-zinc-800 h-20" />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)} className="border-zinc-800 text-zinc-300">Cancel</Button>
-                        <Button onClick={handleSaveCategory} className="bg-orange-600 hover:bg-orange-700 text-white">Save Category</Button>
+                        <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)} className="border-zinc-800 text-zinc-300">取消</Button>
+                        <Button onClick={handleSaveCategory} className="bg-orange-600 hover:bg-orange-700 text-white">保存分类</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

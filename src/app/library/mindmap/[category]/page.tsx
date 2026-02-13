@@ -76,9 +76,47 @@ const STYLE_PRESETS = {
     ]
 };
 
+// --- Size Calculation Helper ---
+const calculateNodeSize = (text: string) => {
+    // Estimations: 14px font height, roughly 14px per CJK char, 8px per Latin
+    // This is heuristics. Real measurement would require measuring text on canvas.
+    const charCount = text.length;
+    const cjkCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const latinCount = charCount - cjkCount;
+
+    // Width: base 100 + text length
+    const textWidth = cjkCount * 15 + latinCount * 9;
+    const width = Math.max(200, Math.min(400, textWidth + 60)); // clamp between 200 and 400
+
+    // Height: base 60 + wrapping logic
+    const lines = Math.ceil((textWidth + 20) / (width - 40));
+    const height = Math.max(80, lines * 22 + 50);
+
+    return { width, height };
+};
+
 // === Custom Hand-drawn Node Component ===
-const RoughNode = ({ data, selected }: NodeProps) => {
+const RoughNode = ({ id, data, selected }: NodeProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editText, setEditText] = useState(data.label || '');
+    const { setNodes } = useReactFlow();
+    const updateNodeInternals = useUpdateNodeInternals();
+
+    // Get dynamic size (manual override takes priority)
+    const { width, height } = useMemo(() => {
+        return {
+            width: data.width || calculateNodeSize(data.label || '').width,
+            height: data.height || calculateNodeSize(data.label || '').height
+        };
+    }, [data.label, data.width, data.height]);
+
+    // Sync editText with data.label when not editing
+    useEffect(() => {
+        if (!isEditing) {
+            setEditText(data.label || '');
+        }
+    }, [data.label, isEditing]);
 
     // Extract styles from data or use defaults
     const activeColor = STYLE_PRESETS.colors.find(c => c.id === data.colorId) || STYLE_PRESETS.colors[0];
@@ -91,66 +129,123 @@ const RoughNode = ({ data, selected }: NodeProps) => {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw hand-drawn rectangle with dynamic styling
-        rc.rectangle(2, 2, 196, 76, {
+        // Draw hand-drawn rectangle with dynamic styling and size
+        rc.rectangle(2, 2, width - 4, height - 4, {
             roughness: activeWeight.roughness,
-            stroke: activeColor.stroke, // Keep custom color even when selected
+            stroke: activeColor.stroke,
             strokeWidth: activeWeight.width,
             fill: activeColor.bg,
             fillStyle: 'hachure',
-            fillWeight: 1.5, // Heavier fill weight for visibility
+            fillWeight: 1.5,
             hachureAngle: 65,
-            hachureGap: 6, // Tighter gap for better color visibility
+            hachureGap: 6,
         });
 
-        // Add a secondary "Selection Glow/Outline" if selected
         if (selected) {
-            rc.rectangle(0, 0, 200, 80, {
+            rc.rectangle(0, 0, width, height, {
                 roughness: 2.5,
-                stroke: '#0ea5e9', // Sky-500 for selection indicator
+                stroke: '#0ea5e9',
                 strokeWidth: 2,
                 strokeLineDash: [5, 5],
             });
         }
-    }, [selected, data.colorId, data.borderWeightId, activeColor, activeWeight]);
+    }, [selected, data.colorId, data.borderWeightId, activeColor, activeWeight, width, height]);
+
+    // Handle label update
+    const handleSubmit = () => {
+        setIsEditing(false);
+        if (editText === data.label) return;
+
+        setNodes(nds => nds.map(n => {
+            if (n.id === id) {
+                return { ...n, data: { ...n.data, label: editText } };
+            }
+            return n;
+        }));
+
+        // Ensure handles are updated after size change
+        requestAnimationFrame(() => updateNodeInternals(id));
+    };
 
     return (
-        <div className="relative group perspective-1000">
+        <div
+            className="relative group perspective-1000"
+            onDoubleClick={() => setIsEditing(true)}
+        >
+            <NodeResizer
+                isVisible={selected && !isEditing}
+                minWidth={100}
+                minHeight={60}
+                onResize={(evt, params) => {
+                    setNodes(nds => nds.map(n => n.id === id ? {
+                        ...n,
+                        data: { ...n.data, width: params.width, height: params.height }
+                    } : n));
+                }}
+                onResizeEnd={() => {
+                    updateNodeInternals(id);
+                }}
+                lineStyle={{ border: '1px solid #7dd3fc', opacity: 0.5 }}
+                handleStyle={{
+                    width: 10,
+                    height: 10,
+                    background: '#0284c7',
+                    border: '2px solid white',
+                    borderRadius: '3px',
+                }}
+            />
             <canvas
                 ref={canvasRef}
-                width={200}
-                height={80}
+                width={width}
+                height={height}
                 className="absolute inset-0 pointer-events-none"
             />
-            <div className="relative z-10 w-[200px] h-[80px] flex flex-col items-center justify-center p-4 text-center">
+            <div
+                className="relative z-10 flex flex-col items-center justify-center p-4 text-center select-none"
+                style={{ width, height }}
+            >
                 <span className="text-[10px] font-mono text-stone-300 absolute top-2 left-4 uppercase tracking-tighter opacity-40">node_log_0x{data.id}</span>
 
-                {/* Dynamic Handles based on Layout Direction */}
-                {/* Target Handle: Top (Tree) or Left (Flow) */}
                 <Handle
                     type="target"
                     position={data.layoutDirection === 'LR' ? Position.Left : Position.Top}
                     className="opacity-0 w-2 h-2"
-                    style={data.layoutDirection === 'LR' ? { left: 0 } : { top: 0 }}
                 />
 
-                <h3 className={`font-serif text-stone-800 text-sm leading-tight group-hover:text-sky-600 transition-colors ${data.fontWeight === 'bold' ? 'font-black' : 'font-bold'}`}>
-                    {data.label}
-                </h3>
+                {isEditing ? (
+                    <textarea
+                        autoFocus
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onBlur={handleSubmit}
+                        onKeyDown={(e) => {
+                            // Stop propagation for editing keys to prevent global delete/backspace triggers
+                            e.stopPropagation();
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSubmit();
+                            }
+                        }}
+                        className="w-full bg-transparent border-none focus:ring-0 text-stone-800 text-sm font-serif font-bold text-center resize-none p-0 overflow-hidden leading-tight"
+                        style={{ height: 'auto' }}
+                    />
+                ) : (
+                    <h3 className={`font-serif text-stone-800 text-sm leading-tight group-hover:text-sky-600 transition-colors ${data.fontWeight === 'bold' ? 'font-black' : 'font-bold'}`}>
+                        {data.label}
+                    </h3>
+                )}
+
                 <p className="text-[9px] font-mono text-stone-400 mt-1 uppercase tracking-widest opacity-60">
                     {data.type || 'logical_unit'}
                 </p>
 
-                {/* Source Handle: Bottom (Tree) or Right (Flow) */}
                 <Handle
                     type="source"
                     position={data.layoutDirection === 'LR' ? Position.Right : Position.Bottom}
                     className="opacity-0 w-2 h-2"
-                    style={data.layoutDirection === 'LR' ? { right: 0 } : { bottom: 0 }}
                 />
             </div>
 
-            {/* Tech Annotation Overlays */}
             {selected && (
                 <motion.div
                     initial={{ opacity: 0 }}
@@ -339,6 +434,68 @@ const MindMapBoard = () => {
         canUndo, canRedo
     } = useHistory([], []); // Start empty
 
+    const lastSavedDataRef = useRef<{ nodes: Node[], edges: Edge[] }>({ nodes: [], edges: [] });
+    const currentDataRef = useRef<{ nodes: Node[], edges: Edge[] }>({ nodes: [], edges: [] });
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // Keep currentDataRef in sync for unmount accessibility
+    useEffect(() => {
+        currentDataRef.current = { nodes, edges };
+    }, [nodes, edges]);
+
+    // Initial load sync
+    useEffect(() => {
+        if (initialDataLoaded) {
+            lastSavedDataRef.current = { nodes, edges };
+            currentDataRef.current = { nodes, edges };
+            setHasUnsavedChanges(false);
+        }
+    }, [initialDataLoaded]);
+
+    // Check for changes
+    useEffect(() => {
+        if (!initialDataLoaded) return;
+
+        const isDirty = JSON.stringify(lastSavedDataRef.current.nodes) !== JSON.stringify(nodes) ||
+            JSON.stringify(lastSavedDataRef.current.edges) !== JSON.stringify(edges);
+        setHasUnsavedChanges(isDirty);
+    }, [nodes, edges, initialDataLoaded]);
+
+    // Exit protection
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Auto-save attempt on component unmount
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+
+            // Check changes using refs to avoid closure stale issues
+            const isDirty = JSON.stringify(lastSavedDataRef.current.nodes) !== JSON.stringify(currentDataRef.current.nodes) ||
+                JSON.stringify(lastSavedDataRef.current.edges) !== JSON.stringify(currentDataRef.current.edges);
+
+            if (isDirty) {
+                // Fire and forget update on unmount
+                supabase
+                    .from('mind_maps')
+                    .update({
+                        nodes_data: currentDataRef.current,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', categoryId)
+                    .then(({ error }) => {
+                        if (error) console.error("Unmount auto-save failed:", error);
+                        else console.log("Unmount auto-save successful");
+                    });
+            }
+        };
+    }, [hasUnsavedChanges, categoryId]);
+
     useEffect(() => {
         const loadMap = async () => {
             const { data, error } = await supabase
@@ -379,6 +536,8 @@ const MindMapBoard = () => {
                 .eq('id', categoryId);
 
             if (error) throw error;
+            lastSavedDataRef.current = { nodes, edges };
+            setHasUnsavedChanges(false);
             toast.success("Design saved to cloud.");
         } catch (err) {
             console.error(err);
@@ -422,9 +581,12 @@ const MindMapBoard = () => {
         dagreGraph.setGraph({ rankdir: direction });
 
         nds.forEach((node) => {
-            // RoughNode standard size is 200x80, RoughGroup is variable but we use style or default
-            const width = node.type === 'roughGroup' ? (node.style?.width as number || 400) : 200;
-            const height = node.type === 'roughGroup' ? (node.style?.height as number || 240) : 80;
+            const { width, height } = node.type === 'roughGroup'
+                ? { width: (node.style?.width as number || 400), height: (node.style?.height as number || 240) }
+                : {
+                    width: node.data.width || calculateNodeSize(node.data.label || '').width,
+                    height: node.data.height || calculateNodeSize(node.data.label || '').height
+                };
             dagreGraph.setNode(node.id, { width, height });
         });
 
@@ -436,8 +598,12 @@ const MindMapBoard = () => {
 
         return nds.map((node) => {
             const nodeWithPosition = dagreGraph.node(node.id);
-            const width = node.type === 'roughGroup' ? (node.style?.width as number || 400) : 200;
-            const height = node.type === 'roughGroup' ? (node.style?.height as number || 240) : 80;
+            const { width, height } = node.type === 'roughGroup'
+                ? { width: (node.style?.width as number || 400), height: (node.style?.height as number || 240) }
+                : {
+                    width: node.data.width || calculateNodeSize(node.data.label || '').width,
+                    height: node.data.height || calculateNodeSize(node.data.label || '').height
+                };
 
             return {
                 ...node,
@@ -691,16 +857,26 @@ const MindMapBoard = () => {
             <div className="absolute top-8 left-8 z-50 flex items-center gap-4 no-export">
                 <Link
                     href="/library/mindmap"
+                    onClick={(e) => {
+                        if (hasUnsavedChanges) {
+                            // Non-blocking hint: we will try to auto-save on unmount, 
+                            // but we can give a quick toast or log.
+                            console.log("Navigating away with unsaved changes. Auto-save triggered.");
+                        }
+                    }}
                     className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-stone-200/60 backdrop-blur-md shadow-sm hover:bg-white transition-all"
                 >
                     <ArrowLeft size={16} className="text-stone-400 group-hover:text-stone-800" />
                     <span className="text-xs font-mono font-bold uppercase tracking-widest text-stone-500">Exit_Canvas</span>
                 </Link>
-                <div className="px-5 py-2 rounded-xl bg-white/80 border border-stone-200/60 backdrop-blur-md shadow-sm">
+                <div className="px-5 py-2 rounded-xl bg-white/80 border border-stone-200/60 backdrop-blur-md shadow-sm flex items-center gap-3">
                     <h1 className="text-sm font-serif font-bold text-stone-700 flex items-center gap-3">
-                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                        <span className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
                         {categoryId.toUpperCase()} // ACTIVE_MAP
                     </h1>
+                    {hasUnsavedChanges && (
+                        <span className="text-[10px] font-mono text-amber-600 font-bold uppercase tracking-widest animate-in fade-in slide-in-from-left-2">Unsaved_Changes</span>
+                    )}
                 </div>
             </div>
 
