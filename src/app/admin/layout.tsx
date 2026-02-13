@@ -47,7 +47,7 @@ const ROOM_NAV_ITEMS = [
 const LIBRARY_NAV_ITEMS = [
     { title: "提示词仓库", href: "/admin/library/prompts", icon: SearchCode },
     { title: "思维导图", href: "/admin/library/mindmap", icon: Layers },
-    // { title: "数字花园", href: "/admin/library/garden", icon: Sprout }, // Future
+    { title: "数字花园", href: "/admin/library/garden", icon: Sprout },
 ];
 
 export default function AdminLayout({
