@@ -240,8 +240,8 @@ export default function PromptsAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Prompt Warehouse</h1>
-                    <p className="text-zinc-400">Manage categories and prompt templates.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">提示词仓库</h1>
+                    <p className="text-zinc-400">管理分类和提示词模板</p>
                 </div>
             </div>
 

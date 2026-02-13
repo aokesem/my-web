@@ -56,8 +56,12 @@ import { useParams } from 'next/navigation';
 import rough from 'roughjs';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
+import { Save, Loader2 } from 'lucide-react';
 
-// === Styling Constants ===
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
+
+// === styling constants ===
 const STYLE_PRESETS = {
     colors: [
         { id: 'default', label: '默认', bg: 'rgba(255, 255, 255, 0.95)', stroke: '#4a4a4a' },
@@ -317,17 +321,84 @@ const MindMapBoard = () => {
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     const { fitView } = useReactFlow();
     const updateNodeInternals = useUpdateNodeInternals();
+    const [isSaving, setIsSaving] = useState(false);
 
     // Tool States
     const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('pan');
 
+    // Initial Data Fetch
+    const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+    // We need to lift nodes/edges state up or use a ref to initialize? 
+    // Actually useHistory initializes state. We might need to override it after fetch.
     const {
         nodes, setNodes, onNodesChange,
         edges, setEdges, onEdgesChange,
         undo, redo, saveToHistory,
         history,
         canUndo, canRedo
-    } = useHistory(INITIAL_NODES, INITIAL_EDGES);
+    } = useHistory([], []); // Start empty
+
+    useEffect(() => {
+        const loadMap = async () => {
+            const { data, error } = await supabase
+                .from('mind_maps')
+                .select('nodes_data')
+                .eq('id', categoryId)
+                .single();
+
+            if (data && data.nodes_data) {
+                // Determine if we have valid data
+                const loadedNodes = data.nodes_data.nodes || [];
+                const loadedEdges = data.nodes_data.edges || [];
+
+                if (loadedNodes.length > 0) {
+                    setNodes(loadedNodes);
+                    setEdges(loadedEdges);
+                } else {
+                    // Fallback to initial mock if empty (optional, for demo)
+                    // setNodes(INITIAL_NODES); 
+                    // setEdges(INITIAL_EDGES);
+                }
+            }
+            setInitialDataLoaded(true);
+        };
+        loadMap();
+    }, [categoryId, setNodes, setEdges]);
+
+    const handleSave = useCallback(async () => {
+        setIsSaving(true);
+        try {
+            const flowData = { nodes, edges };
+            const { error } = await supabase
+                .from('mind_maps')
+                .update({
+                    nodes_data: flowData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', categoryId);
+
+            if (error) throw error;
+            toast.success("Design saved to cloud.");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to save.");
+        } finally {
+            setIsSaving(false);
+        }
+    }, [nodes, edges, categoryId]);
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleSave]);
 
     // Track selection order for intelligent connectivity
     // Defined BEFORE onLayout so it can be used if needed (though not directly used in onLayout currently)
@@ -762,7 +833,7 @@ const MindMapBoard = () => {
                 )}
             </AnimatePresence>
 
-            <div className="absolute top-8 right-8 z-50 flex items-center gap-4 no-export">
+            <div className="absolute top-8 right-8 z-50 flex items-center gap-6 no-export">
                 {/* Layout Switches (Top Right) */}
                 <div className="flex bg-white/80 backdrop-blur-md rounded-2xl p-1 border border-stone-200/60 shadow-sm">
                     <button
@@ -781,47 +852,61 @@ const MindMapBoard = () => {
                     </button>
                 </div>
 
-                <div className="relative">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="p-3 rounded-full bg-sky-600 text-white shadow-xl hover:scale-110 hover:bg-sky-500 transition-all flex items-center justify-center relative z-20 group"
+                        title="Save to Cloud (Ctrl+S)"
+                    >
+                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                        <span className="absolute top-full mt-2 right-0 bg-stone-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                            Save (Ctrl+S)
+                        </span>
+                    </button>
+
+                    <div className="w-px h-6 bg-stone-300/50" />
+
                     <button
                         onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                         className="p-3 rounded-full bg-stone-800 text-white shadow-xl hover:scale-110 transition-transform flex items-center justify-center relative z-20"
                     >
                         <Share2 size={18} />
                     </button>
-
-                    <AnimatePresence>
-                        {isExportMenuOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: 10, x: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 10, x: -10 }}
-                                className="absolute top-full right-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-stone-200/60 rounded-2xl shadow-xl overflow-hidden z-10 origin-top-right flex flex-col py-1"
-                            >
-                                <button
-                                    onClick={downloadImage}
-                                    className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
-                                >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-                                    Download Image
-                                </button>
-                                <button
-                                    onClick={exportToMarkdown}
-                                    className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
-                                >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    Copy Markdown
-                                </button>
-                                <button
-                                    onClick={exportToJSON}
-                                    className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
-                                >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                    Backup JSON
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </div>
+
+                <AnimatePresence>
+                    {isExportMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10, x: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10, x: -10 }}
+                            className="absolute top-full right-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-stone-200/60 rounded-2xl shadow-xl overflow-hidden z-10 origin-top-right flex flex-col py-1"
+                        >
+                            <button
+                                onClick={downloadImage}
+                                className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                                Download Image
+                            </button>
+                            <button
+                                onClick={exportToMarkdown}
+                                className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Copy Markdown
+                            </button>
+                            <button
+                                onClick={exportToJSON}
+                                className="px-4 py-2.5 text-left text-xs font-serif font-bold text-stone-600 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Backup JSON
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* --- React Flow Canvas --- */}
@@ -876,7 +961,7 @@ const MindMapBoard = () => {
                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.5'/%3E%3C/svg%3E")`,
                 }}
             />
-        </div>
+        </div >
     );
 };
 
