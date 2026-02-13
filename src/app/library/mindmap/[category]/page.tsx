@@ -226,7 +226,7 @@ const RoughNode = ({ id, data, selected }: NodeProps) => {
                                 handleSubmit();
                             }
                         }}
-                        className="w-full bg-transparent border-none focus:ring-0 text-stone-800 text-sm font-serif font-bold text-center resize-none p-0 overflow-hidden leading-tight"
+                        className="nodrag nowheel w-full bg-transparent border-none focus:ring-0 text-stone-800 text-sm font-serif font-bold text-center resize-none p-0 overflow-hidden leading-tight"
                         style={{ height: 'auto' }}
                     />
                 ) : (
@@ -706,6 +706,39 @@ const MindMapBoard = () => {
         setEdges(eds => eds.concat(newEdge));
     }, [nodes, setNodes, setEdges, saveToHistory]);
 
+    // Create Sibling Node
+    const createSiblingNode = useCallback(() => {
+        const selectedNode = nodes.find(n => n.selected && n.type === 'rough');
+        if (!selectedNode) return;
+
+        saveToHistory();
+        const id = `node-${Date.now()}`;
+
+        // Find parent
+        const parentEdge = edges.find(e => e.target === selectedNode.id);
+        const parentId = parentEdge?.source;
+
+        const newNode: Node = {
+            id,
+            type: 'rough',
+            // Position slightly below the selected node
+            position: { x: selectedNode.position.x, y: selectedNode.position.y + 100 },
+            data: { id: id.slice(-4), label: '新兄弟节点', type: selectedNode.data.type || 'BRANCH' },
+        };
+
+        if (parentId) {
+            const newEdge: Edge = {
+                id: `e-${parentId}-${id}`,
+                source: parentId,
+                target: id,
+                markerEnd: { type: MarkerType.ArrowClosed, color: '#d1d5db' }
+            };
+            setEdges(eds => eds.concat(newEdge));
+        }
+
+        setNodes(nds => nds.concat(newNode));
+    }, [nodes, edges, setNodes, setEdges, saveToHistory]);
+
     // Manual Connect (Link nodes based on selection order)
     const connectSelectedNodes = useCallback(() => {
         if (selectedIds.length < 2) return;
@@ -745,6 +778,10 @@ const MindMapBoard = () => {
             if (e.key === 'Tab') {
                 e.preventDefault();
                 createChildNode();
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createSiblingNode();
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
