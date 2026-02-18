@@ -12,6 +12,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { getIconComponent } from '@/lib/iconMap';
+import { toast } from 'sonner';
+import {
+    Pencil,
+    Trash2,
+    Plus,
+    X,
+    Save
+} from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 
 
@@ -20,41 +39,124 @@ export default function PromptWarehousePage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [promptCounts, setPromptCounts] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<any>(null);
+
+    // Edit/Delete States
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [catToEdit, setCatToEdit] = useState<any>(null);
+    const [editData, setEditData] = useState({ title: '', en_title: '', description: '', icon: '', status: '', color: '', bg: '' });
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [catToDelete, setCatToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const fetchCategories = React.useCallback(async () => {
+        try {
+            // 1. Fetch Categories
+            const { data: cats, error: catError } = await supabase
+                .from('prompt_categories')
+                .select('*')
+                .order('sort_order', { ascending: true });
+
+            if (catError) throw catError;
+            setCategories(cats || []);
+
+            // 2. Fetch Prompt Counts
+            const { data: prompts, error: promptError } = await supabase
+                .from('prompts')
+                .select('category_id');
+
+            if (promptError) throw promptError;
+
+            const counts = (prompts || []).reduce((acc: Record<string, number>, curr: any) => {
+                acc[curr.category_id] = (acc[curr.category_id] || 0) + 1;
+                return acc;
+            }, {});
+            setPromptCounts(counts);
+
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            toast.error("Failed to load categories");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // 1. Fetch Categories
-                const { data: cats, error: catError } = await supabase
-                    .from('prompt_categories')
-                    .select('*')
-                    .order('sort_order', { ascending: true });
+        fetchCategories();
 
-                if (catError) throw catError;
-                setCategories(cats || []);
-
-                // 2. Fetch Prompt Counts
-                const { data: prompts, error: promptError } = await supabase
-                    .from('prompts')
-                    .select('category_id');
-
-                if (promptError) throw promptError;
-
-                const counts = (prompts || []).reduce((acc: Record<string, number>, curr: any) => {
-                    acc[curr.category_id] = (acc[curr.category_id] || 0) + 1;
-                    return acc;
-                }, {});
-                setPromptCounts(counts);
-
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            } finally {
-                setLoading(false);
-            }
+        // Check Auth
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
         };
+        checkUser();
+    }, [fetchCategories]);
 
-        fetchData();
-    }, []);
+    const handleEditOpen = (cat: any) => {
+        setCatToEdit(cat);
+        setEditData({
+            title: cat.title || '',
+            en_title: cat.en_title || '',
+            description: cat.description || '',
+            icon: cat.icon || 'Zap',
+            status: cat.status || 'Operational',
+            color: cat.color || 'text-orange-500',
+            bg: cat.bg || 'bg-orange-50'
+        });
+        setIsEditOpen(true);
+    };
+
+    const confirmEdit = async () => {
+        if (!catToEdit) return;
+        setIsUpdating(true);
+        try {
+            const { error } = await supabase
+                .from('prompt_categories')
+                .update({
+                    title: editData.title,
+                    en_title: editData.en_title,
+                    description: editData.description,
+                    icon: editData.icon,
+                    status: editData.status,
+                    color: editData.color,
+                    bg: editData.bg
+                })
+                .eq('id', catToEdit.id);
+
+            if (error) throw error;
+            toast.success("Category updated");
+            setIsEditOpen(false);
+            fetchCategories();
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Failed to update");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!catToDelete) return;
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase
+                .from('prompt_categories')
+                .delete()
+                .eq('id', catToDelete.id);
+
+            if (error) throw error;
+            toast.success("Category deleted");
+            setCategories(prev => prev.filter(c => c.id !== catToDelete.id));
+            setIsDeleteOpen(false);
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Failed to delete");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     // Loading Skeleton
     if (loading) {
@@ -170,10 +272,37 @@ export default function PromptWarehousePage() {
                                     </div>
 
                                     <div className="mt-8 flex items-center justify-between">
-                                        <div className="flex gap-1">
-                                            {[1, 2, 3].map(i => (
-                                                <div key={i} className="w-6 h-1 rounded-full bg-stone-100 group-hover:bg-orange-100 transition-colors" />
-                                            ))}
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3].map(i => (
+                                                    <div key={i} className="w-6 h-1 rounded-full bg-stone-100 group-hover:bg-orange-100 transition-colors" />
+                                                ))}
+                                            </div>
+                                            {user && (
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditOpen(cat);
+                                                        }}
+                                                        className="p-1.5 rounded-lg text-stone-300 hover:text-orange-500 hover:bg-orange-50 transition-all"
+                                                        title="Edit"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setCatToDelete(cat);
+                                                            setIsDeleteOpen(true);
+                                                        }}
+                                                        className="p-1.5 rounded-lg text-stone-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2 text-xs font-mono font-bold text-stone-300 group-hover:text-orange-500 transition-colors">
                                             ENTER_MODULE
@@ -195,6 +324,103 @@ export default function PromptWarehousePage() {
                 <span>COORD_Y: 768.42</span>
                 <span className="text-stone-400 font-bold mt-2 tracking-[0.3em]">SCHEME_B // MATRIX_CANVAS</span>
             </div>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent className="bg-[#fdfbf7] border-stone-200 sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-serif text-2xl text-stone-800">编辑分类信息</DialogTitle>
+                        <DialogDescription className="font-mono text-xs text-stone-400 uppercase tracking-wider">
+                            正在修改 [ {catToEdit?.id} ] 的外观配置
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">中文标题</Label>
+                                <Input
+                                    value={editData.title}
+                                    onChange={e => setEditData({ ...editData, title: e.target.value })}
+                                    className="bg-white border-stone-200 focus:border-orange-500 font-serif"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">代码标识 (en_title)</Label>
+                                <Input
+                                    value={editData.en_title}
+                                    onChange={e => setEditData({ ...editData, en_title: e.target.value })}
+                                    className="bg-white border-stone-200 focus:border-orange-500 font-mono text-xs"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">描述信息</Label>
+                            <Input
+                                value={editData.description}
+                                onChange={e => setEditData({ ...editData, description: e.target.value })}
+                                className="bg-white border-stone-200 focus:border-orange-500"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">图标名 (Lucide)</Label>
+                                <Input
+                                    value={editData.icon}
+                                    onChange={e => setEditData({ ...editData, icon: e.target.value })}
+                                    className="bg-white border-stone-200 focus:border-orange-500 font-mono text-xs"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">发布状态</Label>
+                                <select
+                                    value={editData.status}
+                                    onChange={e => setEditData({ ...editData, status: e.target.value })}
+                                    className="w-full h-10 px-3 rounded-md border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                >
+                                    <option value="Operational">Operational</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Draft">Draft</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsEditOpen(false)} disabled={isUpdating}>取消</Button>
+                        <Button onClick={confirmEdit} disabled={isUpdating} className="bg-stone-800 hover:bg-orange-600 text-white">
+                            {isUpdating ? 'Saving...' : '保存更改'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="bg-white border-stone-200 sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-serif text-2xl text-stone-800">确认删除</DialogTitle>
+                        <DialogDescription className="font-mono text-xs text-stone-400 uppercase tracking-wider">
+                            此操作不可逆。确定要销毁提示词分类 [ {catToDelete?.title} ] 吗？
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsDeleteOpen(false)}
+                            className="text-stone-500 hover:text-stone-800"
+                            disabled={isDeleting}
+                        >
+                            取消
+                        </Button>
+                        <Button
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                            className="bg-red-500 hover:bg-red-600 text-white transition-colors"
+                        >
+                            {isDeleting ? 'Deleting...' : '确认销毁'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

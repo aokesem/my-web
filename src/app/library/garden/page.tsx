@@ -594,15 +594,16 @@ export default function GardenPage() {
                                                 className="h-full px-10 py-8"
                                                 style={{ columnCount: 2, columnGap: '5rem', columnFill: 'auto' as any }}
                                             >
-                                                <div className="text-[14px] text-stone-600 leading-[1.95]">
+                                                <div className="text-[18px] text-stone-600 leading-[1.95]">
                                                     <ReactMarkdown components={{
-                                                        h2: ({ node, ...props }) => <h2 className="text-[17px] font-serif font-bold mt-6 mb-3 text-stone-800 break-after-avoid" {...props} />,
-                                                        h3: ({ node, ...props }) => <h3 className="text-[15px] font-serif font-bold mt-5 mb-2 text-stone-700 break-after-avoid" {...props} />,
+                                                        h1: ({ node, ...props }) => <h1 className="text-[24px] font-serif font-bold mt-8 mb-4 text-stone-800 break-after-avoid" {...props} />,
+                                                        h2: ({ node, ...props }) => <h2 className="text-[22px] font-serif font-bold mt-6 mb-3 text-stone-800 break-after-avoid" {...props} />,
+                                                        h3: ({ node, ...props }) => <h3 className="text-[20px] font-serif font-bold mt-5 mb-2 text-stone-700 break-after-avoid" {...props} />,
                                                         p: ({ node, ...props }) => <p className="mb-3 text-stone-600 leading-[1.95] break-inside-avoid-column" {...props} />,
                                                         code: ({ node, className, children, ...props }) => {
                                                             const isBlock = className?.includes('language-');
-                                                            if (isBlock) return <code className="block bg-[#1e293b] text-stone-200 p-4 rounded-lg text-[12.5px] font-mono my-4 overflow-x-auto break-inside-avoid" {...props}>{children}</code>;
-                                                            return <code className="bg-teal-50/80 text-teal-700 px-1.5 py-0.5 rounded text-[12.5px] border border-teal-100/60" {...props} />;
+                                                            if (isBlock) return <code className="block bg-[#1e293b] text-stone-200 p-4 rounded-lg text-[15px] font-mono my-4 overflow-x-auto break-inside-avoid" {...props}>{children}</code>;
+                                                            return <code className="bg-teal-50/80 text-teal-700 px-1.5 py-0.5 rounded text-[15px] border border-teal-100/60" {...props} />;
                                                         },
                                                         img: ({ node, ...props }) => <img className="rounded-lg my-4 max-w-full break-inside-avoid shadow-sm border border-stone-200" {...props} alt="" />,
                                                         // ... other components

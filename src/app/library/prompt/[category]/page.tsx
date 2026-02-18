@@ -11,7 +11,9 @@ import {
     Archive,
     Pencil,
     X,
-    Save
+    Save,
+    Plus,
+    Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -21,6 +23,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getIconComponent } from '@/lib/iconMap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 // === Mock Data (To be replaced by Supabase later) ===
@@ -43,6 +46,11 @@ export default function CategoryDetailPage() {
     const [user, setUser] = useState<any>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
+
+    // Add Mode State
+    const [isAdding, setIsAdding] = useState(false);
+    const [addForm, setAddForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Check Auth
     React.useEffect(() => {
@@ -137,6 +145,58 @@ export default function CategoryDetailPage() {
         }
     };
 
+    const handleCreatePrompt = async () => {
+        if (!addForm.name || !addForm.content) {
+            toast.error("Please fill in both name and content");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const { data, error } = await supabase
+                .from('prompts')
+                .insert([{
+                    category_id: categoryId,
+                    name: addForm.name,
+                    content: addForm.content,
+                    sort_order: prompts.length > 0 ? Math.max(...prompts.map(p => p.sort_order || 0)) + 1 : 1
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setPrompts(prev => [...prev, data]);
+            toast.success('Prompt created successfully');
+            setIsAdding(false);
+            setAddForm({ name: '', content: '' });
+        } catch (error) {
+            console.error('Creation failed:', error);
+            toast.error('Failed to create prompt');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeletePrompt = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this prompt?")) return;
+
+        try {
+            const { error } = await supabase
+                .from('prompts')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setPrompts(prev => prev.filter(p => p.id !== id));
+            toast.success('Prompt deleted');
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error('Failed to delete prompt');
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[#fdfbf7] flex items-center justify-center">
@@ -227,20 +287,79 @@ export default function CategoryDetailPage() {
                     <span className="text-xs font-mono font-bold uppercase tracking-widest">Back to Warehouse</span>
                 </Link>
 
-                <div className="flex items-center gap-6">
-                    <div className={`p-5 rounded-3xl bg-white shadow-sm border border-stone-100 ${category.color}`}>
-                        <Icon size={32} />
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        <div className={`p-5 rounded-3xl bg-white shadow-sm border border-stone-100 ${category.color}`}>
+                            <Icon size={32} />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-serif font-bold text-stone-800">{category.title}</h1>
+                            <p className="text-sm font-mono text-stone-400 mt-1 uppercase tracking-widest">Module // {categoryId}_protocol</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-4xl font-serif font-bold text-stone-800">{category.title}</h1>
-                        <p className="text-sm font-mono text-stone-400 mt-1 uppercase tracking-widest">Module // {categoryId}_protocol</p>
-                    </div>
+
+                    {user && (
+                        <Button
+                            onClick={() => setIsAdding(true)}
+                            className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-lg hover:shadow-orange-200 transition-all gap-2"
+                        >
+                            <Plus size={16} />
+                            <span className="font-bold tracking-tight">NEW_PROMPT</span>
+                        </Button>
+                    )}
                 </div>
             </header>
 
             {/* Content List */}
             <main className="relative z-10 max-w-5xl mx-auto px-8 pb-32">
                 <div className="grid grid-cols-1 gap-12">
+                    {/* Add Form */}
+                    {isAdding && (
+                        <motion.section
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white border border-orange-200 shadow-xl rounded-3xl p-10"
+                        >
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-2xl font-serif font-bold text-stone-800">创建新提示词</h2>
+                                <button onClick={() => setIsAdding(false)} className="text-stone-300 hover:text-stone-800 transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">Prompt_Title</Label>
+                                    <Input
+                                        value={addForm.name}
+                                        onChange={e => setAddForm({ ...addForm, name: e.target.value })}
+                                        placeholder="e.g. 代码文档生成器"
+                                        className="font-serif text-lg bg-stone-50/50"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">Content_Payload (Markdown)</Label>
+                                    <Textarea
+                                        value={addForm.content}
+                                        onChange={e => setAddForm({ ...addForm, content: e.target.value })}
+                                        placeholder="Enter the prompt content here..."
+                                        className="min-h-[300px] font-sans text-stone-700 bg-stone-50/50"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4">
+                                    <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
+                                    <Button
+                                        onClick={handleCreatePrompt}
+                                        disabled={isSubmitting}
+                                        className="bg-orange-500 hover:bg-orange-600 text-white gap-2 px-8"
+                                    >
+                                        {isSubmitting ? 'Creating...' : <><Save size={16} /> Save_Prompt</>}
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.section>
+                    )}
+
                     {prompts.length > 0 ? (
                         prompts.map((prompt) => (
                             <motion.section
@@ -268,13 +387,22 @@ export default function CategoryDetailPage() {
 
                                     <div className="flex items-center gap-2">
                                         {user && editingId !== prompt.id && (
-                                            <button
-                                                onClick={() => startEditing(prompt)}
-                                                className="p-1.5 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
-                                                title="Edit Prompt"
-                                            >
-                                                <Pencil size={14} />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => startEditing(prompt)}
+                                                    className="p-1.5 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                                                    title="Edit Prompt"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeletePrompt(prompt.id)}
+                                                    className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                    title="Delete Prompt"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         )}
                                         {/* Copy Button (only show if not editing) */}
                                         {editingId !== prompt.id && (
@@ -299,7 +427,7 @@ export default function CategoryDetailPage() {
                                         <Textarea
                                             value={editForm.content}
                                             onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
-                                            className="min-h-[400px] font-mono text-sm leading-relaxed bg-stone-50/50 mb-4"
+                                            className="min-h-[400px] font-sans text-[15px] leading-relaxed bg-stone-50/50 mb-4 border-stone-200 focus:border-orange-200 focus:ring-orange-100"
                                             placeholder="Markdown content..."
                                         />
                                         <div className="flex justify-end gap-3">
@@ -316,17 +444,24 @@ export default function CategoryDetailPage() {
                                         {/* Decoration Lines */}
                                         <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
 
-                                        <div className="p-8 md:pl-16 prose prose-stone max-w-none">
-                                            <div className="font-mono text-sm text-stone-600 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-200">
+                                        <div className="p-10 md:pl-20 prose prose-stone max-w-none">
+                                            <div className="font-sans text-[16px] text-zinc-800 leading-relaxed wrap-break-word selection:bg-orange-100/80">
                                                 <ReactMarkdown
                                                     components={{
-                                                        h1: ({ node, ...props }) => <h1 className="text-2xl font-serif font-bold mt-6 mb-4 text-stone-800" {...props} />,
-                                                        h2: ({ node, ...props }) => <h2 className="text-xl font-serif font-bold mt-5 mb-3 text-stone-700" {...props} />,
-                                                        h3: ({ node, ...props }) => <h3 className="text-lg font-serif font-bold mt-4 mb-2 text-stone-600" {...props} />,
-                                                        code: ({ node, ...props }) => <code className="bg-stone-50 text-orange-600 px-1.5 py-0.5 rounded border border-stone-200" {...props} />,
-                                                        strong: ({ node, ...props }) => <strong className="text-stone-800 font-black" {...props} />,
-                                                        ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-4 space-y-2" {...props} />,
-                                                        li: ({ node, ...props }) => <li className="text-stone-500" {...props} />,
+                                                        h1: ({ ...props }) => <h1 className="text-3xl font-bold mt-10 mb-6 text-zinc-900 tracking-tight" {...props} />,
+                                                        h2: ({ ...props }) => <h2 className="text-2xl font-bold mt-8 mb-4 text-zinc-800 tracking-tight" {...props} />,
+                                                        h3: ({ ...props }) => <h3 className="text-xl font-bold mt-6 mb-3 text-zinc-800" {...props} />,
+                                                        code: ({ ...props }) => (
+                                                            <code className="bg-zinc-100 text-pink-600 px-1.5 py-0.5 rounded-md font-mono text-[0.9em] border border-zinc-200/50" {...props} />
+                                                        ),
+                                                        strong: ({ ...props }) => <strong className="font-bold text-zinc-900" {...props} />,
+                                                        ul: ({ ...props }) => <ul className="list-disc pl-6 my-6 space-y-2.5 text-zinc-700" {...props} />,
+                                                        ol: ({ ...props }) => <ol className="list-decimal pl-6 my-6 space-y-2.5 text-zinc-700" {...props} />,
+                                                        li: ({ ...props }) => <li className="leading-7" {...props} />,
+                                                        blockquote: ({ ...props }) => (
+                                                            <blockquote className="border-l-4 border-zinc-200 pl-4 py-1 my-6 italic text-zinc-600" {...props} />
+                                                        ),
+                                                        hr: () => <hr className="my-10 border-zinc-100" />
                                                     }}
                                                 >
                                                     {prompt.content}

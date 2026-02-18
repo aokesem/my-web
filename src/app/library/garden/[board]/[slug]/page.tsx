@@ -303,21 +303,21 @@ export default function ArticlePage() {
                     {/* Article body with left accent line */}
                     <div className="relative pl-6 border-l-2 border-teal-100/60">
                         <div className="prose prose-stone max-w-none">
-                            <div className="text-[15px] text-stone-600 leading-[1.85] font-normal">
+                            <div className="text-[19px] text-stone-600 leading-[1.85] font-normal">
                                 <ReactMarkdown
                                     components={{
-                                        h1: ({ node, ...props }) => <h1 className="text-2xl font-serif font-bold mt-10 mb-4 text-stone-800 first:mt-0" {...props} />,
-                                        h2: ({ node, ...props }) => <h2 className="text-xl font-serif font-bold mt-8 mb-3 text-stone-700" {...props} />,
-                                        h3: ({ node, ...props }) => <h3 className="text-lg font-serif font-bold mt-6 mb-2 text-stone-600" {...props} />,
+                                        h1: ({ node, ...props }) => <h1 className="text-4xl font-serif font-bold mt-10 mb-5 text-stone-800 first:mt-0" {...props} />,
+                                        h2: ({ node, ...props }) => <h2 className="text-3xl font-serif font-bold mt-8 mb-4 text-stone-700" {...props} />,
+                                        h3: ({ node, ...props }) => <h3 className="text-2xl font-serif font-bold mt-7 mb-3 text-stone-600" {...props} />,
                                         p: ({ node, ...props }) => <p className="mb-4 text-stone-600 leading-[1.85]" {...props} />,
                                         code: ({ node, className, ...props }) => {
                                             const isBlock = className?.includes('language-');
                                             if (isBlock) {
                                                 return (
-                                                    <code className="block bg-stone-800 text-stone-100 p-4 rounded-xl text-sm font-mono my-4 overflow-x-auto" {...props} />
+                                                    <code className="block bg-stone-800 text-stone-100 p-4 rounded-xl text-[16px] font-mono my-4 overflow-x-auto" {...props} />
                                                 );
                                             }
-                                            return <code className="bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-100 text-[13px]" {...props} />;
+                                            return <code className="bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-100 text-[16px]" {...props} />;
                                         },
                                         strong: ({ node, ...props }) => <strong className="text-stone-800 font-bold" {...props} />,
                                         ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-4 space-y-1.5" {...props} />,
