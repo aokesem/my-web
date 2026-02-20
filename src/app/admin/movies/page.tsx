@@ -289,17 +289,18 @@ export default function MoviesAdmin() {
                             <TableHead className="text-zinc-400">导演</TableHead>
                             <TableHead className="text-zinc-400">评分</TableHead>
                             <TableHead className="text-zinc-400">状态</TableHead>
+                            <TableHead className="text-zinc-400">短评</TableHead>
                             <TableHead className="text-zinc-400 text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-10 text-zinc-500">加载电影中...</TableCell>
+                                <TableCell colSpan={7} className="text-center py-10 text-zinc-500">加载电影中...</TableCell>
                             </TableRow>
                         ) : movies.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-10 text-zinc-500">暂无电影数据。</TableCell>
+                                <TableCell colSpan={7} className="text-center py-10 text-zinc-500">暂无电影数据。</TableCell>
                             </TableRow>
                         ) : (
                             movies.map((item) => (
@@ -316,6 +317,11 @@ export default function MoviesAdmin() {
                                             'bg-blue-500/10 text-blue-400 border-blue-500/20'
                                             }`}>
                                             {item.status === 'Watched' ? '已看' : '想看'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-zinc-400 text-sm max-w-[200px]">
+                                        <span className="line-clamp-2" title={item.comment || ''}>
+                                            {item.comment || <span className="text-zinc-600 italic">无</span>}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">

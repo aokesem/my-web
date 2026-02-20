@@ -278,17 +278,18 @@ export default function BooksAdmin() {
                             <TableHead className="text-zinc-400">书名</TableHead>
                             <TableHead className="text-zinc-400">分类</TableHead>
                             <TableHead className="text-zinc-400">阅读周期</TableHead>
+                            <TableHead className="text-zinc-400">摘要/短评</TableHead>
                             <TableHead className="text-zinc-400 text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-10 text-zinc-500">加载中...</TableCell>
+                                <TableCell colSpan={6} className="text-center py-10 text-zinc-500">加载中...</TableCell>
                             </TableRow>
                         ) : books.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-10 text-zinc-500">暂无书籍。</TableCell>
+                                <TableCell colSpan={6} className="text-center py-10 text-zinc-500">暂无书籍。</TableCell>
                             </TableRow>
                         ) : (
                             books.map((book) => (
@@ -301,6 +302,11 @@ export default function BooksAdmin() {
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-zinc-400 text-sm">{book.period_start} → {book.period_end}</TableCell>
+                                    <TableCell className="text-zinc-400 text-sm max-w-[200px]">
+                                        <span className="line-clamp-2" title={book.excerpt || ''}>
+                                            {book.excerpt || <span className="text-zinc-600 italic">无</span>}
+                                        </span>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button variant="ghost" size="icon" onClick={() => openEdit(book)} className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-800">

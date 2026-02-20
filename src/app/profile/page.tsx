@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { Origami, Settings, Database } from 'lucide-react';
+import CalendarWidget from './components/CalendarWidget';
 import { IoLibrary } from "react-icons/io5";
 import { useRouter } from 'next/navigation';
 import WindowView from './components/WindowView';
@@ -13,6 +14,7 @@ import DailyProtocol from './components/DailyProtocol';
 import ToolboxWidget from './components/ToolboxWidget';
 import CollectionCabinet from './components/CollectionCabinet';
 import StatusWidget from './components/StatusWidget';
+
 import { supabase } from '@/lib/supabaseClient';
 
 interface QuoteItem {
@@ -23,7 +25,7 @@ interface QuoteItem {
 export default function ProfilePage() {
     const router = useRouter();
     const [isWindowOpen, setIsWindowOpen] = useState(false);
-    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet' | 'status'>('idle');
+    const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet' | 'status' | 'calendar'>('idle');
 
     const [quotes, setQuotes] = useState<QuoteItem[]>([{ id: 0, text: "Loading data..." }]);
     const [quoteIndex, setQuoteIndex] = useState(0);
@@ -35,8 +37,16 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const initData = async () => {
-            const { data } = await supabase.from('profile_quotes').select('*').order('id', { ascending: true });
-            if (data && data.length > 0) setQuotes(data);
+            const { data } = await supabase.from('profile_quotes').select('*');
+            if (data && data.length > 0) {
+                // Fisher-Yates Shuffle
+                const shuffled = [...data];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                setQuotes(shuffled);
+            }
 
             const { data: { user } } = await supabase.auth.getUser();
             setIsAdmin(!!user);
@@ -102,6 +112,16 @@ export default function ProfilePage() {
                     className="flex flex-col items-center gap-6 pointer-events-auto"
                 >
                     <div className="relative flex items-center justify-center min-w-[300px] md:min-w-[600px]">
+
+                        {/* Calendar Widget - Above Lab_Archive */}
+                        <div className="absolute right-[calc(50%+13.5rem)] hidden md:flex -translate-y-11.5">
+                            <CalendarWidget
+                                isActive={activeModule === 'calendar'}
+                                onToggle={() => setActiveModule(prev => prev === 'calendar' ? 'idle' : 'calendar')}
+                            />
+                        </div>
+
+
                         <Link
                             href="/"
                             onMouseEnter={() => setBackBtnHover(true)}
