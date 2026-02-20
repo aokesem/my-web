@@ -113,13 +113,16 @@ export default function ProfilePage() {
                 >
                     <div className="relative flex items-center justify-center min-w-[300px] md:min-w-[600px]">
 
-                        {/* Calendar Widget - Above Lab_Archive */}
-                        <div className="absolute right-[calc(50%+13.5rem)] hidden md:flex -translate-y-11.5">
-                            <CalendarWidget
-                                isActive={activeModule === 'calendar'}
-                                onToggle={() => setActiveModule(prev => prev === 'calendar' ? 'idle' : 'calendar')}
-                            />
-                        </div>
+                        {/* Calendar Widget - Above Lab_Archive (Idle Only) */}
+                        {activeModule !== 'calendar' && (
+                            <div className="absolute right-[calc(50%+13.5rem)] hidden md:flex -translate-y-11.5">
+                                <CalendarWidget
+                                    isActive={false}
+                                    onToggle={() => setActiveModule('calendar')}
+                                    isAdmin={isAdmin}
+                                />
+                            </div>
+                        )}
 
 
                         <Link
@@ -218,6 +221,17 @@ export default function ProfilePage() {
                         isActive={true}
                         isIdle={false}
                         onToggle={() => setActiveModule('idle')}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Calendar Widget (Expanded State Only) - Root Level z-index 50 */}
+            <AnimatePresence>
+                {activeModule === 'calendar' && (
+                    <CalendarWidget
+                        isActive={true}
+                        onToggle={() => setActiveModule('idle')}
+                        isAdmin={isAdmin}
                     />
                 )}
             </AnimatePresence>
