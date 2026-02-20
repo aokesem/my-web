@@ -115,7 +115,7 @@ export default function ProfilePage() {
 
                         {/* Calendar Widget - Above Lab_Archive (Idle Only) */}
                         {activeModule !== 'calendar' && (
-                            <div className="absolute right-[calc(50%+13.5rem)] hidden md:flex -translate-y-11.5">
+                            <div className="absolute right-[calc(50%+13.5rem)] hidden md:flex -translate-y-11">
                                 <CalendarWidget
                                     isActive={false}
                                     onToggle={() => setActiveModule('calendar')}

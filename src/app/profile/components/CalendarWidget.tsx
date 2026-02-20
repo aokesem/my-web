@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X, Plus, Trash2, Calendar, Clock, Check } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 // === 类型定义 ===
 interface CalendarWidgetProps {
@@ -32,54 +33,6 @@ interface Deadline {
     done: boolean;
 }
 
-// === Mock 数据 ===
-const MOCK_DATA: Record<string, DayData> = {
-    '2026-02-16': {
-        status: 'good',
-        comment: '效率很高的一天，完成了很多任务',
-        activities: [
-            { id: 1, content: '写论文初稿', duration: 2.5 },
-            { id: 2, content: '跑步 5km', duration: 1 },
-            { id: 3, content: '阅读《深度学习》', duration: 1.5 },
-        ]
-    },
-    '2026-02-17': {
-        status: 'ok',
-        comment: '还行，但下午有些分心',
-        activities: [
-            { id: 4, content: '整理笔记', duration: 1 },
-            { id: 5, content: '开会讨论项目', duration: 2 },
-        ]
-    },
-    '2026-02-18': {
-        status: 'bad',
-        comment: '状态不太好，需要调整',
-        activities: [
-            { id: 6, content: '处理邮件', duration: 0.5 },
-        ]
-    },
-    '2026-02-19': {
-        status: 'good',
-        comment: '回到正轨了',
-        activities: [
-            { id: 7, content: '完成代码重构', duration: 3 },
-            { id: 8, content: '健身', duration: 1.5 },
-        ]
-    },
-    '2026-02-20': {
-        status: null,
-        comment: '',
-        activities: []
-    },
-};
-
-const MOCK_DEADLINES: Deadline[] = [
-    { id: 1, title: '论文终稿提交', date: '2026-02-25', done: false },
-    { id: 2, title: '项目答辩准备', date: '2026-03-01', done: false },
-    { id: 3, title: '签证申请截止', date: '2026-03-05', done: false },
-    { id: 4, title: '课程报告', date: '2026-02-18', done: true },
-];
-
 // === 工具函数 ===
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -98,18 +51,19 @@ function getMonthGrid(year: number, month: number) {
 }
 
 // === 状态颜色映射 ===
+// bg: 日历格子背景, ring: 选中环, text: 文字, dot: 详情面板圆点
 const STATUS_COLORS = {
-    good: { bg: 'bg-emerald-100', ring: 'ring-emerald-300', text: 'text-emerald-600', dot: 'bg-emerald-400', label: '好' },
-    ok: { bg: 'bg-amber-100', ring: 'ring-amber-300', text: 'text-amber-600', dot: 'bg-amber-400', label: '一般' },
-    bad: { bg: 'bg-rose-100', ring: 'ring-rose-300', text: 'text-rose-600', dot: 'bg-rose-400', label: '差' },
+    good: { bg: 'bg-emerald-500', ring: 'ring-emerald-400', text: 'text-emerald-700', dot: 'bg-emerald-500', label: '好' },
+    ok: { bg: 'bg-amber-500', ring: 'ring-amber-400', text: 'text-amber-700', dot: 'bg-amber-500', label: '一般' },
+    bad: { bg: 'bg-rose-500', ring: 'ring-rose-400', text: 'text-rose-700', dot: 'bg-rose-500', label: '差' },
 };
 
-// === 静止态用 ===
+// === 静止态指示灯颜色 ===
 const IDLE_STATUS_COLOR = {
     none: 'bg-slate-300',
-    good: 'bg-emerald-400',
-    ok: 'bg-amber-400',
-    bad: 'bg-rose-400',
+    good: 'bg-emerald-500',
+    ok: 'bg-amber-500',
+    bad: 'bg-rose-500',
 };
 const IDLE_GLOW = {
     none: 'shadow-[0_0_8px_rgba(148,163,184,0.6)]',
@@ -124,10 +78,6 @@ const IDLE_GLOW_HOVER = {
     bad: 'shadow-[0_0_16px_rgba(251,113,133,1)]',
 };
 
-// 模块级持久数据（在组件重新挂载之间保持同步）
-let _persistedCalendarData: Record<string, DayData> = { ...MOCK_DATA };
-let _persistedDeadlines: Deadline[] = [...MOCK_DEADLINES];
-
 export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: CalendarWidgetProps) {
     const today = new Date();
     const [isHovered, setIsHovered] = useState(false);
@@ -136,8 +86,9 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     const [viewYear, setViewYear] = useState(today.getFullYear());
     const [viewMonth, setViewMonth] = useState(today.getMonth());
     const [selectedDay, setSelectedDay] = useState(today.getDate());
-    const [calendarData, setCalendarData] = useState<Record<string, DayData>>(() => _persistedCalendarData);
-    const [deadlines, setDeadlines] = useState<Deadline[]>(() => _persistedDeadlines);
+    const [calendarData, setCalendarData] = useState<Record<string, DayData>>({});
+    const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+    const [dataLoaded, setDataLoaded] = useState(false);
 
     // 新事项输入
     const [newActivity, setNewActivity] = useState('');
@@ -145,6 +96,42 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     // 新 deadline 输入
     const [newDeadlineTitle, setNewDeadlineTitle] = useState('');
     const [newDeadlineDate, setNewDeadlineDate] = useState('');
+
+    // === Supabase 数据加载 ===
+    const fetchData = useCallback(async () => {
+        // 获取日历日期状态
+        const { data: days } = await supabase.from('calendar_days').select('*');
+        // 获取所有活动
+        const { data: acts } = await supabase.from('calendar_activities').select('*').order('created_at', { ascending: true });
+        // 获取所有 deadlines
+        const { data: dls } = await supabase.from('calendar_deadlines').select('*').order('date', { ascending: true });
+
+        // 组装 calendarData
+        const map: Record<string, DayData> = {};
+        if (days) {
+            for (const d of days) {
+                const key = d.date; // Supabase DATE 返回 'YYYY-MM-DD'
+                map[key] = {
+                    status: d.status as DayStatus,
+                    comment: d.comment || '',
+                    activities: [],
+                };
+            }
+        }
+        if (acts) {
+            for (const a of acts) {
+                const key = a.date;
+                if (!map[key]) map[key] = { status: null, comment: '', activities: [] };
+                map[key].activities.push({ id: a.id, content: a.content, duration: a.duration });
+            }
+        }
+
+        setCalendarData(map);
+        setDeadlines(dls || []);
+        setDataLoaded(true);
+    }, []);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     // 当前月份网格
     const { startOffset, daysInMonth } = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
@@ -158,55 +145,96 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     const todayStatus = calendarData[todayKey]?.status || null;
     const idleStatusKey = todayStatus || 'none';
 
-    // === 操作函数 ===
-    const updateDayData = (key: string, update: Partial<DayData>) => {
-        setCalendarData(prev => {
-            const next = { ...prev, [key]: { ...(prev[key] || { status: null, comment: '', activities: [] }), ...update } };
-            _persistedCalendarData = next;
-            return next;
-        });
+    // === Supabase 操作函数 ===
+    const upsertDayField = async (dateKey: string, field: 'status' | 'comment', value: string | null) => {
+        // 先更新本地状态
+        setCalendarData(prev => ({
+            ...prev,
+            [dateKey]: { ...(prev[dateKey] || { status: null, comment: '', activities: [] }), [field]: value }
+        }));
+        // Upsert 到 Supabase
+        const existing = await supabase.from('calendar_days').select('id').eq('date', dateKey).single();
+        if (existing.data) {
+            await supabase.from('calendar_days').update({ [field]: value, updated_at: new Date().toISOString() }).eq('date', dateKey);
+        } else {
+            await supabase.from('calendar_days').insert({ date: dateKey, [field]: value });
+        }
     };
 
     const handleStatusChange = (status: DayStatus) => {
         const current = selectedData.status;
-        updateDayData(selectedKey, { status: current === status ? null : status });
+        const newStatus = current === status ? null : status;
+        upsertDayField(selectedKey, 'status', newStatus);
     };
 
-    const handleAddActivity = () => {
+    const handleClearStatus = () => {
+        upsertDayField(selectedKey, 'status', null);
+    };
+
+    const handleAddActivity = async () => {
         if (!newActivity.trim()) return;
-        const activity: Activity = {
-            id: Date.now(),
+        const payload = {
+            date: selectedKey,
             content: newActivity.trim(),
             duration: newDuration ? parseFloat(newDuration) : null,
         };
-        updateDayData(selectedKey, { activities: [...selectedData.activities, activity] });
+        const { data, error } = await supabase.from('calendar_activities').insert(payload).select().single();
+        if (!error && data) {
+            setCalendarData(prev => {
+                const day = prev[selectedKey] || { status: null, comment: '', activities: [] };
+                return { ...prev, [selectedKey]: { ...day, activities: [...day.activities, { id: data.id, content: data.content, duration: data.duration }] } };
+            });
+        }
         setNewActivity('');
         setNewDuration('');
     };
 
-    const handleRemoveActivity = (actId: number) => {
-        updateDayData(selectedKey, { activities: selectedData.activities.filter(a => a.id !== actId) });
+    const handleRemoveActivity = async (actId: number) => {
+        await supabase.from('calendar_activities').delete().eq('id', actId);
+        setCalendarData(prev => {
+            const day = prev[selectedKey];
+            if (!day) return prev;
+            return { ...prev, [selectedKey]: { ...day, activities: day.activities.filter(a => a.id !== actId) } };
+        });
     };
 
     const handleCommentChange = (comment: string) => {
-        updateDayData(selectedKey, { comment });
+        // 本地立即更新，延迟保存
+        setCalendarData(prev => ({
+            ...prev,
+            [selectedKey]: { ...(prev[selectedKey] || { status: null, comment: '', activities: [] }), comment }
+        }));
+    };
+
+    // 评语失焦时保存
+    const handleCommentBlur = () => {
+        upsertDayField(selectedKey, 'comment', selectedData.comment);
     };
 
     // Deadline 操作
-    const handleAddDeadline = () => {
+    const handleAddDeadline = async () => {
         if (!newDeadlineTitle.trim() || !newDeadlineDate) return;
-        const dl: Deadline = { id: Date.now(), title: newDeadlineTitle.trim(), date: newDeadlineDate, done: false };
-        setDeadlines(prev => { const next = [...prev, dl]; _persistedDeadlines = next; return next; });
+        const { data, error } = await supabase.from('calendar_deadlines')
+            .insert({ title: newDeadlineTitle.trim(), date: newDeadlineDate, done: false })
+            .select().single();
+        if (!error && data) {
+            setDeadlines(prev => [...prev, data]);
+        }
         setNewDeadlineTitle('');
         setNewDeadlineDate('');
     };
 
-    const handleToggleDeadline = (id: number) => {
-        setDeadlines(prev => { const next = prev.map(d => d.id === id ? { ...d, done: !d.done } : d); _persistedDeadlines = next; return next; });
+    const handleToggleDeadline = async (id: number) => {
+        const dl = deadlines.find(d => d.id === id);
+        if (!dl) return;
+        const newDone = !dl.done;
+        await supabase.from('calendar_deadlines').update({ done: newDone }).eq('id', id);
+        setDeadlines(prev => prev.map(d => d.id === id ? { ...d, done: newDone } : d));
     };
 
-    const handleRemoveDeadline = (id: number) => {
-        setDeadlines(prev => { const next = prev.filter(d => d.id !== id); _persistedDeadlines = next; return next; });
+    const handleRemoveDeadline = async (id: number) => {
+        await supabase.from('calendar_deadlines').delete().eq('id', id);
+        setDeadlines(prev => prev.filter(d => d.id !== id));
     };
 
     // 获取某天是否有 deadline
@@ -491,7 +519,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         {/* 清除状态 */}
                                         {isAdmin && selectedData.status && (
                                             <button
-                                                onClick={() => updateDayData(selectedKey, { status: null })}
+                                                onClick={handleClearStatus}
                                                 className="w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-all ml-1"
                                                 title="清除状态"
                                             >
@@ -572,6 +600,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         <textarea
                                             value={selectedData.comment}
                                             onChange={e => handleCommentChange(e.target.value)}
+                                            onBlur={handleCommentBlur}
                                             placeholder="对今天说点什么..."
                                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors resize-none h-20"
                                         />

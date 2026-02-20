@@ -17,6 +17,7 @@ import {
     Cpu,
     Wrench,
     Activity,
+    CalendarDays,
     SearchCode, // [New] for Prompts
     Layers, // [New] for MindMap
     Sprout, // [New] for Garden
@@ -41,6 +42,7 @@ const ROOM_NAV_ITEMS = [
     { title: "时间线", href: "/admin/room/timeline", icon: GitCommitHorizontal },
     { title: "工具箱", href: "/admin/room/tools", icon: Wrench },
     { title: "习惯配置", href: "/admin/room/habits", icon: ListTodo },
+    { title: "日历管理", href: "/admin/calendar", icon: CalendarDays },
 ];
 
 // [New] Library Space Items
@@ -120,7 +122,7 @@ export default function AdminLayout({
                 </div>
 
                 {/* 2. 中间导航菜单区 */}
-                <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
+                <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto scrollbar-thin" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
                     {/* [新增] Lab Space 小标题 */}
                     <div className="px-4 mb-2 text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
                         Lab Space
