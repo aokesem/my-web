@@ -45,13 +45,6 @@ const MODULES = [
         path: '/library/garden',
         description: '有机生长的思想与记录',
         type: 'garden'
-    },
-    {
-        id: 'prism',
-        title: '认知棱镜',
-        path: '#',
-        description: '多维视角的折射与洞察',
-        type: 'prism'
     }
 ];
 
@@ -494,58 +487,6 @@ export default function LibraryPage() {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* === OPTION C: Cognitive Prism === */}
-                                {module.type === 'prism' && (
-                                    <div className="relative group-hover:-translate-y-2 transition-transform duration-500 ease-out h-full overflow-hidden">
-                                        <div className="absolute inset-0 bg-linear-to-br from-[#f8fbff] to-[#f0f4f8] rounded-2xl border border-indigo-50 shadow-[0_4px_12px_rgba(99,102,241,0.05)] group-hover:shadow-[0_20px_40px_rgba(99,102,241,0.12)] transition-all duration-500" />
-
-                                        {/* Glass refraction effect */}
-                                        <div className="absolute inset-0 overflow-hidden rounded-2xl">
-                                            <div className="absolute -right-20 -top-20 w-80 h-80 bg-linear-to-b from-indigo-100/30 to-amber-100/30 blur-3xl rounded-full" />
-                                            <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-linear-to-t from-blue-100/30 to-purple-100/30 blur-3xl rounded-full" />
-                                        </div>
-
-                                        <div className="relative p-10 h-[360px] flex flex-col z-20">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                                                        <Triangle size={8} className="fill-indigo-400" />
-                                                        Refraction Layer
-                                                    </span>
-                                                    <h2 className="text-3xl font-serif font-medium text-stone-800 group-hover:text-indigo-600 transition-colors">
-                                                        {module.title}
-                                                    </h2>
-                                                </div>
-                                                <div className="w-12 h-12 rounded-full bg-white/60 backdrop-blur-md border border-white/80 shadow-sm flex items-center justify-center text-indigo-400 group-hover:text-indigo-600 transition-colors">
-                                                    <Lightbulb size={22} />
-                                                </div>
-                                            </div>
-
-                                            <div className="flex-1 flex items-center justify-center relative">
-                                                {/* Centerpiece: Prism */}
-                                                <div className="relative w-32 h-32 flex items-center justify-center perspective-1000">
-                                                    <motion.div
-                                                        animate={{ rotateY: [0, 15, 0, -15, 0] }}
-                                                        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
-                                                        className="relative z-10"
-                                                    >
-                                                        <Triangle size={64} className="text-stone-300/80 fill-white/20 stroke-stone-300 group-hover:stroke-indigo-400 transition-all duration-500 drop-shadow-xl" strokeWidth={1} />
-                                                    </motion.div>
-
-                                                    {/* Spectral light */}
-                                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-1 bg-linear-to-r from-transparent via-indigo-400/50 to-amber-400/50 blur-md rotate-45 group-hover:opacity-100 opacity-50 transition-opacity duration-500" />
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-4 border-t border-indigo-100/30">
-                                                <p className="text-sm text-stone-500 font-medium leading-relaxed group-hover:text-indigo-800/70 transition-colors">
-                                                    {module.description}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </motion.div>
                         ))}
                     </AnimatePresence>
@@ -554,9 +495,9 @@ export default function LibraryPage() {
 
             <div className="relative bottom-6 left-0 w-full text-center shrink-0">
                 <span className="text-[10px] font-mono text-stone-300 uppercase tracking-[0.3em]">
-                    Design Scheme B // White Canvas
+                    Aokesem • SYSTEM_CORE V.03
                 </span>
             </div>
-        </div >
+        </div>
     );
 }

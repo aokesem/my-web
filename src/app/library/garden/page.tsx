@@ -44,6 +44,21 @@ import { Badge } from "@/components/ui/badge";
 // DATA & TYPES
 // ============================================================
 
+const PAGE_DELIMITER = '\n\n===PAGE_BREAK===\n\n';
+
+const MARKDOWN_COMPONENTS = {
+    h1: ({ node, ...props }: any) => <h1 className="text-[24px] font-serif font-bold mt-8 mb-4 text-stone-800 break-after-avoid" {...props} />,
+    h2: ({ node, ...props }: any) => <h2 className="text-[22px] font-serif font-bold mt-6 mb-3 text-stone-800 break-after-avoid" {...props} />,
+    h3: ({ node, ...props }: any) => <h3 className="text-[20px] font-serif font-bold mt-5 mb-2 text-stone-700 break-after-avoid" {...props} />,
+    p: ({ node, ...props }: any) => <p className="mb-3 text-stone-600 leading-[1.95] break-inside-avoid-column" {...props} />,
+    code: ({ node, className, children, ...props }: any) => {
+        const isBlock = className?.includes('language-');
+        if (isBlock) return <code className="block bg-[#1e293b] text-stone-200 p-4 rounded-lg text-[15px] font-mono my-4 overflow-x-auto break-inside-avoid" {...props}>{children}</code>;
+        return <code className="bg-teal-50/80 text-teal-700 px-1.5 py-0.5 rounded text-[15px] border border-teal-100/60" {...props} />;
+    },
+    img: ({ node, ...props }: any) => <img className="rounded-lg my-4 max-w-full break-inside-avoid shadow-sm border border-stone-200" {...props} alt="" />,
+};
+
 // Fallback if DB is empty
 const DEFAULT_BOARDS = [
     { id: 'learning', title: '学习笔记', icon: 'BookOpen' },
@@ -80,7 +95,6 @@ export default function GardenPage() {
     const [activeBoard, setActiveBoard] = useState(0);
     const [activeArticle, setActiveArticle] = useState(0);
     const [currentSpread, setCurrentSpread] = useState(0);
-    const [totalSpreads, setTotalSpreads] = useState(1);
 
     // --- Data State ---
     const [categories, setCategories] = useState<Category[]>([]);
@@ -105,6 +119,30 @@ export default function GardenPage() {
     const [formData, setFormData] = useState<Partial<Article>>({
         title: "", slug: "", content: "", category: "learning", tags: [], status: "Draft"
     });
+
+    const readPages = currentArticleData ? (currentArticleData.content || '').split(PAGE_DELIMITER) : [];
+    if (readPages.length === 0) readPages.push('');
+    const readTotalSpreads = Math.max(1, Math.ceil(readPages.length / 2));
+
+    const editPages = (formData.content || '').split(PAGE_DELIMITER);
+    if (editPages.length === 0) editPages.push('');
+    const editTotalSpreads = Math.max(1, Math.ceil(editPages.length / 2));
+
+    const actualTotalSpreads = isEditing ? editTotalSpreads : readTotalSpreads;
+
+    const updateEditPage = (index: number, newContent: string) => {
+        const newPages = [...editPages];
+        newPages[index] = newContent;
+        setFormData(prev => ({ ...prev, content: newPages.join(PAGE_DELIMITER) }));
+    };
+
+    const addEditPage = () => {
+        const newPages = [...editPages, ''];
+        setFormData(prev => ({ ...prev, content: newPages.join(PAGE_DELIMITER) }));
+        if (newPages.length % 2 === 1) {
+            setCurrentSpread(Math.floor((newPages.length - 1) / 2));
+        }
+    };
 
     // ============================================================
     // EFFECTS
@@ -231,46 +269,30 @@ export default function GardenPage() {
 
 
     // Calculate spreads
-    const calculateSpreads = useCallback(() => {
-        if (isEditing) return;
-        if (!contentRef.current || !bookRef.current) return;
-        const scrollW = contentRef.current.scrollWidth;
-        const bookW = bookRef.current.clientWidth;
-        if (bookW <= 0) return;
-        setTotalSpreads(Math.max(1, Math.ceil(scrollW / bookW)));
-    }, [isEditing]);
-
     useEffect(() => {
         if (!isEditing) {
             setCurrentSpread(0);
-            const t = setTimeout(calculateSpreads, 120);
-            return () => clearTimeout(t);
         }
-    }, [activeBoard, activeArticle, calculateSpreads, loading, articlesMap, isEditing]);
-
-    useEffect(() => {
-        window.addEventListener('resize', calculateSpreads);
-        return () => window.removeEventListener('resize', calculateSpreads);
-    }, [calculateSpreads]);
+    }, [activeBoard, activeArticle, isEditing]);
 
     // Keyboard navigation
     const prevSpread = useCallback(() => {
-        if (!isEditing) setCurrentSpread(s => Math.max(0, s - 1));
-    }, [isEditing]);
+        setCurrentSpread(s => Math.max(0, s - 1));
+    }, []);
 
     const nextSpread = useCallback(() => {
-        if (!isEditing) setCurrentSpread(s => Math.min(totalSpreads - 1, s + 1));
-    }, [totalSpreads, isEditing]);
+        setCurrentSpread(s => Math.min(actualTotalSpreads - 1, s + 1));
+    }, [actualTotalSpreads]);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
-            if (isEditing) return;
+            if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
             if (e.key === 'ArrowRight') nextSpread();
             if (e.key === 'ArrowLeft') prevSpread();
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [nextSpread, prevSpread, isEditing]);
+    }, [nextSpread, prevSpread]);
 
 
     // ============================================================
@@ -303,6 +325,7 @@ export default function GardenPage() {
         });
         setTagsInput("");
         setIsEditing(true);
+        setCurrentSpread(0);
     };
 
     const handleEdit = (article: Article) => {
@@ -317,6 +340,7 @@ export default function GardenPage() {
         });
         setTagsInput(article.tags.join(", "));
         setIsEditing(true);
+        setCurrentSpread(0);
     };
 
     const handleCancelEdit = () => {
@@ -415,7 +439,7 @@ export default function GardenPage() {
                     {!isEditing && (
                         <>
                             <div className="w-px h-4 bg-white/15" />
-                            <span className="text-sm font-mono tracking-wider text-white/50">{currentSpread + 1} / {totalSpreads}</span>
+                            <span className="text-sm font-mono tracking-wider text-white/50">{currentSpread + 1} / {actualTotalSpreads}</span>
                         </>
                     )}
                 </div>
@@ -528,15 +552,56 @@ export default function GardenPage() {
                                     />
                                 </div>
                             </div>
-                            {/* Main Text Area */}
-                            <div className="flex-1 p-8 overflow-hidden">
-                                <div className="h-full max-w-4xl mx-auto flex flex-col">
-                                    <Textarea
-                                        value={formData.content || ""}
-                                        onChange={e => setFormData({ ...formData, content: e.target.value })}
-                                        className="flex-1 bg-white/50 border-[#ccd8d0] focus:bg-white focus:ring-teal-500/20 font-mono text-sm leading-relaxed resize-none p-6 shadow-sm rounded-xl transition-all"
-                                        placeholder="# Start writing..."
-                                    />
+                            {/* Dual Page Editor Area */}
+                            <div className="flex-1 p-8 overflow-hidden flex flex-col">
+                                <div className="flex-1 max-w-6xl w-full mx-auto grid grid-cols-2 gap-8 relative">
+                                    {/* Center line */}
+                                    <div className="absolute top-4 bottom-4 left-1/2 w-px bg-[#b8c9bf] z-10 pointer-events-none" />
+
+                                    {/* Left Page (Index: currentSpread * 2) */}
+                                    <div className="h-full flex flex-col">
+                                        <Textarea
+                                            value={editPages[currentSpread * 2] || ""}
+                                            onChange={e => updateEditPage(currentSpread * 2, e.target.value)}
+                                            className="flex-1 bg-white/50 border-[#ccd8d0] focus:bg-white focus:ring-teal-500/20 font-mono text-sm leading-relaxed resize-none p-6 shadow-sm rounded-xl transition-all"
+                                            placeholder="# Left page..."
+                                        />
+                                    </div>
+
+                                    {/* Right Page (Index: currentSpread * 2 + 1) */}
+                                    <div className="h-full flex flex-col">
+                                        {editPages.length > currentSpread * 2 + 1 ? (
+                                            <Textarea
+                                                value={editPages[currentSpread * 2 + 1] || ""}
+                                                onChange={e => updateEditPage(currentSpread * 2 + 1, e.target.value)}
+                                                className="flex-1 bg-white/50 border-[#ccd8d0] focus:bg-white focus:ring-teal-500/20 font-mono text-sm leading-relaxed resize-none p-6 shadow-sm rounded-xl transition-all"
+                                                placeholder="# Right page..."
+                                            />
+                                        ) : (
+                                            <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#ccd8d0] rounded-xl bg-white/20 gap-3">
+                                                <Button variant="ghost" onClick={addEditPage} className="text-[#6b8a7a] hover:bg-white/50 hover:text-teal-700">
+                                                    <Plus size={16} className="mr-2" /> Add Next Page
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Editor Paging Controls */}
+                                <div className="flex-none flex items-center justify-between mt-4">
+                                    <button onClick={() => setCurrentSpread(s => Math.max(0, s - 1))} disabled={currentSpread === 0} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
+                                        <ChevronLeft size={16} /> Prev Spread
+                                    </button>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-[10px] font-mono text-[#8aaa9a] tracking-[0.2em]">SPREAD {currentSpread + 1} / {editTotalSpreads}</span>
+                                        {editPages.length % 2 === 0 && currentSpread === editTotalSpreads - 1 && (
+                                            <Button variant="outline" size="sm" onClick={addEditPage} className="h-7 text-xs border-[#ccd8d0] text-[#6b8a7a]">
+                                                <Plus size={12} className="mr-1" /> New Spread
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <button onClick={() => setCurrentSpread(s => Math.min(editTotalSpreads - 1, s + 1))} disabled={currentSpread >= editTotalSpreads - 1} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
+                                        Next Spread <ChevronRight size={16} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -587,29 +652,26 @@ export default function GardenPage() {
                                             <div className="absolute top-4 bottom-4 left-1/2 w-px bg-[#b8c9bf] z-10 pointer-events-none" />
                                             <motion.div
                                                 ref={contentRef}
-                                                key={`content-${activeBoard}-${activeArticle}`}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1, x: -(currentSpread * 100) + '%' }}
-                                                transition={{ opacity: { duration: 0.25 }, x: { duration: 0.45, ease: [0.25, 0.1, 0.25, 1] } }}
-                                                className="h-full px-10 py-8"
-                                                style={{ columnCount: 2, columnGap: '5rem', columnFill: 'auto' as any }}
+                                                key={`content-${activeBoard}-${activeArticle}-${currentSpread}`}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                                className="h-full px-10 py-8 grid grid-cols-2 gap-20"
                                             >
-                                                <div className="text-[18px] text-stone-600 leading-[1.95]">
-                                                    <ReactMarkdown components={{
-                                                        h1: ({ node, ...props }) => <h1 className="text-[24px] font-serif font-bold mt-8 mb-4 text-stone-800 break-after-avoid" {...props} />,
-                                                        h2: ({ node, ...props }) => <h2 className="text-[22px] font-serif font-bold mt-6 mb-3 text-stone-800 break-after-avoid" {...props} />,
-                                                        h3: ({ node, ...props }) => <h3 className="text-[20px] font-serif font-bold mt-5 mb-2 text-stone-700 break-after-avoid" {...props} />,
-                                                        p: ({ node, ...props }) => <p className="mb-3 text-stone-600 leading-[1.95] break-inside-avoid-column" {...props} />,
-                                                        code: ({ node, className, children, ...props }) => {
-                                                            const isBlock = className?.includes('language-');
-                                                            if (isBlock) return <code className="block bg-[#1e293b] text-stone-200 p-4 rounded-lg text-[15px] font-mono my-4 overflow-x-auto break-inside-avoid" {...props}>{children}</code>;
-                                                            return <code className="bg-teal-50/80 text-teal-700 px-1.5 py-0.5 rounded text-[15px] border border-teal-100/60" {...props} />;
-                                                        },
-                                                        img: ({ node, ...props }) => <img className="rounded-lg my-4 max-w-full break-inside-avoid shadow-sm border border-stone-200" {...props} alt="" />,
-                                                        // ... other components
-                                                    }}>
-                                                        {currentArticleData.content}
+                                                {/* Left Page */}
+                                                <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4">
+                                                    <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                                                        {readPages[currentSpread * 2]?.replace(/\n(?!\n)/g, '  \n') || ''}
                                                     </ReactMarkdown>
+                                                </div>
+
+                                                {/* Right Page */}
+                                                <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4 pl-4">
+                                                    {readPages.length > currentSpread * 2 + 1 && (
+                                                        <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                                                            {readPages[currentSpread * 2 + 1]?.replace(/\n(?!\n)/g, '  \n') || ''}
+                                                        </ReactMarkdown>
+                                                    )}
                                                 </div>
                                             </motion.div>
                                         </div>
@@ -619,7 +681,7 @@ export default function GardenPage() {
                                             <ChevronLeft size={16} /> Prev
                                         </button>
                                         <div className="text-[9px] font-mono text-[#8aaa9a] tracking-[0.2em]">GARDEN_SYS // READER</div>
-                                        <button onClick={nextSpread} disabled={currentSpread >= totalSpreads - 1} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
+                                        <button onClick={nextSpread} disabled={currentSpread >= actualTotalSpreads - 1} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono text-[#6b8a7a] hover:bg-[#dae6df] disabled:opacity-25 transition-colors">
                                             Next <ChevronRight size={16} />
                                         </button>
                                     </div>
