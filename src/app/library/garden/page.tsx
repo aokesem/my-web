@@ -426,14 +426,19 @@ export default function GardenPage() {
 
                 <div className="flex items-center gap-4">
                     {isAuthenticated && !isEditing && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[12px] bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 gap-1.5 px-3"
-                            onClick={handleAdd}
-                        >
-                            <Plus size={13} /> New Note
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Link href="/admin/library/garden" className="h-7 flex items-center text-[12px] bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 hover:border-white/30 gap-1.5 px-3 rounded-md transition-all">
+                                <FolderOpen size={13} /> Admin
+                            </Link>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-[12px] bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 gap-1.5 px-3"
+                                onClick={handleAdd}
+                            >
+                                <Plus size={13} /> New Note
+                            </Button>
+                        </div>
                     )}
 
                     {!isEditing && (

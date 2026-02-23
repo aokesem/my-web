@@ -250,7 +250,7 @@ export default function PromptsAdminPage() {
                 <Card className="md:col-span-1 bg-zinc-900 border-zinc-800 flex flex-col h-full overflow-hidden">
                     <CardHeader className="py-4 px-4 border-b border-zinc-800 flex flex-row items-center justify-between space-y-0">
                         <CardTitle className="text-base font-semibold text-zinc-100">侧边分类</CardTitle>
-                        <Button variant="ghost" size="icon" onClick={handleAddCategory} className="h-8 w-8 hover:bg-zinc-800">
+                        <Button variant="ghost" size="icon" onClick={handleAddCategory} className="h-8 w-8 text-white bg-zinc-800 hover:bg-zinc-700 hover:text-white">
                             <Plus size={16} />
                         </Button>
                     </CardHeader>

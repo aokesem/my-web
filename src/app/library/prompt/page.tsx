@@ -207,15 +207,23 @@ export default function PromptWarehousePage() {
                 </div>
 
                 <div className="flex flex-col items-end gap-6 h-full justify-between">
-                    <div className="flex items-center gap-4 bg-stone-100/50 p-1.5 rounded-xl border border-stone-200/40 backdrop-blur-sm">
-                        <div className="px-3 py-1 bg-white rounded-lg shadow-sm border border-stone-200/60">
-                            <span className="text-[10px] font-mono font-bold text-orange-600 uppercase tracking-widest items-center flex gap-1.5">
-                                <LayoutGrid size={10} /> Matrix_Mode
-                            </span>
-                        </div>
-                        <div className="px-3 py-1 flex items-center gap-2 text-stone-400 opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
-                            <Search size={14} />
-                            <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Global_Search</span>
+                    <div className="flex items-center gap-4">
+                        {user && (
+                            <Link href="/admin/library/prompts" className="flex items-center gap-2 px-3 py-1.5 bg-stone-100/50 rounded-xl border border-stone-200/40 backdrop-blur-sm text-stone-400 hover:text-orange-600 hover:border-orange-200/50 transition-all cursor-pointer">
+                                <Archive size={14} />
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Admin_Panel</span>
+                            </Link>
+                        )}
+                        <div className="flex items-center gap-4 bg-stone-100/50 p-1.5 rounded-xl border border-stone-200/40 backdrop-blur-sm">
+                            <div className="px-3 py-1 bg-white rounded-lg shadow-sm border border-stone-200/60">
+                                <span className="text-[10px] font-mono font-bold text-orange-600 uppercase tracking-widest items-center flex gap-1.5">
+                                    <LayoutGrid size={10} /> Matrix_Mode
+                                </span>
+                            </div>
+                            <div className="px-3 py-1 flex items-center gap-2 text-stone-400 opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
+                                <Search size={14} />
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Global_Search</span>
+                            </div>
                         </div>
                     </div>
                 </div>
