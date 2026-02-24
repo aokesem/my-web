@@ -664,14 +664,14 @@ export default function GardenPage() {
                                                 className="h-full px-10 py-8 grid grid-cols-2 gap-20"
                                             >
                                                 {/* Left Page */}
-                                                <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4">
+                                                <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4 [&>*:first-child]:mt-0">
                                                     <ReactMarkdown components={MARKDOWN_COMPONENTS}>
                                                         {readPages[currentSpread * 2]?.replace(/\n(?!\n)/g, '  \n') || ''}
                                                     </ReactMarkdown>
                                                 </div>
 
                                                 {/* Right Page */}
-                                                <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4 pl-4">
+                                                <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4 pl-4 [&>*:first-child]:mt-0">
                                                     {readPages.length > currentSpread * 2 + 1 && (
                                                         <ReactMarkdown components={MARKDOWN_COMPONENTS}>
                                                             {readPages[currentSpread * 2 + 1]?.replace(/\n(?!\n)/g, '  \n') || ''}

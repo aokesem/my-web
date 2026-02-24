@@ -29,7 +29,7 @@ interface DayData {
 interface Deadline {
     id: number;
     title: string;
-    date: string; // 'YYYY-MM-DD'
+    date: string | null; // 'YYYY-MM-DD'
     done: boolean;
 }
 
@@ -213,10 +213,14 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
 
     // Deadline 操作
     const handleAddDeadline = async () => {
-        if (!newDeadlineTitle.trim() || !newDeadlineDate) return;
+        if (!newDeadlineTitle.trim()) return;
+        const fallbackDate = '2099-12-31';
         const { data, error } = await supabase.from('calendar_deadlines')
-            .insert({ title: newDeadlineTitle.trim(), date: newDeadlineDate, done: false })
+            .insert({ title: newDeadlineTitle.trim(), date: newDeadlineDate || fallbackDate, done: false })
             .select().single();
+        if (error) {
+            console.error('Error adding deadline:', error);
+        }
         if (!error && data) {
             setDeadlines(prev => [...prev, data]);
         }
@@ -243,8 +247,8 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     // 排序 deadlines: 未过期按日期升序，过期的排在最后
     const sortedDeadlines = useMemo(() => {
         const todayStr = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-        const active = deadlines.filter(d => d.date >= todayStr && !d.done).sort((a, b) => a.date.localeCompare(b.date));
-        const expired = deadlines.filter(d => d.date < todayStr || d.done).sort((a, b) => a.date.localeCompare(b.date));
+        const active = deadlines.filter(d => (!d.date || d.date === '2099-12-31' || d.date >= todayStr) && !d.done).sort((a, b) => (a.date || '2099-12-31').localeCompare(b.date || '2099-12-31'));
+        const expired = deadlines.filter(d => (d.date && d.date !== '2099-12-31' && d.date < todayStr) || d.done).sort((a, b) => (a.date || '2099-12-31').localeCompare(b.date || '2099-12-31'));
         return [...active, ...expired];
     }, [deadlines, today]);
 
@@ -317,7 +321,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                             ) : (
                                 sortedDeadlines.map(dl => {
                                     const todayStr = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-                                    const isExpired = dl.date < todayStr;
+                                    const isExpired = dl.date && dl.date !== '2099-12-31' ? dl.date < todayStr : false;
                                     const isOverdue = isExpired && !dl.done;
 
                                     return (
@@ -347,7 +351,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                                 </div>
                                                 <div className={`text-[13px] font-mono mt-0.5 ${isOverdue ? 'text-rose-400' : 'text-slate-400'
                                                     }`}>
-                                                    {dl.date.slice(5).replace('-', '/')}
+                                                    {dl.date && dl.date !== '2099-12-31' ? dl.date.slice(5).replace('-', '/') : 'Anytime'}
                                                 </div>
                                             </div>
                                             {/* 删除 */}

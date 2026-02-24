@@ -445,9 +445,10 @@ export default function CategoryDetailPage() {
                                         <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
 
                                         <div className="p-10 md:pl-20 prose prose-stone max-w-none">
-                                            <div className="font-sans text-[16px] text-zinc-800 leading-relaxed wrap-break-word selection:bg-orange-100/80">
+                                            <div className="font-sans text-[16px] text-zinc-800 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-100/80">
                                                 <ReactMarkdown
                                                     components={{
+                                                        p: ({ ...props }) => <p className="mb-4 last:mb-0" {...props} />,
                                                         h1: ({ ...props }) => <h1 className="text-3xl font-bold mt-10 mb-6 text-zinc-900 tracking-tight" {...props} />,
                                                         h2: ({ ...props }) => <h2 className="text-2xl font-bold mt-8 mb-4 text-zinc-800 tracking-tight" {...props} />,
                                                         h3: ({ ...props }) => <h3 className="text-xl font-bold mt-6 mb-3 text-zinc-800" {...props} />,
