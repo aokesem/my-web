@@ -59,6 +59,13 @@ const MODULES = [
         path: '/library/diet',
         description: '关于食物的收集、制作与品鉴',
         type: 'bento'
+    },
+    {
+        id: 'info-source',
+        title: '信息溯源',
+        path: '/library/info-source',
+        description: '系统的私人信息获取阵地',
+        type: 'press'
     }
 ];
 
@@ -867,6 +874,96 @@ export default function LibraryPage() {
                                                 </div>
                                             </div>
 
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* === PRESS: Information Source Module (Editorial Broadsheet Layout) === */}
+                                {module.type === 'press' && (
+                                    <div className="relative group-hover:-translate-y-2 transition-transform duration-500 ease-out h-[360px] w-full bg-[#eee9df] rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.04)] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-stone-300 overflow-hidden flex flex-col p-5">
+
+                                        {/* Paper Texture Overlay */}
+                                        <div className="absolute inset-0 opacity-[0.25] mix-blend-multiply pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+
+                                        {/* The Masthead (Top Row) */}
+                                        <div className="relative z-10 flex justify-between items-end pb-3 border-b-2 border-stone-800 shrink-0">
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-1.5 mb-1 opacity-70">
+                                                    <div className="w-2 h-2 bg-stone-800 rounded-sm" />
+                                                    <span className="text-[9px] font-bold tracking-[0.2em] text-stone-800 uppercase">INFO_PROTOCOL</span>
+                                                </div>
+                                                <h3 className="text-3xl font-black font-serif tracking-tight text-stone-900 leading-none">
+                                                    {module.title}
+                                                </h3>
+                                            </div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-stone-200/50 rounded-full border border-stone-300">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.8)]" />
+                                                    <span className="text-[10px] font-bold text-stone-600 uppercase tracking-widest">Active</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Main Grid Area */}
+                                        <div className="relative flex-1 mt-3 z-10">
+                                            {/* Animated Grid Lines */}
+                                            <div className="absolute inset-0 pointer-events-none">
+                                                {/* Vertical Divider */}
+                                                <motion.div initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 0.6, ease: "circOut", delay: 0.1 }} className="absolute top-0 bottom-0 left-[55%] w-[1px] bg-stone-800/80 origin-top" />
+                                                {/* Horizontal Divider Left */}
+                                                <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.5, delay: 0.3, ease: "circOut" }} className="absolute top-[65%] left-0 w-[55%] h-[1px] bg-stone-800/80 origin-left" />
+                                                {/* Horizontal Divider Right */}
+                                                <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.5, delay: 0.4, ease: "circOut" }} className="absolute top-[45%] right-0 w-[45%] h-[1px] bg-stone-800/80 origin-left" />
+                                            </div>
+
+                                            {/* Top Left: Headline & Text */}
+                                            <div className="absolute top-0 left-0 w-[55%] h-[65%] p-4 flex flex-col justify-between">
+                                                <div className="flex gap-4">
+                                                    {/* Giant Drop Cap */}
+                                                    <motion.div initial={{ opacity: 0, scale: 1.1, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5, type: "spring", bounce: 0.4 }}>
+                                                        <span className="text-8xl font-serif font-black text-stone-900 leading-[0.75] tracking-tighter">I</span>
+                                                    </motion.div>
+                                                    {/* Skeleton Text Blocks */}
+                                                    <div className="flex-1 flex flex-col gap-2.5 pt-2">
+                                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="w-full h-2.5 bg-stone-800/80 rounded-sm" />
+                                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="w-[85%] h-2.5 bg-stone-800/80 rounded-sm" />
+                                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="w-[60%] h-2.5 bg-stone-800/80 rounded-sm" />
+                                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }} className="w-[90%] h-2.5 bg-stone-800/80 rounded-sm" />
+                                                    </div>
+                                                </div>
+                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="text-xs font-serif text-stone-600 font-medium italic">
+                                                    "Filtering the noise, capturing the signal."
+                                                </motion.div>
+                                            </div>
+
+                                            {/* Bottom Left: The Spotlight (Klein Blue) */}
+                                            <div className="absolute top-[65%] left-0 w-[55%] h-[35%] p-3">
+                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.8, type: "spring" }} className="w-full h-full bg-[#002fa7] flex items-center justify-center shadow-inner">
+                                                    <span className="text-[#eee9df] text-xs font-bold tracking-[0.3em] uppercase">The Spotlight</span>
+                                                </motion.div>
+                                            </div>
+
+                                            {/* Top Right: Radar/Graphic */}
+                                            <div className="absolute top-0 right-0 w-[45%] h-[45%] flex items-center justify-center p-4">
+                                                <motion.div initial={{ opacity: 0, rotate: -45 }} animate={{ opacity: 1, rotate: 0 }} transition={{ duration: 1, delay: 0.5, type: "spring" }} className="relative w-full h-full max-w-[80px] max-h-[80px] mt-2">
+                                                    <div className="absolute inset-0 rounded-full border-[1.5px] border-stone-800/60" />
+                                                    <div className="absolute inset-2 rounded-full border-[1.5px] border-stone-800/60 border-dashed" />
+                                                    <div className="absolute inset-5 rounded-full border-[1.5px] border-stone-800/80" />
+                                                    <div className="absolute top-1/2 left-1/2 w-full h-[1.5px] bg-stone-800/80 -translate-x-1/2 -translate-y-1/2 rotate-45" />
+                                                    <div className="absolute top-1/2 left-1/2 w-full h-[1.5px] bg-stone-800/80 -translate-x-1/2 -translate-y-1/2 -rotate-45" />
+                                                </motion.div>
+                                            </div>
+
+                                            {/* Bottom Right: Dense Text Box */}
+                                            <div className="absolute top-[45%] right-0 w-[45%] h-[55%] p-4 flex flex-col justify-end gap-2">
+                                                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="text-[10px] font-sans text-stone-600 leading-[1.4] text-justify font-medium">
+                                                    {module.description}. A structured approach to retaining value in the age of information abundance.
+                                                </motion.p>
+                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="flex justify-between items-center mt-1 pt-2 border-t border-stone-300">
+                                                    <span className="text-[8px] font-mono font-bold text-stone-500 uppercase">Vol. 01</span>
+                                                    <span className="text-[8px] font-mono font-bold text-stone-500 uppercase">SYS_ARCHIVE</span>
+                                                </motion.div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
