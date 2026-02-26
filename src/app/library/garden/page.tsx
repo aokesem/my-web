@@ -22,10 +22,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { supabase } from '@/lib/supabaseClient';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import * as LucideIcons from "lucide-react";
+import { handleHtmlTablePaste } from '@/lib/markdownUtils';
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -57,6 +59,16 @@ const MARKDOWN_COMPONENTS = {
         return <code className="bg-teal-50/80 text-teal-700 px-1.5 py-0.5 rounded text-[15px] border border-teal-100/60" {...props} />;
     },
     img: ({ node, ...props }: any) => <img className="rounded-lg my-4 max-w-full break-inside-avoid shadow-sm border border-stone-200" {...props} alt="" />,
+    table: ({ node, ...props }: any) => (
+        <div className="overflow-x-auto -mt-4 mb-4 border border-[#ccd8d0] rounded-lg max-w-full">
+            <table className="w-full text-left border-collapse text-[14px]" {...props} />
+        </div>
+    ),
+    thead: ({ node, ...props }: any) => <thead className="bg-[#e4ece7]/50 border-b border-[#ccd8d0] text-[#4a6b5a] font-semibold" {...props} />,
+    tbody: ({ node, ...props }: any) => <tbody className="divide-y divide-[#d5ddd8] bg-[#eef3f0]" {...props} />,
+    tr: ({ node, ...props }: any) => <tr className="hover:bg-[#e4ece7]/30 transition-colors" {...props} />,
+    th: ({ node, ...props }: any) => <th className="px-4 py-3 whitespace-nowrap" {...props} />,
+    td: ({ node, ...props }: any) => <td className="px-4 py-3 leading-relaxed text-[#5a7a6a]" {...props} />
 };
 
 // Fallback if DB is empty
@@ -568,6 +580,7 @@ export default function GardenPage() {
                                         <Textarea
                                             value={editPages[currentSpread * 2] || ""}
                                             onChange={e => updateEditPage(currentSpread * 2, e.target.value)}
+                                            onPaste={e => handleHtmlTablePaste(e, e.currentTarget, (val) => updateEditPage(currentSpread * 2, val))}
                                             className="flex-1 bg-white/50 border-[#ccd8d0] focus:bg-white focus:ring-teal-500/20 font-mono text-sm leading-relaxed resize-none p-6 shadow-sm rounded-xl transition-all"
                                             placeholder="# Left page..."
                                         />
@@ -579,6 +592,7 @@ export default function GardenPage() {
                                             <Textarea
                                                 value={editPages[currentSpread * 2 + 1] || ""}
                                                 onChange={e => updateEditPage(currentSpread * 2 + 1, e.target.value)}
+                                                onPaste={e => handleHtmlTablePaste(e, e.currentTarget, (val) => updateEditPage(currentSpread * 2 + 1, val))}
                                                 className="flex-1 bg-white/50 border-[#ccd8d0] focus:bg-white focus:ring-teal-500/20 font-mono text-sm leading-relaxed resize-none p-6 shadow-sm rounded-xl transition-all"
                                                 placeholder="# Right page..."
                                             />
@@ -665,7 +679,7 @@ export default function GardenPage() {
                                             >
                                                 {/* Left Page */}
                                                 <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4 [&>*:first-child]:mt-0">
-                                                    <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                                                         {readPages[currentSpread * 2]?.replace(/\n(?!\n)/g, '  \n') || ''}
                                                     </ReactMarkdown>
                                                 </div>
@@ -673,7 +687,7 @@ export default function GardenPage() {
                                                 {/* Right Page */}
                                                 <div className="text-[16px] text-stone-600 leading-[1.95] overflow-y-auto custom-scrollbar pr-4 pl-4 [&>*:first-child]:mt-0">
                                                     {readPages.length > currentSpread * 2 + 1 && (
-                                                        <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                                                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                                                             {readPages[currentSpread * 2 + 1]?.replace(/\n(?!\n)/g, '  \n') || ''}
                                                         </ReactMarkdown>
                                                     )}

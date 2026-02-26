@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import remarkGfm from 'remark-gfm';
+import { handleHtmlTablePaste } from '@/lib/markdownUtils';
 
 // === Mock Data (To be replaced by Supabase later) ===
 
@@ -342,6 +344,7 @@ export default function CategoryDetailPage() {
                                     <Textarea
                                         value={addForm.content}
                                         onChange={e => setAddForm({ ...addForm, content: e.target.value })}
+                                        onPaste={e => handleHtmlTablePaste(e, e.currentTarget, (val) => setAddForm({ ...addForm, content: val }))}
                                         placeholder="Enter the prompt content here..."
                                         className="min-h-[300px] font-sans text-stone-700 bg-stone-50/50"
                                     />
@@ -427,6 +430,7 @@ export default function CategoryDetailPage() {
                                         <Textarea
                                             value={editForm.content}
                                             onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
+                                            onPaste={e => handleHtmlTablePaste(e, e.currentTarget, (val) => setEditForm(prev => ({ ...prev, content: val })))}
                                             className="min-h-[400px] font-sans text-[15px] leading-relaxed bg-stone-50/50 mb-4 border-stone-200 focus:border-orange-200 focus:ring-orange-100"
                                             placeholder="Markdown content..."
                                         />
@@ -447,6 +451,7 @@ export default function CategoryDetailPage() {
                                         <div className="p-10 md:pl-20 prose prose-stone max-w-none">
                                             <div className="font-sans text-[16px] text-zinc-800 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-100/80">
                                                 <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
                                                     components={{
                                                         p: ({ ...props }) => <p className="mb-4 last:mb-0" {...props} />,
                                                         h1: ({ ...props }) => <h1 className="text-3xl font-bold mt-10 mb-6 text-zinc-900 tracking-tight" {...props} />,
@@ -462,7 +467,17 @@ export default function CategoryDetailPage() {
                                                         blockquote: ({ ...props }) => (
                                                             <blockquote className="border-l-4 border-zinc-200 pl-4 py-1 my-6 italic text-zinc-600" {...props} />
                                                         ),
-                                                        hr: () => <hr className="my-10 border-zinc-100" />
+                                                        hr: () => <hr className="my-10 border-zinc-100" />,
+                                                        table: ({ ...props }) => (
+                                                            <div className="overflow-x-auto -mt-4 mb-4 border border-zinc-200 rounded-xl max-w-full">
+                                                                <table className="w-full text-left border-collapse text-sm" {...props} />
+                                                            </div>
+                                                        ),
+                                                        thead: ({ ...props }) => <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-semibold" {...props} />,
+                                                        tbody: ({ ...props }) => <tbody className="divide-y divide-zinc-100 bg-white" {...props} />,
+                                                        tr: ({ ...props }) => <tr className="hover:bg-zinc-50/50 transition-colors" {...props} />,
+                                                        th: ({ ...props }) => <th className="px-5 py-3.5 whitespace-nowrap" {...props} />,
+                                                        td: ({ ...props }) => <td className="px-5 py-4 leading-relaxed text-zinc-700" {...props} />
                                                     }}
                                                 >
                                                     {prompt.content}
