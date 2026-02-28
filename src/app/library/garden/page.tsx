@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
@@ -108,11 +109,68 @@ export default function GardenPage() {
     const [activeArticle, setActiveArticle] = useState(0);
     const [currentSpread, setCurrentSpread] = useState(0);
 
-    // --- Data State ---
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [articlesMap, setArticlesMap] = useState<Record<string, Article[]>>({});
-    const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    // --- Data Fetching with SWR ---
+    const fetchGardenData = async () => {
+        let loadedCategories = [];
+        const { data: catData, error: catError } = await supabase
+            .from('garden_categories')
+            .select('*')
+            .order('sort_order', { ascending: true });
+
+        if (!catError && catData && catData.length > 0) {
+            loadedCategories = catData;
+        } else {
+            loadedCategories = DEFAULT_BOARDS;
+        }
+
+        let query = supabase.from('garden_posts').select('*').order('created_at', { ascending: false });
+        // Retrieve fresh session inside fetcher so SWR handles it correctly
+        const { data: sessionData } = await supabase.auth.getSession();
+        const isAuth = !!sessionData.session;
+        if (!isAuth) {
+            query = query.eq('status', 'Published');
+        }
+
+        const { data: postData, error: postError } = await query;
+        if (postError) {
+            toast.error("加载文章失败");
+            throw postError;
+        }
+
+        const grouped: Record<string, Article[]> = {};
+        loadedCategories.forEach((c: any) => grouped[c.id] = []);
+
+        postData?.forEach((post: any) => {
+            const article: Article = {
+                id: post.id,
+                slug: post.slug,
+                title: post.title,
+                date: format(new Date(post.published_at || post.created_at), 'yyyy-MM-dd'),
+                tags: post.tags || [],
+                content: post.content || '',
+                category: post.category,
+                status: post.status,
+                created_at: post.created_at,
+                published_at: post.published_at
+            };
+
+            const fallback = loadedCategories[0]?.id || 'learning';
+            if (!grouped[post.category]) {
+                if (!grouped[fallback]) grouped[fallback] = [];
+                grouped[fallback].push(article);
+            } else {
+                grouped[post.category].push(article);
+            }
+        });
+
+        return { categories: loadedCategories, articlesMap: grouped };
+    };
+
+    const { data: gardenData, isLoading: loading, mutate } = useSWR('garden_data', fetchGardenData, { fallbackData: { categories: [], articlesMap: {} } });
+    const categories = gardenData.categories;
+    const articlesMap = gardenData.articlesMap;
 
     // --- References ---
     const contentRef = useRef<HTMLDivElement>(null);
@@ -173,110 +231,9 @@ export default function GardenPage() {
         checkAuth();
     }, []);
 
-    // Initial Load
-    useEffect(() => {
-        const init = async () => {
-            setLoading(true);
-
-            // 1. Fetch Categories
-            let loadedCategories = [];
-            const { data: catData, error: catError } = await supabase
-                .from('garden_categories')
-                .select('*')
-                .order('sort_order', { ascending: true });
-
-            if (!catError && catData && catData.length > 0) {
-                loadedCategories = catData;
-            } else {
-                // Use default if table missing or empty
-                loadedCategories = DEFAULT_BOARDS;
-            }
-            setCategories(loadedCategories);
-
-            // 2. Fetch Articles
-            let query = supabase
-                .from('garden_posts')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            const { data: sessionData } = await supabase.auth.getSession();
-            const isAuth = !!sessionData.session;
-
-            if (!isAuth) {
-                query = query.eq('status', 'Published');
-            }
-
-            const { data: postData, error: postError } = await query;
-
-            if (postError) {
-                console.error("Fetch posts error", postError);
-                toast.error("加载文章失败");
-            } else {
-                const grouped: Record<string, Article[]> = {};
-                // Initialize all groups
-                loadedCategories.forEach((c: any) => grouped[c.id] = []);
-
-                postData?.forEach((post: any) => {
-                    const article: Article = {
-                        id: post.id,
-                        slug: post.slug,
-                        title: post.title,
-                        date: format(new Date(post.published_at || post.created_at), 'yyyy-MM-dd'),
-                        tags: post.tags || [],
-                        content: post.content || '',
-                        category: post.category,
-                        status: post.status,
-                        created_at: post.created_at,
-                        published_at: post.published_at
-                    };
-
-                    if (grouped[post.category]) {
-                        grouped[post.category].push(article);
-                    } else {
-                        // If category doesn't exist (maybe deleted?), add to first valid or 'learning'
-                        const fallback = loadedCategories[0]?.id || 'learning';
-                        if (!grouped[fallback]) grouped[fallback] = []; // Safety
-                        grouped[fallback].push(article);
-                    }
-                });
-
-                setArticlesMap(grouped);
-            }
-            setLoading(false);
-        };
-
-        init();
-    }, []);
-
-
     // Helper to refresh only articles (after save)
     const refreshArticles = async () => {
-        let query = supabase.from('garden_posts').select('*').order('created_at', { ascending: false });
-        if (!isAuthenticated) query = query.eq('status', 'Published');
-
-        const { data } = await query;
-        if (data) {
-            const grouped: Record<string, Article[]> = {};
-            categories.forEach(c => grouped[c.id] = []);
-
-            data.forEach((post: any) => {
-                const article: Article = {
-                    id: post.id,
-                    slug: post.slug,
-                    title: post.title,
-                    date: format(new Date(post.published_at || post.created_at), 'yyyy-MM-dd'),
-                    tags: post.tags || [],
-                    content: post.content || '',
-                    category: post.category,
-                    status: post.status,
-                    created_at: post.created_at,
-                    published_at: post.published_at
-                };
-                const cat = grouped[post.category] ? post.category : (categories[0]?.id || 'learning');
-                if (grouped[cat]) grouped[cat].push(article);
-            });
-            setArticlesMap(grouped);
-        }
+        mutate();
     };
 
 

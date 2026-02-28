@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Play,
@@ -84,7 +85,30 @@ interface DailyProtocolProps {
 }
 
 export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProtocolProps) {
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const { data: swrTasks = [], mutate } = useSWR<Task[]>('profile_tasks', async () => {
+        const { data, error } = await supabase
+            .from('profile_tasks')
+            .select('*')
+            .neq('status', 'archived')
+            .order('id', { ascending: true });
+
+        if (data) {
+            return data.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                category: t.category,
+                status: t.status,
+                startDate: t.start_date,
+                task_type: t.task_type || 'plan' // 默认为 plan
+            })) as Task[];
+        }
+        return [];
+    }, { fallbackData: [] });
+
+    const tasks = swrTasks;
+    const setTasks = (updater: Task[] | ((prev: Task[]) => Task[])) => {
+        mutate(updater as any, false);
+    };
 
     // === 状态管理 ===
     // 1. 添加模式状态
@@ -97,29 +121,6 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<{ title: string; date: string; type: TaskType }>({ title: '', date: '', type: 'plan' });
 
-    // 获取数据
-    useEffect(() => {
-        const fetchTasks = async () => {
-            const { data, error } = await supabase
-                .from('profile_tasks')
-                .select('*')
-                .neq('status', 'archived')
-                .order('id', { ascending: true });
-
-            if (data) {
-                const mappedTasks: Task[] = data.map((t: any) => ({
-                    id: t.id,
-                    title: t.title,
-                    category: t.category,
-                    status: t.status,
-                    startDate: t.start_date,
-                    task_type: t.task_type || 'plan' // 默认为 plan
-                }));
-                setTasks(mappedTasks);
-            }
-        };
-        fetchTasks();
-    }, []);
 
     // 自动聚焦输入框
     useEffect(() => {

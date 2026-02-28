@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, X, BookOpen, Heart, Brain, ChevronLeft, ChevronRight, Zap, Target, Smile, Users, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
@@ -107,46 +108,44 @@ const GRADIENT_OVERLAYS: Record<string, string> = {
 
 export default function StatusWidget({ isActive, isIdle, onToggle }: StatusWidgetProps) {
     const [activeTab, setActiveTab] = useState<TabType>('learning');
-    const [statusData, setStatusData] = useState<Record<TabType, StatusCategory[]>>(INITIAL_DATA_STRUCTURE);
-    const [hasLoaded, setHasLoaded] = useState(false);
+    const { data: swrStatusData = INITIAL_DATA_STRUCTURE, mutate } = useSWR<Record<TabType, StatusCategory[]>>('profile_status_items', async () => {
+        const { data, error } = await supabase
+            .from('profile_status_items')
+            .select('*')
+            .order('sort_order', { ascending: true })
+            .order('id', { ascending: true });
 
-    // Fetch Data from Supabase
-    useEffect(() => {
-        const fetchData = async () => {
-            const { data, error } = await supabase
-                .from('profile_status_items')
-                .select('*')
-                .order('sort_order', { ascending: true })
-                .order('id', { ascending: true });
+        if (error) {
+            console.error("Failed to load status items:", error);
+            throw error;
+        }
 
-            if (data) {
-                setStatusData(_prev => {
-                    const newData: Record<TabType, StatusCategory[]> = {
-                        learning: INITIAL_DATA_STRUCTURE.learning.map(cat => ({ ...cat, items: [] })),
-                        body: INITIAL_DATA_STRUCTURE.body.map(cat => ({ ...cat, items: [] })),
-                        mind: INITIAL_DATA_STRUCTURE.mind.map(cat => ({ ...cat, items: [] }))
-                    };
-
-                    data.forEach((item: any) => {
-                        const domain = item.domain as TabType;
-                        const catId = item.category;
-                        const domainCategories = newData[domain];
-                        if (domainCategories) {
-                            const category = domainCategories.find((c: StatusCategory) => c.id === catId);
-                            if (category) {
-                                category.items.push({ id: item.id, label: item.label, isActive: item.is_active, sort_order: item.sort_order });
-                            }
-                        }
-                    });
-                    return newData;
-                });
-                setHasLoaded(true);
-            }
-            if (error) console.error("Failed to load status items:", error);
+        const newData: Record<TabType, StatusCategory[]> = {
+            learning: INITIAL_DATA_STRUCTURE.learning.map(cat => ({ ...cat, items: [] })),
+            body: INITIAL_DATA_STRUCTURE.body.map(cat => ({ ...cat, items: [] })),
+            mind: INITIAL_DATA_STRUCTURE.mind.map(cat => ({ ...cat, items: [] }))
         };
 
-        if (isActive || !hasLoaded) fetchData();
-    }, [isActive, hasLoaded]);
+        if (data) {
+            data.forEach((item: any) => {
+                const domain = item.domain as TabType;
+                const catId = item.category;
+                const domainCategories = newData[domain];
+                if (domainCategories) {
+                    const category = domainCategories.find((c: StatusCategory) => c.id === catId);
+                    if (category) {
+                        category.items.push({ id: item.id, label: item.label, isActive: item.is_active, sort_order: item.sort_order });
+                    }
+                }
+            });
+        }
+        return newData;
+    }, { fallbackData: INITIAL_DATA_STRUCTURE });
+
+    const statusData = swrStatusData;
+    const setStatusData = (updater: Record<TabType, StatusCategory[]> | ((prev: Record<TabType, StatusCategory[]>) => Record<TabType, StatusCategory[]>)) => {
+        mutate(updater as any, false);
+    };
 
     // --- Completion Statistics for Idle State ---
     const stats = useMemo(() => {
@@ -214,11 +213,11 @@ export default function StatusWidget({ isActive, isIdle, onToggle }: StatusWidge
         const newStatus = !currentItem.isActive;
 
         // 1. Update local state immediately for snappy UI
-        setStatusData(prev => {
+        setStatusData((prev: Record<TabType, StatusCategory[]>) => {
             const newData = { ...prev };
             const cats = [...newData[tab]];
             const cat = { ...cats[catIndex] };
-            cat.items = cat.items.map(i => i.id === itemId ? { ...i, isActive: newStatus } : i);
+            cat.items = cat.items.map((i: any) => i.id === itemId ? { ...i, isActive: newStatus } : i);
             cats[catIndex] = cat;
             newData[tab] = cats;
             return newData;
@@ -233,11 +232,11 @@ export default function StatusWidget({ isActive, isIdle, onToggle }: StatusWidge
         if (error) {
             toast.error("Update failed");
             // Optionally revert
-            setStatusData(prev => {
+            setStatusData((prev: Record<TabType, StatusCategory[]>) => {
                 const newData = { ...prev };
                 const cats = [...newData[tab]];
                 const cat = { ...cats[catIndex] };
-                cat.items = cat.items.map(i => i.id === itemId ? { ...i, isActive: !newStatus } : i);
+                cat.items = cat.items.map((i: any) => i.id === itemId ? { ...i, isActive: !newStatus } : i);
                 cats[catIndex] = cat;
                 newData[tab] = cats;
                 return newData;

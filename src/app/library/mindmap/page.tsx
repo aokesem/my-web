@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
@@ -39,8 +40,17 @@ import { Label } from "@/components/ui/label";
 
 export default function MindMapMatrixPage() {
     const router = useRouter();
-    const [mindMaps, setMindMaps] = React.useState<any[]>([]);
-    const [loading, setLoading] = React.useState(true);
+    // SWR Data Fetching
+    const { data: mindMaps = [], isLoading: loading, mutate } = useSWR('mind_maps', async () => {
+        const { data, error } = await supabase
+            .from('mind_maps')
+            .select('*')
+            .order('sort_order', { ascending: true });
+        if (error) throw error;
+        return data || [];
+    });
+
+    const setMindMaps = (updater: any) => mutate(updater, false);
 
     const [user, setUser] = React.useState<any>(null);
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -56,32 +66,14 @@ export default function MindMapMatrixPage() {
     const [editMapData, setEditMapData] = React.useState({ title: '', en_title: '', description: '', icon: '', status: '' });
     const [isUpdating, setIsUpdating] = React.useState(false);
 
-    const fetchMindMaps = React.useCallback(async () => {
-        try {
-            const { data, error } = await supabase
-                .from('mind_maps')
-                .select('*')
-                .order('sort_order', { ascending: true });
-
-            if (error) throw error;
-            setMindMaps(data || []);
-        } catch (error) {
-            console.error('Error fetching mind maps:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     React.useEffect(() => {
-        fetchMindMaps();
-
         // Check User
         const checkUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
         };
         checkUser();
-    }, [fetchMindMaps]);
+    }, []);
 
     const handleCreate = async () => {
         if (!newMapData.title || !newMapData.id) {
@@ -110,7 +102,7 @@ export default function MindMapMatrixPage() {
             toast.success("Mind Map created.");
             setIsCreateOpen(false);
             setNewMapData({ title: '', id: '', description: '' });
-            fetchMindMaps();
+            mutate(); // Re-fetch data
             // Optional: Auto-navigate
             router.push(`/library/mindmap/${newMapData.id}`);
         } catch (err: any) {
@@ -134,7 +126,7 @@ export default function MindMapMatrixPage() {
             if (error) throw error;
 
             toast.success("Mind Map deleted.");
-            setMindMaps(prev => prev.filter(m => m.id !== mapToDelete.id));
+            mutate((prev: any[] | undefined) => (prev || []).filter((m: any) => m.id !== mapToDelete.id), false);
             setIsDeleteOpen(false);
         } catch (err: any) {
             console.error(err);
@@ -174,7 +166,7 @@ export default function MindMapMatrixPage() {
             if (error) throw error;
             toast.success("Mind Map updated.");
             setIsEditOpen(false);
-            fetchMindMaps();
+            mutate(); // Re-fetch data
         } catch (err: any) {
             console.error(err);
             toast.error(err.message || "Failed to update.");

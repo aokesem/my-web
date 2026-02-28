@@ -14,21 +14,16 @@ import DailyProtocol from './components/DailyProtocol';
 import ToolboxWidget from './components/ToolboxWidget';
 import CollectionCabinet from './components/CollectionCabinet';
 import StatusWidget from './components/StatusWidget';
+import AvatarProfile from './components/AvatarProfile';
+import QuoteDisplay from './components/QuoteDisplay';
 
 import { supabase } from '@/lib/supabaseClient';
-
-interface QuoteItem {
-    id: number;
-    text: string;
-}
 
 export default function ProfilePage() {
     const router = useRouter();
     const [isWindowOpen, setIsWindowOpen] = useState(false);
     const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet' | 'status' | 'calendar'>('idle');
 
-    const [quotes, setQuotes] = useState<QuoteItem[]>([{ id: 0, text: "Loading data..." }]);
-    const [quoteIndex, setQuoteIndex] = useState(0);
     const [backBtnHover, setBackBtnHover] = useState(false);
     const [libHover, setLibHover] = useState(false);
 
@@ -37,35 +32,11 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const initData = async () => {
-            const { data } = await supabase.from('profile_quotes').select('*');
-            if (data && data.length > 0) {
-                // Fisher-Yates Shuffle
-                const shuffled = [...data];
-                for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                }
-                setQuotes(shuffled);
-            }
-
             const { data: { user } } = await supabase.auth.getUser();
             setIsAdmin(!!user);
         };
         initData();
     }, []);
-
-    const handleNextQuote = () => {
-        if (quotes.length === 0) return;
-        setQuoteIndex((prev) => (prev + 1) % quotes.length);
-    };
-
-    useEffect(() => {
-        if (quotes.length <= 1) return;
-        const timer = setTimeout(() => {
-            setQuoteIndex((prev) => (prev + 1) % quotes.length);
-        }, 5000);
-        return () => clearTimeout(timer);
-    }, [quoteIndex, quotes.length]);
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-[#f8fafc] flex items-center justify-center text-slate-800 selection:bg-blue-200/50">
@@ -237,66 +208,9 @@ export default function ProfilePage() {
             </AnimatePresence>
 
             {/* Profile 页面主体内容 */}
-            <div className="absolute left-10 md:left-25 top-[2%] z-30 flex flex-col items-center">
-                <motion.div className="relative w-32 h-32 md:w-65 md:h-45 cursor-pointer group" whileHover={{ scale: 1.05 }} transition={{ duration: 0.4 }}>
-                    <div className="absolute -inset-0.5 bg-linear-to-tr from-blue-200 to-purple-200 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-all duration-500" />
-                    <div className="absolute inset-0 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden ring-1 ring-slate-100">
-                        <div className="relative w-full h-full bg-slate-100">
-                            <img src="images/kei_asai.png" alt="Avatar" className="w-full h-full object-cover transition-all duration-700 filter grayscale contrast-125 group-hover:grayscale-0 group-hover:contrast-100" />
-                            <div className="absolute inset-0 bg-blue-500/10 mix-blend-overlay transition-opacity duration-700 group-hover:opacity-0" />
-                        </div>
-                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.05)_50%)] bg-size-[100%_4px] pointer-events-none z-20 opacity-50" />
-                        <div className="absolute top-2 left-2 w-1 h-1 bg-white rounded-full z-40 shadow-sm" />
-                        <div className="absolute top-2 right-2 w-1 h-1 bg-white rounded-full z-40 shadow-sm" />
-                    </div>
-                    <div className="absolute left-[105%] top-2 flex flex-col gap-3 pointer-events-none whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400/40 group-hover:text-slate-800 transition-colors duration-500">
-                            <div className="w-1 h-3 bg-blue-500/20" />
-                            <span className="tracking-[0.3em] uppercase">From</span>
-                        </div>
-                        <div className="flex flex-col text-[14px] font-medium text-slate-400/30 group-hover:text-blue-800 transition-colors duration-700 leading-relaxed">
-                            <span className="tracking-widest [writing-mode:vertical-lr]">重启咲良田</span>
-                            <div className="h-4 w-px bg-slate-200 my-1 ml-1.5" />
-                            <span className="tracking-widest [writing-mode:vertical-lr]">浅井惠</span>
-                        </div>
-                    </div>
-                </motion.div>
-                <div className="h-10 w-px bg-linear-to-b from-slate-300 to-transparent mt-4" />
-            </div>
+            <AvatarProfile />
 
-            <div className="absolute left-10 md:left-12 top-[15.5%] z-20 select-none">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} className="relative flex items-start">
-                    <svg width="40" height="120" className="opacity-35 overflow-visible pointer-events-none">
-                        <line x1="52" y1="-70" x2="1" y2="-30" stroke="#3b82f6" strokeWidth="1" />
-                        <line x1="1" y1="-30" x2="1" y2="80" stroke="#3b82f6" strokeWidth="1" />
-                        <line x1="1" y1="80" x2="30" y2="110" stroke="#3b82f6" strokeWidth="1" />
-                        <motion.circle key={quoteIndex} r="2" fill="#3b82f6" animate={{ cx: [52, 1, 1, 30], cy: [-70, -30, 80, 110], opacity: [0, 1, 1, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} />
-                    </svg>
-                    <div className="mt-20 -ml-2 pointer-events-auto cursor-pointer" onClick={handleNextQuote}>
-                        <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="bg-white/20 backdrop-blur-xs p-5 border-l-2 border-blue-400 group hover:bg-white/10 transition-colors rounded-r-lg shadow-sm h-[140px] w-[320px] flex flex-col justify-between">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                                <span className="text-[12px] font-mono text-slate-400 tracking-widest uppercase">Phrase Collection // 0{quoteIndex + 1}</span>
-                            </div>
-                            <div className="relative flex-1 flex flex-col justify-center">
-                                <AnimatePresence mode="wait">
-                                    <motion.div key={quoteIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="w-full">
-                                        <p className="text-[22px] leading-snug text-slate-600 font-serif italic">
-                                            {quotes.length > 0 && quotes[quoteIndex] ? quotes[quoteIndex].text : "Loading..."}
-                                        </p>
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
-                            <div className="flex gap-1 mt-4">
-                                {quotes.map((_, i) => (
-                                    <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === quoteIndex ? 'w-6 bg-blue-500' : 'w-2 bg-slate-200'}`} />
-                                ))}
-                            </div>
-                        </motion.div>
-                        <div className="h-10 ml-37 w-px bg-linear-to-b from-slate-300 to-transparent mt-0 relative z-50 -translate-y-[20px] pointer-events-none" />
-                    </div>
-                </motion.div>
-            </div>
+            <QuoteDisplay />
 
             <TimelineWidget isActive={activeModule === 'timeline'} onToggle={() => setActiveModule(prev => prev === 'timeline' ? 'idle' : 'timeline')} />
             <DailyProtocol isActive={activeModule === 'protocol'} onToggle={() => setActiveModule(prev => prev === 'protocol' ? 'idle' : 'protocol')} isAdmin={isAdmin} />

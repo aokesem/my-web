@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X, Plus, Trash2, Calendar, Clock, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
@@ -86,9 +87,27 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     const [viewYear, setViewYear] = useState(today.getFullYear());
     const [viewMonth, setViewMonth] = useState(today.getMonth());
     const [selectedDay, setSelectedDay] = useState(today.getDate());
-    const [calendarData, setCalendarData] = useState<Record<string, DayData>>({});
-    const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-    const [dataLoaded, setDataLoaded] = useState(false);
+    const { data: swrData, mutate } = useSWR('calendar_data', async () => {
+        const { data: days } = await supabase.from('calendar_days').select('*');
+        const { data: acts } = await supabase.from('calendar_activities').select('*').order('created_at', { ascending: true });
+        const { data: dls } = await supabase.from('calendar_deadlines').select('*').order('date', { ascending: true });
+
+        const map: Record<string, DayData> = {};
+        if (days) {
+            for (const d of days) {
+                map[d.date] = { status: d.status as DayStatus, comment: d.comment || '', activities: [] };
+            }
+        }
+        if (acts) {
+            for (const a of acts) {
+                if (!map[a.date]) map[a.date] = { status: null, comment: '', activities: [] };
+                map[a.date].activities.push({ id: a.id, content: a.content, duration: a.duration });
+            }
+        }
+        return { calendarData: map, deadlines: dls || [] } as { calendarData: Record<string, DayData>, deadlines: Deadline[] };
+    }, { fallbackData: { calendarData: {}, deadlines: [] } });
+
+    const { calendarData, deadlines } = swrData;
 
     // 新事项输入
     const [newActivity, setNewActivity] = useState('');
@@ -96,42 +115,6 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     // 新 deadline 输入
     const [newDeadlineTitle, setNewDeadlineTitle] = useState('');
     const [newDeadlineDate, setNewDeadlineDate] = useState('');
-
-    // === Supabase 数据加载 ===
-    const fetchData = useCallback(async () => {
-        // 获取日历日期状态
-        const { data: days } = await supabase.from('calendar_days').select('*');
-        // 获取所有活动
-        const { data: acts } = await supabase.from('calendar_activities').select('*').order('created_at', { ascending: true });
-        // 获取所有 deadlines
-        const { data: dls } = await supabase.from('calendar_deadlines').select('*').order('date', { ascending: true });
-
-        // 组装 calendarData
-        const map: Record<string, DayData> = {};
-        if (days) {
-            for (const d of days) {
-                const key = d.date; // Supabase DATE 返回 'YYYY-MM-DD'
-                map[key] = {
-                    status: d.status as DayStatus,
-                    comment: d.comment || '',
-                    activities: [],
-                };
-            }
-        }
-        if (acts) {
-            for (const a of acts) {
-                const key = a.date;
-                if (!map[key]) map[key] = { status: null, comment: '', activities: [] };
-                map[key].activities.push({ id: a.id, content: a.content, duration: a.duration });
-            }
-        }
-
-        setCalendarData(map);
-        setDeadlines(dls || []);
-        setDataLoaded(true);
-    }, []);
-
-    useEffect(() => { fetchData(); }, [fetchData]);
 
     // 当前月份网格
     const { startOffset, daysInMonth } = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
@@ -148,10 +131,13 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     // === Supabase 操作函数 ===
     const upsertDayField = async (dateKey: string, field: 'status' | 'comment', value: string | null) => {
         // 先更新本地状态
-        setCalendarData(prev => ({
+        mutate((prev: any) => ({
             ...prev,
-            [dateKey]: { ...(prev[dateKey] || { status: null, comment: '', activities: [] }), [field]: value }
-        }));
+            calendarData: {
+                ...prev.calendarData,
+                [dateKey]: { ...(prev.calendarData[dateKey] || { status: null, comment: '', activities: [] }), [field]: value }
+            }
+        }), false);
         // Upsert 到 Supabase
         const existing = await supabase.from('calendar_days').select('id').eq('date', dateKey).single();
         if (existing.data) {
@@ -180,10 +166,16 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         };
         const { data, error } = await supabase.from('calendar_activities').insert(payload).select().single();
         if (!error && data) {
-            setCalendarData(prev => {
-                const day = prev[selectedKey] || { status: null, comment: '', activities: [] };
-                return { ...prev, [selectedKey]: { ...day, activities: [...day.activities, { id: data.id, content: data.content, duration: data.duration }] } };
-            });
+            mutate((prev: any) => {
+                const day = prev.calendarData[selectedKey] || { status: null, comment: '', activities: [] };
+                return {
+                    ...prev,
+                    calendarData: {
+                        ...prev.calendarData,
+                        [selectedKey]: { ...day, activities: [...day.activities, { id: data.id, content: data.content, duration: data.duration }] }
+                    }
+                };
+            }, false);
         }
         setNewActivity('');
         setNewDuration('');
@@ -191,19 +183,28 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
 
     const handleRemoveActivity = async (actId: number) => {
         await supabase.from('calendar_activities').delete().eq('id', actId);
-        setCalendarData(prev => {
-            const day = prev[selectedKey];
+        mutate((prev: any) => {
+            const day = prev.calendarData[selectedKey];
             if (!day) return prev;
-            return { ...prev, [selectedKey]: { ...day, activities: day.activities.filter(a => a.id !== actId) } };
-        });
+            return {
+                ...prev,
+                calendarData: {
+                    ...prev.calendarData,
+                    [selectedKey]: { ...day, activities: day.activities.filter((a: any) => a.id !== actId) }
+                }
+            };
+        }, false);
     };
 
     const handleCommentChange = (comment: string) => {
         // 本地立即更新，延迟保存
-        setCalendarData(prev => ({
+        mutate((prev: any) => ({
             ...prev,
-            [selectedKey]: { ...(prev[selectedKey] || { status: null, comment: '', activities: [] }), comment }
-        }));
+            calendarData: {
+                ...prev.calendarData,
+                [selectedKey]: { ...(prev.calendarData[selectedKey] || { status: null, comment: '', activities: [] }), comment }
+            }
+        }), false);
     };
 
     // 评语失焦时保存
@@ -222,7 +223,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
             console.error('Error adding deadline:', error);
         }
         if (!error && data) {
-            setDeadlines(prev => [...prev, data]);
+            mutate((prev: any) => ({ ...prev, deadlines: [...prev.deadlines, data] }), false);
         }
         setNewDeadlineTitle('');
         setNewDeadlineDate('');
@@ -233,12 +234,12 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         if (!dl) return;
         const newDone = !dl.done;
         await supabase.from('calendar_deadlines').update({ done: newDone }).eq('id', id);
-        setDeadlines(prev => prev.map(d => d.id === id ? { ...d, done: newDone } : d));
+        mutate((prev: any) => ({ ...prev, deadlines: prev.deadlines.map((d: any) => d.id === id ? { ...d, done: newDone } : d) }), false);
     };
 
     const handleRemoveDeadline = async (id: number) => {
         await supabase.from('calendar_deadlines').delete().eq('id', id);
-        setDeadlines(prev => prev.filter(d => d.id !== id));
+        mutate((prev: any) => ({ ...prev, deadlines: prev.deadlines.filter((d: any) => d.id !== id) }), false);
     };
 
     // 获取某天是否有 deadline

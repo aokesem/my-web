@@ -36,6 +36,7 @@
     "remark-gfm": "^4.0.1",
     "roughjs": "^4.6.6",
     "sonner": "^2.0.7",
+    "swr": "^2.4.1",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.5"
   },
