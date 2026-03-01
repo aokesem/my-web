@@ -212,8 +212,10 @@ export default function WeekViewPanel({
                         {/* 左侧时间轴 */}
                         <div className="w-14 shrink-0 border-r border-slate-100 bg-white z-10">
                             {HOURS.map(hour => (
-                                <div key={hour} className="text-[10px] font-mono text-slate-400 text-right pr-2 -mt-2" style={{ height: ROW_HEIGHT }}>
-                                    {hour}:00
+                                <div key={hour} className="relative" style={{ height: ROW_HEIGHT }}>
+                                    <span className="absolute right-2 -top-1.5 text-[10px] font-mono text-slate-400 leading-none">
+                                        {hour}:00
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -272,7 +274,7 @@ export default function WeekViewPanel({
                                                         className={`absolute inset-x-1 inset-y-0.5 rounded-md px-1.5 py-1 overflow-hidden text-xs shadow-sm hover:shadow-md transition-shadow group
                                                             ${colorClass} bg-opacity-90 text-white backdrop-blur-sm border border-white/20`}
                                                     >
-                                                        <div className={`font-semibold leading-tight wrap-break-word ${heightPx >= 80 ? 'line-clamp-3' : heightPx >= 50 ? 'line-clamp-2' : 'truncate'}`}>{act.content}</div>
+                                                        <div className="font-semibold leading-tight whitespace-pre-wrap wrap-break-word">{act.content}</div>
 
                                                         {/* 删除按钮 */}
                                                         {isAdmin && (
@@ -344,12 +346,24 @@ export default function WeekViewPanel({
                                 </button>
                             )}
 
-                            <input
+                            <textarea
                                 value={newActivity}
                                 onChange={e => setNewActivity(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                                placeholder="事项名称..."
-                                className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 transition-colors"
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        if (e.shiftKey) {
+                                            // Allow newline via Shift+Enter
+                                            return;
+                                        } else {
+                                            e.preventDefault();
+                                            handleAdd();
+                                        }
+                                    }
+                                }}
+                                placeholder="事项名称 (Shift+Enter 换行)..."
+                                className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 transition-colors resize-none overflow-y-auto"
+                                style={{ maxHeight: '60px', minHeight: '36px' }}
+                                rows={1}
                             />
                             <button
                                 onClick={handleAdd}

@@ -210,6 +210,15 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         setSelectedDay(day);
     };
 
+    const handleJumpToDate = (dateStr: string) => {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            setViewYear(parseInt(parts[0], 10));
+            setViewMonth(parseInt(parts[1], 10) - 1);
+            setSelectedDay(parseInt(parts[2], 10));
+        }
+    };
+
     const handleAddActivityWeek = async (dateKey: string, content: string, start: string, end: string, color: string, dayOfWeek: number, recurUntil: string | null) => {
         const payload: any = {
             date: dateKey,
@@ -314,6 +323,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                     isAdmin={isAdmin}
                                     onRemoveActivity={handleRemoveActivityById}
                                     onUpdateActivity={handleUpdateActivity}
+                                    onJumpToDate={handleJumpToDate}
                                 />
                             </>
                         )}

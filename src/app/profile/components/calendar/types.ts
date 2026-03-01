@@ -9,6 +9,7 @@ export interface Activity {
     color?: string | null;
     day_of_week?: number | null;   // 0=周一 ... 6=周日
     recur_until?: string | null;   // 'YYYY-MM-DD' 重复截止日期
+    date?: string;
 }
 
 export interface DayData {

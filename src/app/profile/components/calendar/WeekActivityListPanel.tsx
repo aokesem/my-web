@@ -2,23 +2,24 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ListTodo, Trash2, Pencil, Check } from 'lucide-react';
-import { Activity, WEEKDAYS } from './types';
+import { Activity, WEEKDAYS, formatDateKey } from './types';
 
 interface WeekActivityListPanelProps {
     allActivities: Activity[];
     isAdmin: boolean;
     onRemoveActivity: (id: number) => Promise<void>;
     onUpdateActivity: (id: number, content: string) => Promise<void>;
+    onJumpToDate?: (dateStr: string) => void;
 }
 
 const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export default function WeekActivityListPanel({
-    allActivities, isAdmin, onRemoveActivity, onUpdateActivity
+    allActivities, isAdmin, onRemoveActivity, onUpdateActivity, onJumpToDate
 }: WeekActivityListPanelProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (editingId !== null && inputRef.current) {
@@ -57,6 +58,30 @@ export default function WeekActivityListPanel({
         setEditingId(null);
     };
 
+    const handleJump = (act: Activity) => {
+        if (!onJumpToDate) return;
+        const actDate = act.date;
+        if (!act.recur_until || act.day_of_week == null) {
+            if (actDate) onJumpToDate(actDate);
+            return;
+        }
+
+        // 重复事项：判断今天与区间的关系
+        const today = new Date();
+        const todayStr = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+        if (actDate && todayStr < actDate) {
+            // 还没开始
+            onJumpToDate(actDate);
+        } else if (todayStr > act.recur_until) {
+            // 已经过期
+            onJumpToDate(act.recur_until);
+        } else {
+            // 正在进行中，跳转到今天（会自动定位到这周）
+            onJumpToDate(todayStr);
+        }
+    };
+
     const fmtTime = (t: string) => t.length > 5 ? t.slice(0, 5) : t;
 
     return (
@@ -79,14 +104,17 @@ export default function WeekActivityListPanel({
                         const isEditing = editingId === act.id;
                         const colorClass = act.color || 'bg-blue-500';
                         const dayLabel = act.day_of_week != null ? DAY_LABELS[act.day_of_week] : null;
+                        const startDateStr = act.date ? `${new Date(act.date + 'T00:00:00').getMonth() + 1}/${new Date(act.date + 'T00:00:00').getDate()}` : null;
                         const recurUntilStr = act.recur_until
-                            ? `→ ${new Date(act.recur_until + 'T00:00:00').getMonth() + 1}/${new Date(act.recur_until + 'T00:00:00').getDate()}`
+                            ? `${new Date(act.recur_until + 'T00:00:00').getMonth() + 1}/${new Date(act.recur_until + 'T00:00:00').getDate()}`
                             : null;
+                        const dateRangeStr = startDateStr && recurUntilStr ? `${startDateStr} - ${recurUntilStr}` : null;
 
                         return (
                             <div
                                 key={act.id}
-                                className="flex items-start gap-2.5 px-2 py-2 rounded-lg group transition-colors hover:bg-slate-50"
+                                className={`flex items-start gap-2.5 px-2 py-2 rounded-lg group transition-colors hover:bg-slate-50 ${!isEditing ? 'cursor-pointer' : ''}`}
+                                onClick={() => !isEditing && handleJump(act)}
                             >
                                 {/* 左侧色条 */}
                                 <div className={`w-1 shrink-0 rounded-full self-stretch ${colorClass}`} />
@@ -95,32 +123,40 @@ export default function WeekActivityListPanel({
                                 <div className="flex-1 min-w-0">
                                     {isEditing ? (
                                         <div className="flex items-center gap-1">
-                                            <input
+                                            <textarea
                                                 ref={inputRef}
                                                 value={editValue}
                                                 onChange={e => setEditValue(e.target.value)}
                                                 onKeyDown={e => {
-                                                    if (e.key === 'Enter') confirmEdit();
+                                                    if (e.key === 'Enter') {
+                                                        if (e.shiftKey) {
+                                                            return; // 允许换行
+                                                        } else {
+                                                            e.preventDefault();
+                                                            confirmEdit();
+                                                        }
+                                                    }
                                                     if (e.key === 'Escape') cancelEdit();
                                                 }}
                                                 onBlur={confirmEdit}
-                                                className="flex-1 min-w-0 bg-blue-50 border border-blue-200 rounded px-2 py-0.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400"
+                                                className="flex-1 min-w-0 bg-blue-50 border border-blue-200 rounded px-2 py-1 text-sm text-slate-800 focus:outline-none focus:border-blue-400 resize-none overflow-y-auto"
+                                                style={{ minHeight: '40px', maxHeight: '120px' }}
+                                                rows={1}
                                             />
                                         </div>
                                     ) : (
                                         <div
-                                            className={`text-[20px] font-semibold leading-tight text-slate-800 ${isAdmin ? 'cursor-pointer hover:text-blue-600' : ''}`}
-                                            onClick={() => isAdmin && startEdit(act)}
-                                            title={isAdmin ? '点击编辑' : undefined}
+                                            className={`text-[20px] font-semibold leading-tight text-slate-800 whitespace-pre-wrap wrap-break-word ${!isEditing ? 'group-hover:text-blue-600' : ''}`}
+                                            title="点击跳转至该事项所在周"
                                         >
                                             {act.content}
                                         </div>
                                     )}
-                                    <div className="text-[11px] font-mono text-slate-400 mt-0.5 flex items-center gap-1 flex-wrap">
-                                        {dayLabel && <span>{dayLabel}</span>}
-                                        <span>{fmtTime(act.start_time!)}-{fmtTime(act.end_time!)}</span>
-                                        {recurUntilStr && (
-                                            <span className="text-blue-400">{recurUntilStr}</span>
+                                    <div className="text-[12px] font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                        {dayLabel && <span className="text-slate-400">{dayLabel}</span>}
+                                        <span className="text-slate-400">{fmtTime(act.start_time!)}-{fmtTime(act.end_time!)}</span>
+                                        {dateRangeStr && (
+                                            <span className="text-[11px] text-blue-500/90 italic font-medium tracking-tight bg-blue-50/50 px-1 rounded-sm">{dateRangeStr}</span>
                                         )}
                                     </div>
                                 </div>
@@ -129,14 +165,14 @@ export default function WeekActivityListPanel({
                                 {isAdmin && !isEditing && (
                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
                                         <button
-                                            onClick={() => startEdit(act)}
+                                            onClick={(e) => { e.stopPropagation(); startEdit(act); }}
                                             className="p-0.5 text-slate-300 hover:text-blue-500 transition-colors"
                                             title="编辑"
                                         >
                                             <Pencil size={12} />
                                         </button>
                                         <button
-                                            onClick={() => onRemoveActivity(act.id)}
+                                            onClick={(e) => { e.stopPropagation(); onRemoveActivity(act.id); }}
                                             className="p-0.5 text-slate-300 hover:text-rose-400 transition-colors"
                                             title="删除"
                                         >
