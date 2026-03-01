@@ -139,7 +139,7 @@ export default function WeekViewPanel({
     ];
 
     return (
-        <div className={`bg-white/95 backdrop-blur-xl flex flex-col ${isFullscreen ? 'w-full h-full rounded-xl overflow-hidden' : 'w-[90vw] md:w-[820px] border border-slate-200/80 overflow-hidden'}`}>
+        <div className={`bg-white/95 backdrop-blur-xl flex flex-col ${isFullscreen ? 'w-full h-full max-h-full rounded-xl overflow-hidden shadow-2xl' : 'w-[90vw] md:w-[820px] border border-slate-200/80 overflow-hidden'}`}>
             {/* 顶部栏：全屏模式下隐藏 */}
             {!isFullscreen && (
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -197,15 +197,15 @@ export default function WeekViewPanel({
                 {/* 头部日期行 */}
                 {isFullscreen ? (
                     /* 全屏极简日期行～24px */
-                    <div className="flex border-b border-slate-100 shrink-0">
+                    <div className="flex border-b border-slate-100 shrink-0 py-1">
                         <div className="w-14 shrink-0" />
                         <div className="flex-1 grid grid-cols-7">
                             {weekDates.map((date, i) => {
                                 const tod = isToday(date);
                                 return (
-                                    <div key={i} className="flex items-center justify-center gap-1 py-1">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${tod ? 'text-blue-500' : 'text-slate-400'}`}>{WEEKDAYS[i]}</span>
-                                        <span className={`text-[11px] font-semibold ${tod ? 'text-blue-500' : 'text-slate-600'}`}>{date.getDate()}</span>
+                                    <div key={i} className="flex flex-col items-center justify-center gap-1 py-1.5">
+                                        <span className={`text-[11px] font-bold uppercase tracking-widest ${tod ? 'text-blue-500' : 'text-slate-400'}`}>{WEEKDAYS[i]}</span>
+                                        <span className={`text-sm font-semibold ${tod ? 'text-blue-500' : 'text-slate-600'}`}>{date.getMonth() + 1}/{date.getDate()}</span>
                                     </div>
                                 );
                             })}
@@ -244,8 +244,8 @@ export default function WeekViewPanel({
                 )}
 
                 {/* 网格与时间块区域 (可相对滚动) */}
-                <div className={`flex-1 relative bg-slate-50/30 ${isFullscreen ? '' : 'overflow-y-auto pr-6'}`}>
-                    <div className={`flex ${isFullscreen ? '' : 'mt-4 mb-8'}`}>
+                <div className={`flex-1 relative bg-slate-50/30 ${isFullscreen ? 'overflow-hidden flex flex-col justify-center' : 'overflow-y-auto pr-6'}`}>
+                    <div className={`flex ${isFullscreen ? 'my-2' : 'mt-4 mb-8'}`}>
                         {/* 左侧时间轴 */}
                         <div className="w-14 shrink-0 border-r border-slate-100 bg-white z-10">
                             {HOURS.map(hour => (
@@ -262,7 +262,7 @@ export default function WeekViewPanel({
                             {/* 水平网格线 */}
                             <div className="absolute inset-0 pointer-events-none">
                                 {HOURS.map((hour) => (
-                                    <div key={hour} className="border-b border-slate-100" style={{ height: ROW_HEIGHT }} />
+                                    <div key={hour} className="border-b border-slate-200/70" style={{ height: ROW_HEIGHT }} />
                                 ))}
                             </div>
 
@@ -272,7 +272,7 @@ export default function WeekViewPanel({
                                 const activities = getActivitiesForDate(date, colIndex);
 
                                 return (
-                                    <div key={colIndex} className="relative border-r border-slate-50 last:border-r-0">
+                                    <div key={colIndex} className="relative border-r border-slate-200/50 last:border-r-0">
                                         {activities.map(act => {
                                             if (!act.start_time || !act.end_time) return null;
 

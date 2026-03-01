@@ -277,11 +277,11 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                             onClick={() => setIsWeeklyFullscreen(false)}
                         >
                             <div
-                                className="relative w-full max-w-6xl mx-4 shadow-2xl rounded-2xl overflow-hidden bg-white/5"
-                                style={{ height: 'calc(100vh - 32px)' }}
+                                className="relative w-full max-w-6xl mx-8 shadow-[0_0_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden bg-white/5"
+                                style={{ height: 'fit-content', maxHeight: '96vh' }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="w-full h-full">
+                                <div className="w-full h-full bg-white">
                                     <WeekViewPanel
                                         viewYear={viewYear}
                                         viewMonth={viewMonth}
