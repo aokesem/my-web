@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock, DoorOpen } from 'lucide-react';
 import { IoLibraryOutline } from "react-icons/io5";
+import { supabase } from '@/lib/supabaseClient';
 
 // ... (0. 常量与工具函数定义 - 保持不变) ...
 const ANIME_IMAGES = [
@@ -432,8 +433,63 @@ const LabSection = ({ title, sub, icon: Icon, href, delay, variant = "anime" }: 
 // 5. 主页面 (LabPortal)
 // ==============================================
 export default function LabPortal() {
+  const [prefetchUrls, setPrefetchUrls] = useState<string[]>([]);
+
+  // 静默预加载核心数据与首屏图片 (使用 Next.js Image 以匹配压缩缓存)
+  useEffect(() => {
+    let mounted = true;
+    const preloadCoreData = async () => {
+      try {
+        const urlsToPreload: string[] = [];
+
+        // 1. Anime
+        const { data: animeData } = await supabase.from('animes').select('cover_url').order('id', { ascending: false }).limit(3);
+        animeData?.forEach(item => {
+          if (item.cover_url) urlsToPreload.push(item.cover_url);
+        });
+
+        // 2. Cinema
+        const { data: cinemaData } = await supabase.from('movies').select('cover_url, stills').order('id', { ascending: false }).limit(3);
+        cinemaData?.forEach(item => {
+          const url = item.cover_url || (item.stills && item.stills[0]);
+          if (url) urlsToPreload.push(url);
+        });
+
+        // 3. Reading
+        const { data: readingData } = await supabase.from('books').select('cover_url').order('period_start', { ascending: true }).limit(3);
+        readingData?.forEach(item => {
+          if (item.cover_url) urlsToPreload.push(item.cover_url);
+        });
+
+        if (mounted) {
+          setPrefetchUrls(urlsToPreload);
+        }
+      } catch (err) {
+        console.error("Preload error:", err);
+      }
+    };
+
+    // 延迟 2 秒执行，确保不抢占主页的关键渲染资源
+    const timer = setTimeout(() => {
+      preloadCoreData();
+    }, 2000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center p-8 overflow-hidden relative">
+      {/* 隐藏层预加载 Next.js Image */}
+      <div className="absolute w-0 h-0 opacity-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        {prefetchUrls.map((url, i) => (
+          <div key={`preload-${i}`} className="relative w-[100px] h-[100px]">
+            <Image src={url} alt="preload" fill sizes="20vw" priority unoptimized />
+          </div>
+        ))}
+      </div>
       <Link
         href="/admin"
         className="absolute top-8 right-8 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-500/50 hover:bg-zinc-900/80 transition-all duration-300 backdrop-blur-sm group"

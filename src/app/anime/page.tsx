@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Database, Monitor, Play, ArrowDownWideNarrow, Calendar, Star } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabaseClient';
 
 // --- 1. 数据结构 ---
@@ -204,7 +205,7 @@ export default function AnimeArchive() {
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-10 pr-14">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                                     {/* 这里使用 sortedAnimes 进行渲染 */}
-                                    {sortedAnimes.map((item) => (
+                                    {sortedAnimes.map((item, idx) => (
                                         <motion.div
                                             layout // 添加 layout 属性，让排序变化时有平滑的移动动画
                                             key={item.id}
@@ -223,7 +224,7 @@ export default function AnimeArchive() {
                                                 ${selectedId === item.id && item.rating === 100 ? 'ring-2 ring-yellow-400/50' : ''}`}
                                         >
                                             {/* 内容层：负责缩放、滤镜和透明度 */}
-                                            <div className={`w-full h-full transition-all duration-700 
+                                            <div className={`w-full h-full transition-all duration-700 relative
                                                 ${item.rating === 100
                                                     ? 'opacity-100 grayscale-0'
                                                     : selectedId === item.id
@@ -231,7 +232,7 @@ export default function AnimeArchive() {
                                                         : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0'
                                                 }`}
                                             >
-                                                <img src={item.cover} alt={item.title} className="w-full h-full object-cover" />
+                                                <Image src={item.cover} alt={item.title} fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover" priority={idx < 5} unoptimized />
                                                 <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-80" />
                                             </div>
 
@@ -405,10 +406,11 @@ export default function AnimeArchive() {
                                             className="absolute inset-0 z-20 cursor-pointer"
                                             onClick={() => setIsPlaying(true)}
                                         >
-                                            <img
+                                            <Image
                                                 src={VIDEO_DATA[currentVideoIndex].cover}
-                                                className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-700"
+                                                className="object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-700"
                                                 alt="Video Cover"
+                                                fill sizes="(max-width: 1200px) 100vw, 1200px" priority unoptimized
                                             />
                                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
                                                 <div className="p-10 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl group-hover:scale-110 group-hover:border-blue-500/50 transition-all duration-500 shadow-2xl">

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { compressImage } from '@/lib/imageUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
@@ -29,13 +30,17 @@ export function ImageUpload({ value, onChange, bucket, folder, className, autoFo
     const uploadFile = async (file: File) => {
         try {
             setUploading(true);
-            const fileExt = file.name.split('.').pop() || 'png';
+
+            // 自动压缩图片 (Resize + WebP)
+            const processedFile = await compressImage(file);
+
+            const fileExt = processedFile.name.split('.').pop() || 'webp';
             const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
             const filePath = `${folder}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from(bucket)
-                .upload(filePath, file);
+                .upload(filePath, processedFile);
 
             if (uploadError) throw uploadError;
 

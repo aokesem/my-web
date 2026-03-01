@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronUp, ChevronDown, Star, Film } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabaseClient';
 
 // --- 1. 电影数据结构：支持多剧照 + Supabase ---
@@ -150,7 +151,7 @@ export default function CinemaArchive() {
                                         }`}
                                 >
                                     {item.poster ? (
-                                        <img src={item.poster} className="w-full h-full object-cover" alt={item.title} />
+                                        <Image src={item.poster} className="object-cover" alt={item.title} fill sizes="(max-width: 768px) 30vw, 15vw" priority={idx < 5} unoptimized />
                                     ) : (
                                         <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">NO POSTER</div>
                                     )}
@@ -175,16 +176,21 @@ export default function CinemaArchive() {
                         className="w-full h-full rounded-[2.5rem] overflow-hidden border border-white/5 relative group bg-black cursor-pointer"
                     >
                         <AnimatePresence mode="wait">
-                            <motion.img
+                            <motion.div
                                 key={current.stills[stillIdx]}
                                 initial={{ opacity: 0, scale: 1.05 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.6 }}
-                                src={current.stills[stillIdx]}
-                                className="w-full h-full object-cover opacity-70 group-hover:opacity-80 transition-opacity duration-700"
-                                alt="Cinema Still"
-                            />
+                                className="absolute inset-0"
+                            >
+                                <Image
+                                    src={current.stills[stillIdx]}
+                                    className="object-cover opacity-70 group-hover:opacity-80 transition-opacity duration-700"
+                                    alt="Cinema Still"
+                                    fill sizes="100vw" priority unoptimized
+                                />
+                            </motion.div>
                         </AnimatePresence>
 
                         {/* 渐变遮罩 */}

@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Quote, Calendar, Hash, X, ChevronLeft, ChevronRight, BookOpen, Bookmark } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabaseClient';
 
 // --- 1. 数据结构 (保持不变) ---
@@ -271,9 +272,12 @@ const RealisticBookCard = ({ book, onClick }: { book: Book; onClick: () => void 
                 {/* --- A. 封面区域 --- */}
                 <div className="relative h-[80%] w-full overflow-hidden bg-[#050505]">
 
-                    <img
+                    <Image
                         src={book.cover}
-                        className="w-full h-full object-cover opacity-60 mix-blend-luminosity grayscale-40 contrast-125 transition-all duration-700 ease-out group-hover:opacity-100 group-hover:mix-blend-normal group-hover:grayscale-0 group-hover:scale-105"
+                        alt={book.title || "Book cover"}
+                        fill sizes="(max-width: 768px) 100vw, 340px"
+                        className="object-cover opacity-60 mix-blend-luminosity grayscale-40 contrast-125 transition-all duration-700 ease-out group-hover:opacity-100 group-hover:mix-blend-normal group-hover:grayscale-0 group-hover:scale-105"
+                        unoptimized
                     />
 
                     <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] pointer-events-none" />
@@ -346,8 +350,8 @@ const BookDetailModal = ({ book, onClose }: { book: Book; onClose: () => void })
                     <X size={24} strokeWidth={1} />
                 </button>
 
-                <div className="w-full md:w-2/5 relative h-64 md:h-auto overflow-hidden bg-[#050505]">
-                    <img src={book.cover} className="w-full h-full object-cover opacity-90" />
+                <div className="w-full md:w-2/5 relative h-64 md:h-auto overflow-hidden bg-[#050505] shrink-0">
+                    <Image src={book.cover} alt={book.title || "Book cover"} fill sizes="(max-width: 768px) 100vw, 40vw" className="object-cover opacity-90" priority unoptimized />
                     <div className="absolute inset-0 bg-linear-to-t from-[#0a0a0a] via-transparent to-transparent opacity-90" />
 
                     <div className="absolute bottom-12 left-12 right-12">
