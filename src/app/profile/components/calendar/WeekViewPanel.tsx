@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Maximize } from 'lucide-react';
 import { Activity, DayData, Deadline, DayStatus, formatDateKey, WEEKDAYS, MONTH_NAMES, MONTH_ABBR, STATUS_COLORS } from './types';
 
 interface WeekViewPanelProps {
@@ -19,9 +19,11 @@ interface WeekViewPanelProps {
     onSelectDay: (day: number, month: number, year: number) => void;
     onAddActivity: (dateKey: string, content: string, start: string, end: string, color: string, dayOfWeek: number, recurUntil: string | null) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
+    isFullscreen?: boolean;
+    onToggleFullscreen?: () => void;
 }
 
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 8); // 8:00 to 22:00
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 8:00 to 21:00
 const ROW_HEIGHT = 60; // 60px per hour
 
 export default function WeekViewPanel({
@@ -38,7 +40,9 @@ export default function WeekViewPanel({
     onNextWeek,
     onSelectDay,
     onAddActivity,
-    onRemoveActivity
+    onRemoveActivity,
+    isFullscreen = false,
+    onToggleFullscreen
 }: WeekViewPanelProps) {
     const today = useMemo(() => new Date(), []);
 
@@ -135,80 +139,113 @@ export default function WeekViewPanel({
     ];
 
     return (
-        <div className="w-[90vw] md:w-[820px] bg-white/95 backdrop-blur-xl border border-slate-200/80 overflow-hidden flex flex-col">
-            {/* 顶部栏：左侧Weekly View + 中间周次导航 + 右侧按钮 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-                <div className="flex items-center gap-2.5">
-                    <Calendar size={18} className="text-blue-400" />
-                    <span className="font-mono font-bold text-slate-500 tracking-[0.15em] uppercase text-sm">Weekly View</span>
-                </div>
+        <div className={`bg-white/95 backdrop-blur-xl flex flex-col ${isFullscreen ? 'w-full h-full rounded-xl overflow-hidden' : 'w-[90vw] md:w-[820px] border border-slate-200/80 overflow-hidden'}`}>
+            {/* 顶部栏：全屏模式下隐藏 */}
+            {!isFullscreen && (
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <Calendar size={18} className="text-blue-400" />
+                        <span className="font-mono font-bold text-slate-500 tracking-[0.15em] uppercase text-sm">Weekly View</span>
+                    </div>
 
-                {/* 周次导航（居中） */}
-                <div className="flex items-center gap-4">
-                    <button onClick={onPrevWeek} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                        <ChevronLeft size={20} />
-                    </button>
-                    <h3 className="text-xl font-black text-slate-700 tracking-tight min-w-[200px] text-center">
-                        {`${weekDates[0].getMonth() + 1}/${weekDates[0].getDate()} - ${weekDates[6].getMonth() + 1}/${weekDates[6].getDate()}`}
-                        <span className="text-blue-500 ml-2">{weekStartYear}</span>
-                    </h3>
-                    <button onClick={onNextWeek} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                        <ChevronRight size={20} />
-                    </button>
-                </div>
+                    {/* 周次导航（居中） */}
+                    <div className="flex items-center gap-4">
+                        <button onClick={onPrevWeek} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                            <ChevronLeft size={20} />
+                        </button>
+                        <h3 className="text-xl font-black text-slate-700 tracking-tight min-w-[200px] text-center">
+                            {`${weekDates[0].getMonth() + 1}/${weekDates[0].getDate()} - ${weekDates[6].getMonth() + 1}/${weekDates[6].getDate()}`}
+                            <span className="text-blue-500 ml-2">{weekStartYear}</span>
+                        </h3>
+                        <button onClick={onNextWeek} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                            <ChevronRight size={20} />
+                        </button>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onToggleMode}
-                        className="px-3 py-1.5 text-xs font-bold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
-                    >
-                        月历模式
-                    </button>
-                    <button
-                        onClick={onClose}
-                        className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all hover:rotate-90"
-                    >
-                        <X size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {!isFullscreen && onToggleFullscreen && (
+                            <button
+                                onClick={onToggleFullscreen}
+                                className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                title="全屏进入快照模式"
+                            >
+                                <Maximize size={16} />
+                            </button>
+                        )}
+                        {!isFullscreen && (
+                            <>
+                                <button
+                                    onClick={onToggleMode}
+                                    className="px-3 py-1.5 text-xs font-bold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+                                >
+                                    月历模式
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all hover:rotate-90"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* 可滚动内容区 */}
             <div className="flex-1 overflow-y-auto flex flex-col">
                 {/* 头部日期行 */}
-                <div className="flex border-b border-slate-100 shrink-0 pr-6">
-                    <div className="w-14 shrink-0"></div> {/* 左侧时间轴占位 */}
-                    <div className="flex-1 grid grid-cols-7">
-                        {weekDates.map((date, i) => {
-                            const sel = isSelected(date);
-                            const tod = isToday(date);
-                            return (
-                                <button
-                                    key={i}
-                                    onClick={() => onSelectDay(date.getDate(), date.getMonth(), date.getFullYear())}
-                                    className={`relative flex flex-col items-center py-2 transition-colors ${sel ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
-                                >
-                                    <span className={`text-[11px] font-bold uppercase tracking-wider mb-1 ${sel ? 'text-blue-500' : 'text-slate-400'}`}>{WEEKDAYS[i]}</span>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${sel ? 'bg-blue-500 text-white shadow-md' : tod ? 'text-blue-500 bg-blue-50' : 'text-slate-700'}`}>
-                                        {date.getDate()}
+                {isFullscreen ? (
+                    /* 全屏极简日期行～24px */
+                    <div className="flex border-b border-slate-100 shrink-0">
+                        <div className="w-14 shrink-0" />
+                        <div className="flex-1 grid grid-cols-7">
+                            {weekDates.map((date, i) => {
+                                const tod = isToday(date);
+                                return (
+                                    <div key={i} className="flex items-center justify-center gap-1 py-1">
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${tod ? 'text-blue-500' : 'text-slate-400'}`}>{WEEKDAYS[i]}</span>
+                                        <span className={`text-[11px] font-semibold ${tod ? 'text-blue-500' : 'text-slate-600'}`}>{date.getDate()}</span>
                                     </div>
-                                    {/* 底部小红绿灯点 */}
-                                    {calendarData[formatDateKey(date.getFullYear(), date.getMonth(), date.getDate())]?.status && (
-                                        <div className={`w-1.5 h-1.5 rounded-full mt-1 ${STATUS_COLORS[calendarData[formatDateKey(date.getFullYear(), date.getMonth(), date.getDate())].status as keyof typeof STATUS_COLORS]?.bg}`} />
-                                    )}
-                                    {/* Deadline 红点标记 */}
-                                    {hasDeadline(formatDateKey(date.getFullYear(), date.getMonth(), date.getDate())) && (
-                                        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 z-20" />
-                                    )}
-                                </button>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="flex border-b border-slate-100 shrink-0 pr-6">
+                        <div className="w-14 shrink-0"></div> {/* 左侧时间轴占位 */}
+                        <div className="flex-1 grid grid-cols-7">
+                            {weekDates.map((date, i) => {
+                                const sel = isSelected(date);
+                                const tod = isToday(date);
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => onSelectDay(date.getDate(), date.getMonth(), date.getFullYear())}
+                                        className={`relative flex flex-col items-center py-2 transition-colors ${sel ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                                    >
+                                        <span className={`text-[11px] font-bold uppercase tracking-wider mb-1 ${sel ? 'text-blue-500' : 'text-slate-400'}`}>{WEEKDAYS[i]}</span>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${sel ? 'bg-blue-500 text-white shadow-md' : tod ? 'text-blue-500 bg-blue-50' : 'text-slate-700'}`}>
+                                            {date.getDate()}
+                                        </div>
+                                        {/* 底部小红绿灯点 */}
+                                        {calendarData[formatDateKey(date.getFullYear(), date.getMonth(), date.getDate())]?.status && (
+                                            <div className={`w-1.5 h-1.5 rounded-full mt-1 ${STATUS_COLORS[calendarData[formatDateKey(date.getFullYear(), date.getMonth(), date.getDate())].status as keyof typeof STATUS_COLORS]?.bg}`} />
+                                        )}
+                                        {/* Deadline 红点标记 */}
+                                        {hasDeadline(formatDateKey(date.getFullYear(), date.getMonth(), date.getDate())) && (
+                                            <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 z-20" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* 网格与时间块区域 (可相对滚动) */}
-                <div className="flex-1 overflow-y-auto relative bg-slate-50/30 pr-6">
-                    <div className="flex mt-4 mb-8">
+                <div className={`flex-1 relative bg-slate-50/30 ${isFullscreen ? '' : 'overflow-y-auto pr-6'}`}>
+                    <div className={`flex ${isFullscreen ? '' : 'mt-4 mb-8'}`}>
                         {/* 左侧时间轴 */}
                         <div className="w-14 shrink-0 border-r border-slate-100 bg-white z-10">
                             {HOURS.map(hour => (
@@ -242,11 +279,11 @@ export default function WeekViewPanel({
                                             const startH = parseTime(act.start_time);
                                             const endH = parseTime(act.end_time);
 
-                                            // Ensure within 8:00 - 22:00
-                                            if (startH >= 22 || endH <= 8) return null;
+                                            // Ensure within 8:00 - 21:00
+                                            if (startH >= 21 || endH <= 8) return null;
 
                                             const visibleStart = Math.max(8, startH);
-                                            const visibleEnd = Math.min(22, endH);
+                                            const visibleEnd = Math.min(21, endH);
 
                                             const topPos = (visibleStart - 8) * ROW_HEIGHT;
                                             const heightPx = (visibleEnd - visibleStart) * ROW_HEIGHT;
@@ -304,7 +341,7 @@ export default function WeekViewPanel({
                 </div>
 
                 {/* 底部输入区 */}
-                {isAdmin && (
+                {!isFullscreen && isAdmin && (
                     <div className="px-6 py-3 bg-white border-t border-slate-100 shrink-0">
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 shrink-0">
@@ -352,7 +389,6 @@ export default function WeekViewPanel({
                                 onKeyDown={e => {
                                     if (e.key === 'Enter') {
                                         if (e.shiftKey) {
-                                            // Allow newline via Shift+Enter
                                             return;
                                         } else {
                                             e.preventDefault();

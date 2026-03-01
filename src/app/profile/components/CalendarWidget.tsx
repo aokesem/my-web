@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { DayStatus, DayData, Deadline, formatDateKey, MONTH_ABBR } from './calendar/types';
 import DeadlinePanel from './calendar/DeadlinePanel';
@@ -48,6 +49,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     const [viewYear, setViewYear] = useState(today.getFullYear());
     const [viewMonth, setViewMonth] = useState(today.getMonth());
     const [selectedDay, setSelectedDay] = useState(today.getDate());
+    const [isWeeklyFullscreen, setIsWeeklyFullscreen] = useState(false);
 
     const { data: swrData, mutate } = useSWR('calendar_data', async () => {
         const { data: days } = await supabase.from('calendar_days').select('*');
@@ -263,73 +265,115 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     // ===================================================
     if (isActive) {
         return (
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 30 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-            >
-                <div className="flex items-center justify-center w-full h-full p-4 md:p-12 pointer-events-auto">
-                    <div className="flex items-stretch shadow-2xl rounded-2xl max-h-[88vh] w-fit" style={{ marginLeft: '-50px' }}>
-                        <DeadlinePanel
-                            deadlines={deadlines}
-                            isAdmin={isAdmin}
-                            onAddDeadline={handleAddDeadline}
-                            onToggleDeadline={handleToggleDeadline}
-                            onRemoveDeadline={handleRemoveDeadline}
-                        />
+            <>
+                <AnimatePresence>
+                    {isWeeklyFullscreen && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 z-100 bg-slate-900/90 backdrop-blur-md flex items-center justify-center pointer-events-auto"
+                            onClick={() => setIsWeeklyFullscreen(false)}
+                        >
+                            <div
+                                className="relative w-full max-w-6xl mx-4 shadow-2xl rounded-2xl overflow-hidden bg-white/5"
+                                style={{ height: 'calc(100vh - 32px)' }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="w-full h-full">
+                                    <WeekViewPanel
+                                        viewYear={viewYear}
+                                        viewMonth={viewMonth}
+                                        selectedDay={selectedDay}
+                                        calendarData={calendarData}
+                                        allActivities={allActivities}
+                                        deadlines={deadlines}
+                                        isAdmin={false} // Disable editing in fullscreen
+                                        onClose={() => setIsWeeklyFullscreen(false)}
+                                        onToggleMode={() => { }}
+                                        onPrevWeek={handlePrevWeek}
+                                        onNextWeek={handleNextWeek}
+                                        onSelectDay={handleSelectDay}
+                                        onAddActivity={async () => { }}
+                                        onRemoveActivity={async () => { }}
+                                        isFullscreen={true}
+                                    />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                        {viewMode === 'month' ? (
-                            <MonthViewPanel
-                                viewYear={viewYear}
-                                viewMonth={viewMonth}
-                                selectedDay={selectedDay}
-                                calendarData={calendarData}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+                >
+                    <div className="flex items-center justify-center w-full h-full p-4 md:p-12 pointer-events-auto">
+                        <div className="flex items-stretch shadow-2xl rounded-2xl max-h-[88vh] w-fit" style={{ marginLeft: '-50px' }}>
+                            <DeadlinePanel
                                 deadlines={deadlines}
                                 isAdmin={isAdmin}
-                                onClose={onToggle}
-                                onToggleMode={() => setViewMode('week')}
-                                onPrevMonth={handlePrevMonth}
-                                onNextMonth={handleNextMonth}
-                                onSelectDay={setSelectedDay}
-                                onStatusChange={handleStatusChange}
-                                onClearStatus={handleClearStatus}
-                                onAddActivity={handleAddActivity}
-                                onRemoveActivity={handleRemoveActivity}
-                                onCommentChange={handleCommentChange}
-                                onCommentBlur={handleCommentBlur}
+                                onAddDeadline={handleAddDeadline}
+                                onToggleDeadline={handleToggleDeadline}
+                                onRemoveDeadline={handleRemoveDeadline}
                             />
-                        ) : (
-                            <>
-                                <WeekViewPanel
+
+                            {viewMode === 'month' ? (
+                                <MonthViewPanel
                                     viewYear={viewYear}
                                     viewMonth={viewMonth}
                                     selectedDay={selectedDay}
                                     calendarData={calendarData}
-                                    allActivities={allActivities}
                                     deadlines={deadlines}
                                     isAdmin={isAdmin}
                                     onClose={onToggle}
-                                    onToggleMode={() => setViewMode('month')}
-                                    onPrevWeek={handlePrevWeek}
-                                    onNextWeek={handleNextWeek}
-                                    onSelectDay={handleSelectDay}
-                                    onAddActivity={handleAddActivityWeek}
-                                    onRemoveActivity={handleRemoveActivityById}
+                                    onToggleMode={() => setViewMode('week')}
+                                    onPrevMonth={handlePrevMonth}
+                                    onNextMonth={handleNextMonth}
+                                    onSelectDay={setSelectedDay}
+                                    onStatusChange={handleStatusChange}
+                                    onClearStatus={handleClearStatus}
+                                    onAddActivity={handleAddActivity}
+                                    onRemoveActivity={handleRemoveActivity}
+                                    onCommentChange={handleCommentChange}
+                                    onCommentBlur={handleCommentBlur}
                                 />
-                                <WeekActivityListPanel
-                                    allActivities={allActivities}
-                                    isAdmin={isAdmin}
-                                    onRemoveActivity={handleRemoveActivityById}
-                                    onUpdateActivity={handleUpdateActivity}
-                                    onJumpToDate={handleJumpToDate}
-                                />
-                            </>
-                        )}
+                            ) : (
+                                <>
+                                    <WeekViewPanel
+                                        viewYear={viewYear}
+                                        viewMonth={viewMonth}
+                                        selectedDay={selectedDay}
+                                        calendarData={calendarData}
+                                        allActivities={allActivities}
+                                        deadlines={deadlines}
+                                        isAdmin={isAdmin}
+                                        onClose={onToggle}
+                                        onToggleMode={() => setViewMode('month')}
+                                        onPrevWeek={handlePrevWeek}
+                                        onNextWeek={handleNextWeek}
+                                        onSelectDay={handleSelectDay}
+                                        onAddActivity={handleAddActivityWeek}
+                                        onRemoveActivity={handleRemoveActivityById}
+                                        onToggleFullscreen={() => setIsWeeklyFullscreen(true)}
+                                    />
+                                    <WeekActivityListPanel
+                                        allActivities={allActivities}
+                                        isAdmin={isAdmin}
+                                        onRemoveActivity={handleRemoveActivityById}
+                                        onUpdateActivity={handleUpdateActivity}
+                                        onJumpToDate={handleJumpToDate}
+                                    />
+                                </>
+                            )}
+                        </div>
                     </div>
-                </div>
-            </motion.div>
+                </motion.div>
+            </>
         );
     }
 
