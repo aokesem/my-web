@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { deleteImageFromStorage } from '@/lib/imageUtils';
 
 interface Movie {
     id: number;
@@ -54,10 +55,22 @@ export default function MoviesAdmin() {
     const handleDelete = async (id: number) => {
         if (!confirm('确定要删除这部电影吗？')) return;
 
+        const target = movies.find(m => m.id === id);
+
         const { error } = await supabase.from('movies').delete().eq('id', id);
         if (error) {
             toast.error('删除失败');
         } else {
+            if (target) {
+                if (target.cover_url) {
+                    await deleteImageFromStorage(target.cover_url);
+                }
+                if (target.stills && target.stills.length > 0) {
+                    for (const still of target.stills) {
+                        if (still) await deleteImageFromStorage(still);
+                    }
+                }
+            }
             toast.success('电影已删除');
             fetchMovies();
         }

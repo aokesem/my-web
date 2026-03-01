@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trash2, Plus, GitCommitHorizontal, Pencil, Save, X, ImageIcon, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload'; // 引入已有的上传组件
+import { deleteImageFromStorage } from '@/lib/imageUtils';
 
 // 定义接口
 interface TimelineItem {
@@ -91,8 +92,16 @@ export default function TimelinePage() {
 
     const deleteItem = async (id: number) => {
         if (!confirm("Delete?")) return;
+
+        const target = items.find(item => item.id === id);
+
         const { error } = await supabase.from('profile_timeline').delete().eq('id', id);
         if (!error) {
+            if (target && target.images && target.images.length > 0) {
+                for (const img of target.images) {
+                    if (img) await deleteImageFromStorage(img);
+                }
+            }
             fetchItems();
             toast.success("Deleted");
             if (editingId === id) cancelEdit();

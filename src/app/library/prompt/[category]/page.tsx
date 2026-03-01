@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
@@ -37,10 +38,6 @@ export default function CategoryDetailPage() {
     const router = useRouter();
     const categoryId = params.category as string;
 
-    const [category, setCategory] = useState<any>(null);
-    const [prompts, setPrompts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
     const [copiedId, setCopiedId] = useState<number | null>(null);
     const [bookmarkOpen, setBookmarkOpen] = useState(true);
 
@@ -54,59 +51,28 @@ export default function CategoryDetailPage() {
     const [addForm, setAddForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Check Auth
-    React.useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user || null);
-        });
+    // --- SWR: parallel fetch category + prompts + auth ---
+    const { data: pageData, isLoading: loading, mutate } = useSWR(
+        categoryId ? `prompt_detail_${categoryId}` : null,
+        async () => {
+            const [catResult, promptResult, authResult] = await Promise.all([
+                supabase.from('prompt_categories').select('*').eq('id', categoryId).single(),
+                supabase.from('prompts').select('*').eq('category_id', categoryId).order('sort_order', { ascending: true }),
+                supabase.auth.getSession()
+            ]);
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user || null);
-        });
+            if (catResult.error) throw catResult.error;
+            if (promptResult.error) throw promptResult.error;
 
-        return () => subscription.unsubscribe();
-    }, []);
+            setUser(authResult.data?.session?.user || null);
 
-    // Fetch Data
-    React.useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // 1. Fetch Category Info
-                const { data: catData, error: catError } = await supabase
-                    .from('prompt_categories')
-                    .select('*')
-                    .eq('id', categoryId)
-                    .single();
+            return { category: catResult.data, prompts: promptResult.data || [] };
+        },
+        { fallbackData: { category: null, prompts: [] } }
+    );
 
-                if (catError) {
-                    console.error('Category not found:', catError);
-                    // Handle 404 or redirect? For now just log
-                    setLoading(false);
-                    return;
-                }
-                setCategory(catData);
-
-                // 2. Fetch Prompts
-                const { data: promptList, error: promptError } = await supabase
-                    .from('prompts')
-                    .select('*')
-                    .eq('category_id', categoryId)
-                    .order('sort_order', { ascending: true });
-
-                if (promptError) throw promptError;
-                setPrompts(promptList || []);
-
-            } catch (error) {
-                console.error('Error loading detail:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (categoryId) {
-            fetchData();
-        }
-    }, [categoryId]);
+    const category = pageData.category;
+    const prompts = pageData.prompts;
 
     const handleCopy = (id: number, content: string) => {
         navigator.clipboard.writeText(content);
@@ -137,8 +103,7 @@ export default function CategoryDetailPage() {
 
             if (error) throw error;
 
-            // Update local state
-            setPrompts(prev => prev.map(p => p.id === id ? { ...p, ...editForm } : p));
+            mutate();
             toast.success('Prompt updated successfully');
             setEditingId(null);
         } catch (error) {
@@ -155,20 +120,18 @@ export default function CategoryDetailPage() {
 
         setIsSubmitting(true);
         try {
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('prompts')
                 .insert([{
                     category_id: categoryId,
                     name: addForm.name,
                     content: addForm.content,
-                    sort_order: prompts.length > 0 ? Math.max(...prompts.map(p => p.sort_order || 0)) + 1 : 1
-                }])
-                .select()
-                .single();
+                    sort_order: prompts.length > 0 ? Math.max(...prompts.map((p: any) => p.sort_order || 0)) + 1 : 1
+                }]);
 
             if (error) throw error;
 
-            setPrompts(prev => [...prev, data]);
+            mutate();
             toast.success('Prompt created successfully');
             setIsAdding(false);
             setAddForm({ name: '', content: '' });
@@ -191,7 +154,7 @@ export default function CategoryDetailPage() {
 
             if (error) throw error;
 
-            setPrompts(prev => prev.filter(p => p.id !== id));
+            mutate();
             toast.success('Prompt deleted');
         } catch (error) {
             console.error('Delete failed:', error);

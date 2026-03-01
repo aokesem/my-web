@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { deleteImageFromStorage } from '@/lib/imageUtils';
 
 interface Anime {
     id: number;
@@ -53,10 +54,17 @@ export default function AnimeAdmin() {
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure you want to delete this anime?')) return;
 
+        // 获取要删除的记录
+        const target = animes.find(a => a.id === id);
+
         const { error } = await supabase.from('animes').delete().eq('id', id);
         if (error) {
             toast.error('Delete failed');
         } else {
+            // 如果有封面图，清理它
+            if (target && target.cover_url) {
+                await deleteImageFromStorage(target.cover_url);
+            }
             toast.success('Anime deleted');
             fetchAnimes();
         }

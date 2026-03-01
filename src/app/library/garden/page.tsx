@@ -113,22 +113,19 @@ export default function GardenPage() {
 
     // --- Data Fetching with SWR ---
     const fetchGardenData = async () => {
-        let loadedCategories = [];
-        const { data: catData, error: catError } = await supabase
-            .from('garden_categories')
-            .select('*')
-            .order('sort_order', { ascending: true });
+        // Step 1: Parallel fetch categories + auth session
+        const [catResult, sessionResult] = await Promise.all([
+            supabase.from('garden_categories').select('*').order('sort_order', { ascending: true }),
+            supabase.auth.getSession()
+        ]);
 
-        if (!catError && catData && catData.length > 0) {
-            loadedCategories = catData;
-        } else {
-            loadedCategories = DEFAULT_BOARDS;
-        }
+        const loadedCategories = (!catResult.error && catResult.data && catResult.data.length > 0)
+            ? catResult.data
+            : DEFAULT_BOARDS;
 
+        // Step 2: Fetch posts (depends on session for filtering)
+        const isAuth = !!sessionResult.data?.session;
         let query = supabase.from('garden_posts').select('*').order('created_at', { ascending: false });
-        // Retrieve fresh session inside fetcher so SWR handles it correctly
-        const { data: sessionData } = await supabase.auth.getSession();
-        const isAuth = !!sessionData.session;
         if (!isAuth) {
             query = query.eq('status', 'Published');
         }

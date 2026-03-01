@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { deleteImageFromStorage } from '@/lib/imageUtils';
 
 interface Book {
     id: number;
@@ -54,10 +55,15 @@ export default function BooksAdmin() {
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure you want to delete this book?')) return;
 
+        const target = books.find(b => b.id === id);
+
         const { error } = await supabase.from('books').delete().eq('id', id);
         if (error) {
             toast.error('Delete failed');
         } else {
+            if (target && target.cover_url) {
+                await deleteImageFromStorage(target.cover_url);
+            }
             toast.success('Book deleted');
             fetchBooks();
         }

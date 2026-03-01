@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
@@ -36,9 +37,6 @@ import { Label } from "@/components/ui/label";
 
 export default function PromptWarehousePage() {
     const router = useRouter();
-    const [categories, setCategories] = useState<any[]>([]);
-    const [promptCounts, setPromptCounts] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
 
     // Edit/Delete States
@@ -51,48 +49,32 @@ export default function PromptWarehousePage() {
     const [catToDelete, setCatToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const fetchCategories = React.useCallback(async () => {
-        try {
-            // 1. Fetch Categories
-            const { data: cats, error: catError } = await supabase
-                .from('prompt_categories')
-                .select('*')
-                .order('sort_order', { ascending: true });
+    // --- SWR: parallel fetch categories + prompt counts ---
+    const { data: promptData, isLoading: loading, mutate } = useSWR('prompt_warehouse', async () => {
+        const [catResult, promptResult, authResult] = await Promise.all([
+            supabase.from('prompt_categories').select('*').order('sort_order', { ascending: true }),
+            supabase.from('prompts').select('category_id'),
+            supabase.auth.getUser()
+        ]);
 
-            if (catError) throw catError;
-            setCategories(cats || []);
+        if (catResult.error) throw catResult.error;
+        if (promptResult.error) throw promptResult.error;
 
-            // 2. Fetch Prompt Counts
-            const { data: prompts, error: promptError } = await supabase
-                .from('prompts')
-                .select('category_id');
+        const counts = (promptResult.data || []).reduce((acc: Record<string, number>, curr: any) => {
+            acc[curr.category_id] = (acc[curr.category_id] || 0) + 1;
+            return acc;
+        }, {});
 
-            if (promptError) throw promptError;
+        // Side-effect: set user from auth result
+        setUser(authResult.data?.user || null);
 
-            const counts = (prompts || []).reduce((acc: Record<string, number>, curr: any) => {
-                acc[curr.category_id] = (acc[curr.category_id] || 0) + 1;
-                return acc;
-            }, {});
-            setPromptCounts(counts);
+        return { categories: catResult.data || [], promptCounts: counts };
+    }, {
+        fallbackData: { categories: [], promptCounts: {} }
+    });
 
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            toast.error("Failed to load categories");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchCategories();
-
-        // Check Auth
-        const checkUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-        };
-        checkUser();
-    }, [fetchCategories]);
+    const categories = promptData.categories;
+    const promptCounts = promptData.promptCounts;
 
     const handleEditOpen = (cat: any) => {
         setCatToEdit(cat);
@@ -128,7 +110,7 @@ export default function PromptWarehousePage() {
             if (error) throw error;
             toast.success("Category updated");
             setIsEditOpen(false);
-            fetchCategories();
+            mutate();
         } catch (err: any) {
             console.error(err);
             toast.error(err.message || "Failed to update");
@@ -148,7 +130,7 @@ export default function PromptWarehousePage() {
 
             if (error) throw error;
             toast.success("Category deleted");
-            setCategories(prev => prev.filter(c => c.id !== catToDelete.id));
+            mutate();
             setIsDeleteOpen(false);
         } catch (err: any) {
             console.error(err);

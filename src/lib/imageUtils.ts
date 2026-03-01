@@ -93,3 +93,32 @@ export async function compressImage(file: File): Promise<File> {
         img.src = objectUrl;
     });
 }
+
+/**
+ * 自动从公网 URL 解析出 Bucket 和 文件路径，并向 Supabase 发送删除指令
+ * @param url Supabase storage 中图片的公网 URL
+ */
+export async function deleteImageFromStorage(url: string | null | undefined) {
+    if (!url || !url.includes('supabase.co/storage/v1/object/public/')) return;
+    try {
+        const urlParts = url.split('/storage/v1/object/public/');
+        if (urlParts.length < 2) return;
+
+        // 提取 bucket 和内部路径
+        const pathParts = urlParts[1].split('/');
+        const bucket = pathParts[0];
+        const filePath = pathParts.slice(1).join('/');
+
+        console.log(`Deleting from bucket: ${bucket}, path: ${filePath}`);
+
+        // 需要动态引入 supabase client 避免循环引用，或者从传入参数
+        const { supabase } = await import('@/lib/supabaseClient');
+
+        const { error } = await supabase.storage.from(bucket).remove([filePath]);
+        if (error) {
+            console.error('Failed to delete orphaned image:', error);
+        }
+    } catch (e) {
+        console.error('Exception when deleting image:', e);
+    }
+}
