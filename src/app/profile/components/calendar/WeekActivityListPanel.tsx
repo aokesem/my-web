@@ -8,9 +8,18 @@ interface WeekActivityListPanelProps {
     allActivities: Activity[];
     isAdmin: boolean;
     onRemoveActivity: (id: number) => Promise<void>;
-    onUpdateActivity: (id: number, content: string) => Promise<void>;
+    onUpdateActivity: (id: number, updates: { content?: string, color?: string }) => Promise<void>;
     onJumpToDate?: (dateStr: string) => void;
 }
+
+const COLORS = [
+    { name: 'blue', class: 'bg-blue-500' },
+    { name: 'red', class: 'bg-rose-500' },
+    { name: 'amber', class: 'bg-amber-500' },
+    { name: 'emerald', class: 'bg-emerald-500' },
+    { name: 'purple', class: 'bg-purple-500' },
+    { name: 'slate', class: 'bg-slate-500' }
+];
 
 const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -19,6 +28,7 @@ export default function WeekActivityListPanel({
 }: WeekActivityListPanelProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [editColor, setEditColor] = useState('bg-blue-500');
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
@@ -43,13 +53,14 @@ export default function WeekActivityListPanel({
     const startEdit = (act: Activity) => {
         setEditingId(act.id);
         setEditValue(act.content);
+        setEditColor(act.color || 'bg-blue-500');
     };
 
     const confirmEdit = async () => {
         if (editingId === null) return;
         const trimmed = editValue.trim();
         if (trimmed) {
-            await onUpdateActivity(editingId, trimmed);
+            await onUpdateActivity(editingId, { content: trimmed, color: editColor });
         }
         setEditingId(null);
     };
@@ -122,7 +133,7 @@ export default function WeekActivityListPanel({
                                 {/* 内容区 */}
                                 <div className="flex-1 min-w-0">
                                     {isEditing ? (
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex flex-col gap-2">
                                             <textarea
                                                 ref={inputRef}
                                                 value={editValue}
@@ -143,6 +154,16 @@ export default function WeekActivityListPanel({
                                                 style={{ minHeight: '40px', maxHeight: '120px' }}
                                                 rows={1}
                                             />
+                                            <div className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 self-start">
+                                                {COLORS.map(c => (
+                                                    <button
+                                                        key={c.name}
+                                                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                        onClick={(e) => { e.stopPropagation(); setEditColor(c.class); }}
+                                                        className={`w-4 h-4 rounded-md ${c.class} transition-all ${editColor === c.class ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-60 hover:opacity-100'}`}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div

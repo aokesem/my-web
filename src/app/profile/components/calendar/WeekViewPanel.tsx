@@ -250,7 +250,7 @@ export default function WeekViewPanel({
                         <div className="w-14 shrink-0 border-r border-slate-100 bg-white z-10">
                             {HOURS.map(hour => (
                                 <div key={hour} className="relative" style={{ height: ROW_HEIGHT }}>
-                                    <span className="absolute right-2 -top-1.5 text-[10px] font-mono text-slate-400 leading-none">
+                                    <span className="absolute right-2 -top-2 text-[11px] font-mono text-slate-400 leading-none">
                                         {hour}:00
                                     </span>
                                 </div>
@@ -294,15 +294,14 @@ export default function WeekViewPanel({
 
                                             return (
                                                 <div key={act.id} className="absolute left-0 right-0" style={{ top: topPos, height: heightPx }}>
-                                                    {/* 起始时间横线 + 标注 */}
                                                     <div className="absolute top-0 left-0 right-0 flex items-center z-10 -translate-y-1/2 pointer-events-none">
-                                                        <span className="text-[9px] font-mono text-slate-700 bg-white/80 px-0.5 shrink-0 leading-none">{fmtTime(act.start_time!)}</span>
+                                                        <span className="text-[10px] font-mono text-slate-700 bg-white/80 px-1 shrink-0 leading-none">{fmtTime(act.start_time!)}</span>
                                                         <div className="flex-1 border-t border-dashed border-slate-300" />
                                                     </div>
                                                     {/* 结束时间横线 + 标注 */}
                                                     {showEndTime && (
                                                         <div className="absolute bottom-0 left-0 right-0 flex items-center z-10 translate-y-1/2 pointer-events-none">
-                                                            <span className="text-[9px] font-mono text-slate-700 bg-white/80 px-0.5 shrink-0 leading-none">{fmtTime(act.end_time!)}</span>
+                                                            <span className="text-[10px] font-mono text-slate-700 bg-white/80 px-1 shrink-0 leading-none">{fmtTime(act.end_time!)}</span>
                                                             <div className="flex-1 border-t border-dashed border-slate-300" />
                                                         </div>
                                                     )}

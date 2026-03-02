@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Clock, Check, Trash2, Plus } from 'lucide-react';
+import { Clock, Check, Trash2, Plus, Pencil, X } from 'lucide-react';
 import { Deadline, formatDateKey } from './types';
 
 interface DeadlinePanelProps {
@@ -10,13 +10,18 @@ interface DeadlinePanelProps {
     onAddDeadline: (title: string, date: string) => Promise<void>;
     onToggleDeadline: (id: number) => Promise<void>;
     onRemoveDeadline: (id: number) => Promise<void>;
+    onUpdateDeadline: (id: number, title: string, date: string) => Promise<void>;
 }
 
 export default function DeadlinePanel({
-    deadlines, isAdmin, onAddDeadline, onToggleDeadline, onRemoveDeadline
+    deadlines, isAdmin, onAddDeadline, onToggleDeadline, onRemoveDeadline, onUpdateDeadline
 }: DeadlinePanelProps) {
     const [newDeadlineTitle, setNewDeadlineTitle] = useState('');
     const [newDeadlineDate, setNewDeadlineDate] = useState('');
+
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDate, setEditDate] = useState('');
 
     const today = useMemo(() => new Date(), []);
     const todayStr = useMemo(() => formatDateKey(today.getFullYear(), today.getMonth(), today.getDate()), [today]);
@@ -26,6 +31,25 @@ export default function DeadlinePanel({
         await onAddDeadline(newDeadlineTitle.trim(), newDeadlineDate);
         setNewDeadlineTitle('');
         setNewDeadlineDate('');
+    };
+
+    const startEdit = (dl: Deadline) => {
+        setEditingId(dl.id);
+        setEditTitle(dl.title);
+        setEditDate(dl.date && dl.date !== '2099-12-31' ? dl.date : '');
+    };
+
+    const confirmEdit = async () => {
+        if (editingId === null) return;
+        const trimmed = editTitle.trim();
+        if (trimmed) {
+            await onUpdateDeadline(editingId, trimmed, editDate);
+        }
+        setEditingId(null);
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
     };
 
     const sortedDeadlines = useMemo(() => {
@@ -67,20 +91,55 @@ export default function DeadlinePanel({
                                     </button>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                    <div className={`text-[14px] font-semibold leading-tight ${dl.done ? 'line-through text-slate-400' : isOverdue ? 'text-rose-500' : 'text-slate-800'}`}>
-                                        {dl.title}
-                                    </div>
-                                    <div className={`text-[13px] font-mono mt-0.5 ${isOverdue ? 'text-rose-400' : 'text-slate-400'}`}>
-                                        {dl.date && dl.date !== '2099-12-31' ? dl.date.slice(5).replace('-', '/') : 'Anytime'}
-                                    </div>
+                                    {editingId === dl.id ? (
+                                        <div className="flex flex-col gap-2 py-0.5">
+                                            <input
+                                                value={editTitle}
+                                                onChange={e => setEditTitle(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') confirmEdit();
+                                                    if (e.key === 'Escape') cancelEdit();
+                                                }}
+                                                autoFocus
+                                                className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm text-slate-800 focus:outline-none focus:border-blue-400"
+                                            />
+                                            <div className="flex items-center gap-1 relative z-10 w-full">
+                                                <input
+                                                    type="date"
+                                                    value={editDate}
+                                                    onChange={e => setEditDate(e.target.value)}
+                                                    className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-[11px] text-slate-700 focus:outline-none focus:border-blue-400"
+                                                />
+                                                <button onClick={confirmEdit} className="p-1 rounded text-blue-500 hover:bg-blue-50 transition-colors bg-white border border-blue-200/50 shrink-0"><Check size={14} /></button>
+                                                <button onClick={cancelEdit} className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors bg-white border border-slate-200 shrink-0"><X size={14} /></button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className={`text-[14px] font-semibold leading-tight ${dl.done ? 'line-through text-slate-400' : isOverdue ? 'text-rose-500' : 'text-slate-800'}`}>
+                                                {dl.title}
+                                            </div>
+                                            <div className={`text-[13px] font-mono mt-0.5 ${isOverdue ? 'text-rose-400' : 'text-slate-400'}`}>
+                                                {dl.date && dl.date !== '2099-12-31' ? dl.date.slice(5).replace('-', '/') : 'Anytime'}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                                {isAdmin && (
-                                    <button
-                                        onClick={() => onRemoveDeadline(dl.id)}
-                                        className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-400 transition-all p-0.5 mt-0.5"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
+                                {isAdmin && editingId !== dl.id && (
+                                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 mt-0.5 transition-opacity shrink-0">
+                                        <button
+                                            onClick={() => startEdit(dl)}
+                                            className="text-slate-300 hover:text-blue-500 transition-colors p-0.5"
+                                        >
+                                            <Pencil size={12} />
+                                        </button>
+                                        <button
+                                            onClick={() => onRemoveDeadline(dl.id)}
+                                            className="text-slate-300 hover:text-rose-400 transition-colors p-0.5"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         );

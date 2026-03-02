@@ -178,6 +178,16 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         mutate((prev: any) => ({ ...prev, deadlines: prev.deadlines.filter((d: any) => d.id !== id) }), false);
     };
 
+    const handleUpdateDeadline = async (id: number, title: string, date: string) => {
+        const fallbackDate = '2099-12-31';
+        const finalDate = date || fallbackDate;
+        await supabase.from('calendar_deadlines').update({ title, date: finalDate }).eq('id', id);
+        mutate((prev: any) => ({
+            ...prev,
+            deadlines: prev.deadlines.map((d: any) => d.id === id ? { ...d, title, date: finalDate } : d)
+        }), false);
+    };
+
     const handlePrevMonth = () => {
         if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
         else setViewMonth(m => m - 1);
@@ -242,8 +252,8 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         mutate(); // refetch
     };
 
-    const handleUpdateActivity = async (actId: number, content: string) => {
-        await supabase.from('calendar_activities').update({ content }).eq('id', actId);
+    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string }) => {
+        await supabase.from('calendar_activities').update(updates).eq('id', actId);
         mutate();
     };
 
@@ -320,6 +330,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                 onAddDeadline={handleAddDeadline}
                                 onToggleDeadline={handleToggleDeadline}
                                 onRemoveDeadline={handleRemoveDeadline}
+                                onUpdateDeadline={handleUpdateDeadline}
                             />
 
                             {viewMode === 'month' ? (
