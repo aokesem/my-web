@@ -227,7 +227,7 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
 
                                 <div className="sticky top-0 z-20 flex justify-between px-20 py-2 bg-white/40 backdrop-blur-md border-b border-white/30 mb-6 text-[20px] font-black text-slate-500/80 tracking-widest uppercase shadow-sm">
                                     <span className="w-20 text-center text-blue-600/80">知识</span>
-                                    <span className="w-20 text-center text-rose-600/80">社交</span>
+                                    <span className="w-20 text-center text-rose-600/80">生活</span>
                                     <span className="w-20 text-center text-emerald-600/80">艺体</span>
                                 </div>
 

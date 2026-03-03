@@ -35,10 +35,10 @@ export default function DashboardPanel({ calendarData, deadlines }: DashboardPan
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }, [nextDeadline, todayStr]);
 
-    // 过去 7 天的日期序列 (从 6天前 到 今天)
+    // 过去 7 天的日期序列 (从 7天前 到 昨天，不包含今天)
     const past7DaysKeys = useMemo(() => {
         const keys = [];
-        for (let i = 6; i >= 0; i--) {
+        for (let i = 7; i >= 1; i--) {
             const d = new Date(today);
             d.setDate(d.getDate() - i);
             keys.push(formatDateKey(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -149,14 +149,14 @@ export default function DashboardPanel({ calendarData, deadlines }: DashboardPan
                 <div className="space-y-3">
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <div className="flex items-center gap-1.5">
-                            <Zap size={12} className="text-amber-400" />
+                            <Zap size={12} className="text-blue-500" />
                             Avg Daily Work (7d)
                         </div>
                     </div>
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-center">
-                        <div className="flex items-baseline gap-1.5 text-amber-500">
+                        <div className="flex items-baseline gap-1.5 text-blue-500">
                             <span className="font-black text-4xl tracking-tighter">{avgDuration}</span>
-                            <span className="font-mono font-bold text-sm text-amber-500/80">hrs</span>
+                            <span className="font-mono font-bold text-sm text-blue-500/80">hrs</span>
                         </div>
                     </div>
                 </div>
