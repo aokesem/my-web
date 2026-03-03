@@ -43,8 +43,8 @@ export default function WeekActivityListPanel({
         return allActivities
             .filter(a => a.start_time && a.end_time)
             .sort((a, b) => {
-                const dayA = a.day_of_week ?? 7; // 无 day_of_week 的排最后
-                const dayB = b.day_of_week ?? 7;
+                const dayA = a.day_of_week ?? -1; // 无 day_of_week 的排最前
+                const dayB = b.day_of_week ?? -1;
                 if (dayA !== dayB) return dayA - dayB;
                 return (a.start_time || '').localeCompare(b.start_time || '');
             });

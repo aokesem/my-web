@@ -59,8 +59,11 @@ export default function MonthViewPanel({
 
     const selectedKey = formatDateKey(viewYear, viewMonth, selectedDay);
     const selectedData: DayData = calendarData[selectedKey] || { status: null, comment: '', activities: [] };
+    const monthActivities = selectedData.activities.filter(act => !act.start_time);
+    const todayStr = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
-    const hasDeadline = (dateKey: string) => deadlines.some(d => d.date === dateKey);
+    // 检查此日期是否有未完成、且未过期的 deadline
+    const hasActiveDeadline = (dateKey: string) => deadlines.some(d => d.date === dateKey && !d.done && d.date >= todayStr);
     const isToday = (d: number) => viewYear === today.getFullYear() && viewMonth === today.getMonth() && d === today.getDate();
 
     const handleAdd = async () => {
@@ -71,7 +74,7 @@ export default function MonthViewPanel({
     };
 
     return (
-        <div className="w-[90vw] md:w-[700px] bg-white/95 backdrop-blur-xl rounded-r-2xl border border-slate-200/80 overflow-hidden flex flex-col">
+        <div className="w-[90vw] md:w-[700px] bg-white/95 backdrop-blur-xl border border-slate-200/80 overflow-hidden flex flex-col">
             {/* 顶部栏 */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                 <div className="flex items-center gap-2.5">
@@ -128,21 +131,24 @@ export default function MonthViewPanel({
                             const status = dayData?.status;
                             const isSel = cell.day === selectedDay;
                             const isTod = isToday(cell.day);
+                            const isActiveDead = hasActiveDeadline(key);
 
                             return (
                                 <button
                                     key={i}
                                     onClick={() => onSelectDay(cell.day!)}
-                                    className={`h-11 rounded-lg relative flex items-center justify-center transition-all duration-200 ${isSel ? 'bg-blue-50 ring-2 ring-blue-400 font-black' : 'hover:bg-slate-50/70'}`}
+                                    className={`h-[40px] rounded-lg relative flex items-center justify-center transition-all duration-200 m-1 
+                                        ${isSel ? 'bg-blue-50 ring-2 ring-blue-400 font-black' : 'hover:bg-slate-50/70'} 
+                                        ${isActiveDead && !isSel ? 'ring-1 ring-rose-400/80 bg-rose-50/30' : ''}`}
                                 >
                                     {status && (
                                         <div className={`absolute inset-2.5 rounded-md ${STATUS_COLORS[status].bg} opacity-80`} />
                                     )}
-                                    <span className={`relative z-10 text-[13px] font-semibold ${isSel ? 'text-blue-600' : isTod ? 'text-blue-500 font-bold' : 'text-slate-600'}`}>
+                                    <span className={`relative z-10 text-[13px] font-semibold ${isSel ? 'text-blue-600' : isTod ? 'text-blue-500 font-bold' : isActiveDead ? 'text-rose-600 font-bold' : 'text-slate-600'}`}>
                                         {cell.day}
                                     </span>
-                                    {hasDeadline(key) && (
-                                        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 z-20" />
+                                    {isActiveDead && (
+                                        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 z-20 shadow-sm" />
                                     )}
                                     {isTod && !isSel && (
                                         <div className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-400" />
@@ -197,9 +203,9 @@ export default function MonthViewPanel({
                             <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">事项记录</span>
                         </div>
 
-                        {selectedData.activities.length > 0 ? (
+                        {monthActivities.length > 0 ? (
                             <div className="space-y-2">
-                                {selectedData.activities.map(act => (
+                                {monthActivities.map(act => (
                                     <div key={act.id} className="flex items-center gap-3 bg-slate-50/80 rounded-lg px-4 py-2.5 group">
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
                                         <span className="flex-1 text-[15px] text-slate-700 font-medium">{act.content}</span>

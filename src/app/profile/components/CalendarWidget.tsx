@@ -10,6 +10,7 @@ import DeadlinePanel from './calendar/DeadlinePanel';
 import MonthViewPanel from './calendar/MonthViewPanel';
 import WeekViewPanel from './calendar/WeekViewPanel';
 import WeekActivityListPanel from './calendar/WeekActivityListPanel';
+import DashboardPanel from './calendar/DashboardPanel';
 
 // === 类型定义 ===
 interface CalendarWidgetProps {
@@ -334,25 +335,31 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                             />
 
                             {viewMode === 'month' ? (
-                                <MonthViewPanel
-                                    viewYear={viewYear}
-                                    viewMonth={viewMonth}
-                                    selectedDay={selectedDay}
-                                    calendarData={calendarData}
-                                    deadlines={deadlines}
-                                    isAdmin={isAdmin}
-                                    onClose={onToggle}
-                                    onToggleMode={() => setViewMode('week')}
-                                    onPrevMonth={handlePrevMonth}
-                                    onNextMonth={handleNextMonth}
-                                    onSelectDay={setSelectedDay}
-                                    onStatusChange={handleStatusChange}
-                                    onClearStatus={handleClearStatus}
-                                    onAddActivity={handleAddActivity}
-                                    onRemoveActivity={handleRemoveActivity}
-                                    onCommentChange={handleCommentChange}
-                                    onCommentBlur={handleCommentBlur}
-                                />
+                                <>
+                                    <MonthViewPanel
+                                        viewYear={viewYear}
+                                        viewMonth={viewMonth}
+                                        selectedDay={selectedDay}
+                                        calendarData={calendarData}
+                                        deadlines={deadlines}
+                                        isAdmin={isAdmin}
+                                        onClose={onToggle}
+                                        onToggleMode={() => setViewMode('week')}
+                                        onPrevMonth={handlePrevMonth}
+                                        onNextMonth={handleNextMonth}
+                                        onSelectDay={setSelectedDay}
+                                        onStatusChange={handleStatusChange}
+                                        onClearStatus={handleClearStatus}
+                                        onAddActivity={handleAddActivity}
+                                        onRemoveActivity={handleRemoveActivity}
+                                        onCommentChange={handleCommentChange}
+                                        onCommentBlur={handleCommentBlur}
+                                    />
+                                    <DashboardPanel
+                                        calendarData={calendarData}
+                                        deadlines={deadlines}
+                                    />
+                                </>
                             ) : (
                                 <>
                                     <WeekViewPanel
