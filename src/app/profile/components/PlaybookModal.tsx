@@ -5,62 +5,15 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
-// --- MOCK DATA ---
-type TaskStatus = 'todo' | 'in-progress' | 'done';
+import { supabase } from "@/lib/supabaseClient";
 
 interface TaskNode {
     id: string;
     title: string;
-    description?: string;
-    status: TaskStatus;
+    parent_id?: string | null;
+    sort_order?: number;
     children?: TaskNode[];
 }
-
-const MOCK_FOREST: TaskNode[] = [
-    {
-        id: "root-1",
-        title: "个人网站重构与上线",
-        status: "in-progress",
-        children: [
-            {
-                id: "sub-1-1",
-                title: "完成 Playbook 模块",
-                status: "in-progress",
-                children: [
-                    { id: "sub-1-1-1", title: "设计展开态 UI", status: "done" },
-                    { id: "sub-1-1-2", title: "实现任务森林连线", status: "in-progress" },
-                ]
-            },
-            {
-                id: "sub-1-2",
-                title: "后端 Supabase 对接",
-                status: "todo",
-            }
-        ]
-    },
-    {
-        id: "root-2",
-        title: "年度阅读计划",
-        status: "todo",
-        children: [
-            { id: "sub-2-1", title: "读", status: "todo" },
-            { id: "sub-2-2", title: "深入学习 React 源码，并完成一个包含复杂状态管理、服务端渲染优化以及复杂并发加载逻辑的个人实践型超长任务项目测试", status: "todo" }
-        ]
-    }
-];
-
-// --- RENDER HELPERS ---
-const StatusIndicator = ({ status }: { status: TaskStatus }) => {
-    switch (status) {
-        case 'done':
-            return <div className="w-2 h-2 rounded-full bg-[#7A8B76]" title="Done" />;
-        case 'in-progress':
-            return <div className="w-2 h-2 rounded-full border-2 border-[#7A8B76] bg-transparent" title="In Progress" />;
-        case 'todo':
-        default:
-            return <div className="w-2 h-2 rounded-full bg-slate-200" title="To Do" />;
-    }
-};
 
 const TreeNode = ({ node, isRoot = false }: { node: TaskNode, isRoot?: boolean }) => {
     const hasChildren = node.children && node.children.length > 0;
@@ -73,15 +26,9 @@ const TreeNode = ({ node, isRoot = false }: { node: TaskNode, isRoot?: boolean }
                 ${isRoot ? 'w-56 min-h-20 border-2 border-[#7A8B76]/50 bg-[#F9F7F1]' : 'w-44 min-h-16 border border-[#7A8B76]/30 bg-white/50 backdrop-blur-sm'} 
                 rounded-md shadow-sm group hover:border-[#7A8B76]/80 transition-colors cursor-pointer max-w-full
             `}>
-                <div className="absolute top-2 right-2">
-                    <StatusIndicator status={node.status} />
-                </div>
                 <span className={`font-serif text-[#2c3e50] w-full wrap-break-word whitespace-pre-wrap ${isRoot ? 'text-lg font-bold tracking-wide' : 'text-sm'}`}>
                     {node.title}
                 </span>
-                {node.description && (
-                    <span className="text-[10px] text-slate-400 mt-2 font-mono truncate w-full">{node.description}</span>
-                )}
             </div>
 
             {/* Recursively render children if they exist */}
@@ -141,10 +88,52 @@ interface PlaybookModalProps {
 export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
     const [mounted, setMounted] = useState(false);
     const [currentTreeIndex, setCurrentTreeIndex] = useState(0);
+    const [forest, setForest] = useState<TaskNode[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    const fetchForest = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from('playbook_tasks')
+            .select('*')
+            .order('sort_order', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching playbook_tasks:', error);
+            setIsLoading(false);
+            return;
+        }
+
+        if (data) {
+            const taskMap = new Map<string, TaskNode>();
+            const roots: TaskNode[] = [];
+
+            // Build node map
+            data.forEach((item: any) => {
+                taskMap.set(item.id, { ...item, children: [] });
+            });
+
+            // Build tree
+            data.forEach((item: any) => {
+                const node = taskMap.get(item.id)!;
+                if (item.parent_id) {
+                    const parent = taskMap.get(item.parent_id);
+                    if (parent) {
+                        parent.children!.push(node);
+                    }
+                } else {
+                    roots.push(node);
+                }
+            });
+
+            setForest(roots);
+        }
+        setIsLoading(false);
+    };
 
     // Prevent body scrolling when modal is open
     useEffect(() => {
@@ -156,23 +145,28 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
         return () => {
             document.body.style.overflow = "unset";
         };
+    }, [isOpen]);
+
+    // Manage resetting or fetching per open
+    useEffect(() => {
         if (!isOpen) {
-            // Reset page when reopened
             setCurrentTreeIndex(0);
+        } else {
+            fetchForest();
         }
     }, [isOpen]);
 
     if (!mounted) return null;
 
     const handlePrevTree = () => {
-        setCurrentTreeIndex((prev: number) => (prev > 0 ? prev - 1 : MOCK_FOREST.length - 1));
+        setCurrentTreeIndex((prev: number) => (prev > 0 ? prev - 1 : forest.length - 1));
     };
 
     const handleNextTree = () => {
-        setCurrentTreeIndex((prev: number) => (prev < MOCK_FOREST.length - 1 ? prev + 1 : 0));
+        setCurrentTreeIndex((prev: number) => (prev < forest.length - 1 ? prev + 1 : 0));
     };
 
-    const currentTree = MOCK_FOREST[currentTreeIndex];
+    const currentTree = forest.length > 0 ? forest[currentTreeIndex] : null;
 
     const modalContent = (
         <AnimatePresence>
@@ -244,45 +238,58 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
                         {/* Right Page: Task Forest Blueprint */}
                         <div className="flex-1 bg-[#F9F7F1]/80 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col">
                             {/* Pagination Header */}
-                            <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">
-                                <button
-                                    onClick={handlePrevTree}
-                                    className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
-                                >
-                                    <ChevronLeft size={20} />
-                                </button>
+                            {forest.length > 0 && currentTree && (
+                                <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">
+                                    <button
+                                        onClick={handlePrevTree}
+                                        className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
 
-                                <div className="flex flex-col items-center">
-                                    <span className="font-serif font-bold text-[#2c3e50] tracking-wide mb-1 text-lg">
-                                        {currentTree.title}
-                                    </span>
-                                    <span className="font-mono text-[10px] tracking-widest text-[#7A8B76]">
-                                        FOREST {currentTreeIndex + 1} / {MOCK_FOREST.length}
-                                    </span>
+                                    <div className="flex flex-col items-center">
+                                        <span className="font-serif font-bold text-[#2c3e50] tracking-wide mb-1 text-lg">
+                                            {currentTree.title}
+                                        </span>
+                                        <span className="font-mono text-[10px] tracking-widest text-[#7A8B76]">
+                                            FOREST {currentTreeIndex + 1} / {forest.length}
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        onClick={handleNextTree}
+                                        className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
+                                    >
+                                        <ChevronRight size={20} />
+                                    </button>
                                 </div>
-
-                                <button
-                                    onClick={handleNextTree}
-                                    className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
-                                >
-                                    <ChevronRight size={20} />
-                                </button>
-                            </div>
+                            )}
 
                             {/* Render the active forest (single root) */}
-                            <div className="flex-1 flex flex-col items-center w-full min-h-0 relative">
-                                <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={currentTree.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="w-full flex justify-center pb-12"
-                                    >
-                                        <TreeNode node={currentTree} isRoot={true} />
-                                    </motion.div>
-                                </AnimatePresence>
+                            <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 relative">
+                                {isLoading ? (
+                                    <div className="text-[#7A8B76]/60 font-mono text-sm animate-pulse tracking-widest">
+                                        FETCHING_BLUEPRINTS...
+                                    </div>
+                                ) : forest.length === 0 ? (
+                                    <div className="text-[#7A8B76]/60 font-mono text-sm tracking-widest text-center flex flex-col items-center gap-2">
+                                        <span>FOREST_DATA_EMPTY</span>
+                                        <span className="text-xs opacity-70">Awaiting new directives.</span>
+                                    </div>
+                                ) : currentTree && (
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={currentTree.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            transition={{ duration: 0.3 }}
+                                            className="w-full flex justify-center pb-12"
+                                        >
+                                            <TreeNode node={currentTree} isRoot={true} />
+                                        </motion.div>
+                                    </AnimatePresence>
+                                )}
                             </div>
                         </div>
                     </motion.div>

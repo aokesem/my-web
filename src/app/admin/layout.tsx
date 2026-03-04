@@ -21,6 +21,7 @@ import {
     SearchCode, // [New] for Prompts
     Layers, // [New] for MindMap
     Sprout, // [New] for Garden
+    BookMarked,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -43,6 +44,7 @@ const ROOM_NAV_ITEMS = [
     { title: "工具箱", href: "/admin/room/tools", icon: Wrench },
     { title: "习惯配置", href: "/admin/room/habits", icon: ListTodo },
     { title: "日历管理", href: "/admin/calendar", icon: CalendarDays },
+    { title: "任务森林", href: "/admin/playbook", icon: BookMarked },
 ];
 
 // [New] Library Space Items
