@@ -269,7 +269,7 @@ export default function CategoryDetailPage() {
                             className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-lg hover:shadow-orange-200 transition-all gap-2"
                         >
                             <Plus size={16} />
-                            <span className="font-bold tracking-tight">NEW_PROMPT</span>
+                            <span className="font-bold tracking-tight">New Prompt</span>
                         </Button>
                     )}
                 </div>

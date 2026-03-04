@@ -218,7 +218,7 @@ export default function MindMapMatrixPage() {
                             className="flex items-center gap-2 px-5 py-2.5 bg-stone-800 text-white rounded-xl shadow-lg hover:bg-sky-600 hover:scale-105 transition-all group"
                         >
                             <Plus size={16} className="text-sky-400 group-hover:text-white transition-colors" />
-                            <span className="text-xs font-serif font-bold tracking-wider">NEW_CANVAS</span>
+                            <span className="text-xs font-serif font-bold tracking-wider">New Canvas</span>
                         </button>
                     )}
                     <div className="px-4 py-2 bg-stone-100 rounded-lg border border-stone-200/60">

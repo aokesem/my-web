@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 // --- MOCK DATA ---
 type TaskStatus = 'todo' | 'in-progress' | 'done';
@@ -43,8 +43,8 @@ const MOCK_FOREST: TaskNode[] = [
         title: "年度阅读计划",
         status: "todo",
         children: [
-            { id: "sub-2-1", title: "阅读《设计心理学》", status: "todo" },
-            { id: "sub-2-2", title: "深入学习 React 源码", status: "todo" }
+            { id: "sub-2-1", title: "读", status: "todo" },
+            { id: "sub-2-2", title: "深入学习 React 源码，并完成一个包含复杂状态管理、服务端渲染优化以及复杂并发加载逻辑的个人实践型超长任务项目测试", status: "todo" }
         ]
     }
 ];
@@ -69,14 +69,14 @@ const TreeNode = ({ node, isRoot = false }: { node: TaskNode, isRoot?: boolean }
         <div className="flex flex-col items-center">
             {/* The Node Card */}
             <div className={`
-                relative z-10 flex flex-col justify-center items-center text-center p-3 sm:p-4 
+                relative z-10 flex flex-col justify-center items-center text-center p-3 sm:p-4 h-auto
                 ${isRoot ? 'w-56 min-h-20 border-2 border-[#7A8B76]/50 bg-[#F9F7F1]' : 'w-44 min-h-16 border border-[#7A8B76]/30 bg-white/50 backdrop-blur-sm'} 
                 rounded-md shadow-sm group hover:border-[#7A8B76]/80 transition-colors cursor-pointer max-w-full
             `}>
                 <div className="absolute top-2 right-2">
                     <StatusIndicator status={node.status} />
                 </div>
-                <span className={`font-serif text-[#2c3e50] w-full wrap-break-word whitespace-pre-wrap ${isRoot ? 'text-sm font-bold tracking-wide' : 'text-xs'}`}>
+                <span className={`font-serif text-[#2c3e50] w-full wrap-break-word whitespace-pre-wrap ${isRoot ? 'text-lg font-bold tracking-wide' : 'text-sm'}`}>
                     {node.title}
                 </span>
                 {node.description && (
@@ -140,6 +140,7 @@ interface PlaybookModalProps {
 
 export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
     const [mounted, setMounted] = useState(false);
+    const [currentTreeIndex, setCurrentTreeIndex] = useState(0);
 
     useEffect(() => {
         setMounted(true);
@@ -155,9 +156,23 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
         return () => {
             document.body.style.overflow = "unset";
         };
+        if (!isOpen) {
+            // Reset page when reopened
+            setCurrentTreeIndex(0);
+        }
     }, [isOpen]);
 
     if (!mounted) return null;
+
+    const handlePrevTree = () => {
+        setCurrentTreeIndex((prev: number) => (prev > 0 ? prev - 1 : MOCK_FOREST.length - 1));
+    };
+
+    const handleNextTree = () => {
+        setCurrentTreeIndex((prev: number) => (prev < MOCK_FOREST.length - 1 ? prev + 1 : 0));
+    };
+
+    const currentTree = MOCK_FOREST[currentTreeIndex];
 
     const modalContent = (
         <AnimatePresence>
@@ -227,20 +242,47 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
                         </div>
 
                         {/* Right Page: Task Forest Blueprint */}
-                        <div className="flex-1 bg-[#F9F7F1]/80 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar">
-                            <div className="min-h-full w-full flex flex-col items-center">
-                                {/* Decorator Header */}
-                                <div className="w-full border-b border-[#7A8B76]/20 pb-2 mb-12 flex justify-between items-end opacity-60">
-                                    <span className="font-mono text-xs tracking-widest text-[#7A8B76]">PRIORITY_FOREST_V1</span>
-                                    <span className="font-mono text-[10px] text-[#7A8B76]">SYSTEM.PLANNING</span>
+                        <div className="flex-1 bg-[#F9F7F1]/80 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col">
+                            {/* Pagination Header */}
+                            <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">
+                                <button
+                                    onClick={handlePrevTree}
+                                    className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+
+                                <div className="flex flex-col items-center">
+                                    <span className="font-serif font-bold text-[#2c3e50] tracking-wide mb-1 text-lg">
+                                        {currentTree.title}
+                                    </span>
+                                    <span className="font-mono text-[10px] tracking-widest text-[#7A8B76]">
+                                        FOREST {currentTreeIndex + 1} / {MOCK_FOREST.length}
+                                    </span>
                                 </div>
 
-                                {/* Render the forest (multiple roots) */}
-                                <div className="flex flex-col gap-24 items-center w-full">
-                                    {MOCK_FOREST.map(rootNode => (
-                                        <TreeNode key={rootNode.id} node={rootNode} isRoot={true} />
-                                    ))}
-                                </div>
+                                <button
+                                    onClick={handleNextTree}
+                                    className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+
+                            {/* Render the active forest (single root) */}
+                            <div className="flex-1 flex flex-col items-center w-full min-h-0 relative">
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={currentTree.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="w-full flex justify-center pb-12"
+                                    >
+                                        <TreeNode node={currentTree} isRoot={true} />
+                                    </motion.div>
+                                </AnimatePresence>
                             </div>
                         </div>
                     </motion.div>
