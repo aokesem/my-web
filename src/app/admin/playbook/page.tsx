@@ -45,6 +45,7 @@ export default function PlaybookAdminPage() {
             .order("sort_order", { ascending: true });
 
         if (error) {
+            console.error("Error fetching playbook_tasks:", error);
             toast.error("获取任务数据失败: " + error.message);
             setIsLoading(false);
             return;
@@ -313,6 +314,7 @@ export default function PlaybookAdminPage() {
                     </Button>
                 )}
             </div>
+
 
             {/* Create Root In-Place Input */}
             {isCreatingRoot && (

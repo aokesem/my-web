@@ -66,3 +66,33 @@ WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own tasks" 
 ON playbook_tasks FOR DELETE 
 USING (auth.uid() = user_id);
+
+-- ==========================================
+-- PLAYBOOK MANIFESTO SETUP
+-- ==========================================
+
+-- Create the playbook_manifesto table (single row per user)
+CREATE TABLE IF NOT EXISTS playbook_manifesto (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    content TEXT NOT NULL,
+    user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security
+ALTER TABLE playbook_manifesto ENABLE ROW LEVEL SECURITY;
+
+-- Allow public read access (everyone can see the manifesto)
+CREATE POLICY "Public manifesto is viewable by everyone" 
+ON playbook_manifesto FOR SELECT 
+USING (true);
+
+-- Allow authenticated users to insert/update THEIR OWN manifesto
+CREATE POLICY "Users can insert their own manifesto" 
+ON playbook_manifesto FOR INSERT 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own manifesto" 
+ON playbook_manifesto FOR UPDATE 
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);

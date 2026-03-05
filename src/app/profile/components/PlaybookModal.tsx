@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Pencil, Save, Loader2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 
@@ -89,7 +89,15 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
     const [mounted, setMounted] = useState(false);
     const [currentTreeIndex, setCurrentTreeIndex] = useState(0);
     const [forest, setForest] = useState<TaskNode[]>([]);
+    const [manifestoContent, setManifestoContent] = useState<string | null>(null);
+    const [manifestoId, setManifestoId] = useState<string | null>(null);
+    const [isEditingManifesto, setIsEditingManifesto] = useState(false);
+    const [manifestoDraft, setManifestoDraft] = useState("");
+    const [isSavingManifesto, setIsSavingManifesto] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [hasFetched, setHasFetched] = useState(false);
+
+    const DEFAULT_MANIFESTO = `This is the beginning of the reflection space. A place to gather scattered thoughts before meticulously organizing them into actionable tasks.\n\nIn the quiet solitude of this room, absolute clarity emerges. The texture and typography here values quiet introspection over noisy notifications.\n\nHere, we outline the fundamental principles that govern our actions. We strip away the unnecessary and focus only on what truly matters. This left page exists as an anchor—a set of philosophical guidelines to keep the "Task Forest" on the right grounded in reality and purpose.`;
 
     useEffect(() => {
         setMounted(true);
@@ -132,7 +140,66 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
 
             setForest(roots);
         }
+
+        // Fetch manifesto
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+            const { data: manifestoData } = await supabase
+                .from('playbook_manifesto')
+                .select('id, content')
+                .eq('user_id', userData.user.id)
+                .limit(1)
+                .single();
+
+            if (manifestoData) {
+                setManifestoId(manifestoData.id);
+                setManifestoContent(manifestoData.content);
+                setManifestoDraft(manifestoData.content);
+            } else {
+                setManifestoDraft(DEFAULT_MANIFESTO);
+            }
+        } else {
+            setManifestoDraft(DEFAULT_MANIFESTO);
+        }
+
+        setHasFetched(true);
         setIsLoading(false);
+    };
+
+    const handleSaveManifesto = async () => {
+        setIsSavingManifesto(true);
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) {
+            setIsSavingManifesto(false);
+            return;
+        }
+
+        if (manifestoId) {
+            // Update
+            const { error } = await supabase
+                .from("playbook_manifesto")
+                .update({ content: manifestoDraft, updated_at: new Date().toISOString() })
+                .eq("id", manifestoId);
+
+            if (!error) {
+                setManifestoContent(manifestoDraft);
+                setIsEditingManifesto(false);
+            }
+        } else {
+            // Insert
+            const { data, error } = await supabase
+                .from("playbook_manifesto")
+                .insert([{ content: manifestoDraft, user_id: userData.user.id }])
+                .select('id')
+                .single();
+
+            if (!error && data) {
+                setManifestoId(data.id);
+                setManifestoContent(manifestoDraft);
+                setIsEditingManifesto(false);
+            }
+        }
+        setIsSavingManifesto(false);
     };
 
     // Prevent body scrolling when modal is open
@@ -151,10 +218,10 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
     useEffect(() => {
         if (!isOpen) {
             setCurrentTreeIndex(0);
-        } else {
+        } else if (!hasFetched) {
             fetchForest();
         }
-    }, [isOpen]);
+    }, [isOpen, hasFetched]);
 
     if (!mounted) return null;
 
@@ -191,8 +258,8 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-md"
+                        transition={{ duration: 0.25 }}
+                        className="absolute inset-0 bg-black/35 backdrop-blur-sm"
                         onClick={(e) => {
                             e.stopPropagation();
                             onClose();
@@ -201,10 +268,10 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
 
                     {/* Book Container */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        initial={{ opacity: 0, scale: 0.92, y: 16 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                        transition={{ type: "spring", damping: 30, stiffness: 400, mass: 0.8 }}
                         className="relative w-[90vw] max-w-7xl h-[85vh] bg-[#fdfbf7] rounded-sm shadow-2xl overflow-hidden flex"
                         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")` }}
                         onClick={(e) => e.stopPropagation()} // Prevent bubbling to backdrop
@@ -226,24 +293,60 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
                         {/* Left Page (Index: currentTreeIndex) */}
                         <div className="flex-1 border-r border-slate-200/50 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col">
                             {leftPageContent === 'manifesto' ? (
-                                <div className="max-w-prose mx-auto mt-4 md:mt-8">
-                                    <div className="mb-10 inline-block w-full max-w-sm">
+                                <div className="max-w-prose mx-auto mt-4 md:mt-8 relative group/manifesto w-full flex-1 flex flex-col">
+                                    <div className="mb-10 inline-block w-full max-w-sm flex-none">
                                         <h1 className="text-4xl font-serif text-slate-800 mb-4 tracking-wide">
                                             Manifesto
                                         </h1>
                                         <div className="h-[2px] bg-linear-to-r from-[#6B3A3A]/60 to-transparent w-full"></div>
                                     </div>
-                                    <div className="space-y-6 text-slate-600 font-serif leading-relaxed text-[17px] text-justify">
-                                        <p>
-                                            This is the beginning of the reflection space. A place to gather scattered thoughts before meticulously organizing them into actionable tasks.
-                                        </p>
-                                        <p>
-                                            In the quiet solitude of this room, absolute clarity emerges. The texture and typography here values quiet introspection over noisy notifications.
-                                        </p>
-                                        <p>
-                                            Here, we outline the fundamental principles that govern our actions. We strip away the unnecessary and focus only on what truly matters.
-                                        </p>
-                                    </div>
+
+                                    {!isEditingManifesto && (
+                                        <button
+                                            onClick={() => setIsEditingManifesto(true)}
+                                            className="absolute top-0 right-0 p-2 text-[#7A8B76]/0 group-hover/manifesto:text-[#7A8B76]/50 hover:text-[#7A8B76]! transition-colors rounded-full"
+                                            title="编辑宣言"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                    )}
+
+                                    {isEditingManifesto ? (
+                                        <div className="flex flex-col flex-1 w-full">
+                                            <textarea
+                                                value={manifestoDraft}
+                                                onChange={(e) => setManifestoDraft(e.target.value)}
+                                                placeholder="在此写下你的指路纲领、原则或散念..."
+                                                className="w-full flex-1 bg-transparent border-none p-0 m-0 text-slate-600 font-serif leading-relaxed text-lg text-justify focus:outline-none focus:ring-0 subtle-scrollbar resize-none"
+                                            />
+                                            <div className="flex justify-end gap-3 mt-4 flex-none">
+                                                <button
+                                                    onClick={() => {
+                                                        setManifestoDraft(manifestoContent || DEFAULT_MANIFESTO);
+                                                        setIsEditingManifesto(false);
+                                                    }}
+                                                    className="px-4 py-2 text-sm font-serif text-slate-500 hover:text-slate-700 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={handleSaveManifesto}
+                                                    disabled={isSavingManifesto}
+                                                    className="px-4 py-2 text-sm font-serif bg-[#7A8B76]/10 text-[#7A8B76] hover:bg-[#7A8B76]/20 transition-colors rounded-md flex items-center gap-2"
+                                                >
+                                                    {isSavingManifesto ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-6 text-slate-600 font-serif leading-relaxed text-lg text-justify">
+                                            {(manifestoContent || DEFAULT_MANIFESTO).split('\n').filter(p => p.trim() !== '').map((para, idx) => (
+                                                <p key={idx}>{para}</p>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <div className="mt-16 text-right opacity-80 italic text-[#6B3A3A]/70 font-serif">
                                         <p>"Focus on the essential."</p>
                                     </div>
