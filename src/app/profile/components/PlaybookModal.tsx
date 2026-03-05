@@ -158,15 +158,29 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
 
     if (!mounted) return null;
 
-    const handlePrevTree = () => {
-        setCurrentTreeIndex((prev: number) => (prev > 0 ? prev - 1 : forest.length - 1));
+    // currentTreeIndex now represents the *left* page index. It will advance by 1 to shift the spread.
+    // Index 0: Manifesto (Left), Tree 1 (Right)
+    // Index 1: Tree 1 (Left), Tree 2 (Right)
+    const handlePrevPage = () => {
+        setCurrentTreeIndex((prev: number) => Math.max(0, prev - 1));
     };
 
-    const handleNextTree = () => {
-        setCurrentTreeIndex((prev: number) => (prev < forest.length - 1 ? prev + 1 : 0));
+    const handleNextPage = () => {
+        setCurrentTreeIndex((prev: number) => {
+            const maxLeftIndex = Math.max(0, pages.length - 2);
+            return Math.min(maxLeftIndex, prev + 1);
+        });
     };
 
-    const currentTree = forest.length > 0 ? forest[currentTreeIndex] : null;
+    // Combine Manifesto and forest into a single ordered "book pages" array
+    // page 0 = manifesto
+    // page 1..N = forest[0..N-1]
+    const pages = ['manifesto', ...forest];
+    const leftPageContent = pages[currentTreeIndex];
+    const rightPageContent = pages[currentTreeIndex + 1];
+
+    const isFirstSpread = currentTreeIndex === 0;
+    const isLastSpread = currentTreeIndex >= pages.length - 2;
 
     const modalContent = (
         <AnimatePresence>
@@ -209,88 +223,117 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
                         {/* Central Spine (Book Fold) */}
                         <div className="absolute left-1/2 top-0 bottom-0 w-12 -translate-x-1/2 bg-linear-to-r from-transparent via-black/10 to-transparent shadow-[inset_0_0_15px_rgba(0,0,0,0.1)] pointer-events-none z-10" />
 
-                        {/* Left Page: Reflection Notes */}
-                        <div className="flex-1 border-r border-slate-200/50 p-12 md:p-16 relative overflow-y-auto subtle-scrollbar">
-                            <div className="max-w-prose mx-auto">
-                                <div className="mb-10 inline-block w-full max-w-sm">
-                                    <h1 className="text-4xl font-serif text-slate-800 mb-4 tracking-wide">
-                                        Manifesto
-                                    </h1>
-                                    <div className="h-[2px] bg-linear-to-r from-[#6B3A3A]/60 to-transparent w-full"></div>
+                        {/* Left Page (Index: currentTreeIndex) */}
+                        <div className="flex-1 border-r border-slate-200/50 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col">
+                            {leftPageContent === 'manifesto' ? (
+                                <div className="max-w-prose mx-auto mt-4 md:mt-8">
+                                    <div className="mb-10 inline-block w-full max-w-sm">
+                                        <h1 className="text-4xl font-serif text-slate-800 mb-4 tracking-wide">
+                                            Manifesto
+                                        </h1>
+                                        <div className="h-[2px] bg-linear-to-r from-[#6B3A3A]/60 to-transparent w-full"></div>
+                                    </div>
+                                    <div className="space-y-6 text-slate-600 font-serif leading-relaxed text-[17px] text-justify">
+                                        <p>
+                                            This is the beginning of the reflection space. A place to gather scattered thoughts before meticulously organizing them into actionable tasks.
+                                        </p>
+                                        <p>
+                                            In the quiet solitude of this room, absolute clarity emerges. The texture and typography here values quiet introspection over noisy notifications.
+                                        </p>
+                                        <p>
+                                            Here, we outline the fundamental principles that govern our actions. We strip away the unnecessary and focus only on what truly matters.
+                                        </p>
+                                    </div>
+                                    <div className="mt-16 text-right opacity-80 italic text-[#6B3A3A]/70 font-serif">
+                                        <p>"Focus on the essential."</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-6 text-slate-600 font-serif leading-relaxed text-lg text-justify">
-                                    <p>
-                                        This is the beginning of the reflection space. A place to gather scattered thoughts before meticulously organizing them into actionable tasks.
-                                    </p>
-                                    <p>
-                                        In the quiet solitude of this room, absolute clarity emerges. The texture and typography here values quiet introspection over noisy notifications.
-                                    </p>
-                                    <p>
-                                        Here, we outline the fundamental principles that govern our actions. We strip away the unnecessary and focus only on what truly matters. This left page exists as an anchor—a set of philosophical guidelines to keep the "Task Forest" on the right grounded in reality and purpose.
-                                    </p>
-                                </div>
-                                <div className="mt-16 text-right opacity-80 italic text-[#6B3A3A]/70 font-serif">
-                                    <p>"Focus on the essential."</p>
-                                </div>
-                            </div>
+                            ) : leftPageContent ? (
+                                <>
+                                    <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">
+                                        <button
+                                            onClick={handlePrevPage}
+                                            disabled={isFirstSpread}
+                                            className={`p-1 rounded-full transition-colors ${isFirstSpread ? 'opacity-0 cursor-default' : 'text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10'}`}
+                                        >
+                                            <ChevronLeft size={20} />
+                                        </button>
+                                        <div className="flex flex-col items-center flex-1">
+                                            <span className="font-serif font-bold text-[#2c3e50] tracking-wide mb-1 text-lg text-center leading-tight">
+                                                {(leftPageContent as TaskNode).title}
+                                            </span>
+                                            <span className="font-mono text-[10px] tracking-widest text-[#7A8B76]">
+                                                PAGE {currentTreeIndex}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 relative">
+                                        <AnimatePresence mode="wait">
+                                            <motion.div
+                                                key={(leftPageContent as TaskNode).id}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: 10 }}
+                                                transition={{ duration: 0.3 }}
+                                                className="w-full flex justify-center pb-12"
+                                            >
+                                                <TreeNode node={leftPageContent as TaskNode} isRoot={true} />
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    </div>
+                                </>
+                            ) : null}
                         </div>
 
-                        {/* Right Page: Task Forest Blueprint */}
+                        {/* Right Page (Index: currentTreeIndex + 1) */}
                         <div className="flex-1 bg-[#F9F7F1]/80 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col">
-                            {/* Pagination Header */}
-                            {forest.length > 0 && currentTree && (
-                                <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">
-                                    <button
-                                        onClick={handlePrevTree}
-                                        className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
-                                    >
-                                        <ChevronLeft size={20} />
-                                    </button>
-
-                                    <div className="flex flex-col items-center">
-                                        <span className="font-serif font-bold text-[#2c3e50] tracking-wide mb-1 text-lg">
-                                            {currentTree.title}
-                                        </span>
-                                        <span className="font-mono text-[10px] tracking-widest text-[#7A8B76]">
-                                            FOREST {currentTreeIndex + 1} / {forest.length}
-                                        </span>
+                            {rightPageContent ? (
+                                <>
+                                    <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">
+                                        <div className="flex flex-col items-center flex-1 ml-8">
+                                            <span className="font-serif font-bold text-[#2c3e50] tracking-wide mb-1 text-lg text-center leading-tight">
+                                                {(rightPageContent as TaskNode).title}
+                                            </span>
+                                            <span className="font-mono text-[10px] tracking-widest text-[#7A8B76]">
+                                                PAGE {currentTreeIndex + 1}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={handleNextPage}
+                                            disabled={isLastSpread}
+                                            className={`p-1 rounded-full transition-colors ml-4 ${isLastSpread ? 'opacity-0 cursor-default' : 'text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10'}`}
+                                        >
+                                            <ChevronRight size={20} />
+                                        </button>
                                     </div>
-
-                                    <button
-                                        onClick={handleNextTree}
-                                        className="p-1 rounded-full text-[#7A8B76]/60 hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 transition-colors"
-                                    >
-                                        <ChevronRight size={20} />
-                                    </button>
+                                    <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 relative">
+                                        {isLoading ? (
+                                            <div className="text-[#7A8B76]/60 font-mono text-sm animate-pulse tracking-widest">
+                                                FETCHING_BLUEPRINTS...
+                                            </div>
+                                        ) : (
+                                            <AnimatePresence mode="wait">
+                                                <motion.div
+                                                    key={(rightPageContent as TaskNode).id}
+                                                    initial={{ opacity: 0, x: 10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -10 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    className="w-full flex justify-center pb-12"
+                                                >
+                                                    <TreeNode node={rightPageContent as TaskNode} isRoot={true} />
+                                                </motion.div>
+                                            </AnimatePresence>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                // Display an empty elegant page if there is no right page content
+                                <div className="flex-1 flex flex-col items-center justify-center w-full h-full opacity-30 pointer-events-none">
+                                    <div className="w-16 h-px bg-[#7A8B76]/40 mb-4" />
+                                    <span className="font-serif italic text-sm text-[#7A8B76]">The end of current blueprints.</span>
                                 </div>
                             )}
-
-                            {/* Render the active forest (single root) */}
-                            <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 relative">
-                                {isLoading ? (
-                                    <div className="text-[#7A8B76]/60 font-mono text-sm animate-pulse tracking-widest">
-                                        FETCHING_BLUEPRINTS...
-                                    </div>
-                                ) : forest.length === 0 ? (
-                                    <div className="text-[#7A8B76]/60 font-mono text-sm tracking-widest text-center flex flex-col items-center gap-2">
-                                        <span>FOREST_DATA_EMPTY</span>
-                                        <span className="text-xs opacity-70">Awaiting new directives.</span>
-                                    </div>
-                                ) : currentTree && (
-                                    <AnimatePresence mode="wait">
-                                        <motion.div
-                                            key={currentTree.id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -10 }}
-                                            transition={{ duration: 0.3 }}
-                                            className="w-full flex justify-center pb-12"
-                                        >
-                                            <TreeNode node={currentTree} isRoot={true} />
-                                        </motion.div>
-                                    </AnimatePresence>
-                                )}
-                            </div>
                         </div>
                     </motion.div>
                 </div>

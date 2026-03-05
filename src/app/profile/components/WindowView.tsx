@@ -167,8 +167,8 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                     >
                         {/* Tooltip positioned relative to the entire group */}
                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/playbook:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
-                            <div className="bg-slate-800 text-white text-[10px] py-1.5 px-3 rounded-md font-mono tracking-widest whitespace-nowrap shadow-xl border border-white/10">
-                                OPEN_MANIFESTO
+                            <div className="bg-slate-800 text-white text-[16px] py-1.5 px-3 rounded-md font-mono tracking-widest whitespace-nowrap shadow-xl border border-white/10">
+                                目标与任务森林
                             </div>
                             <div className="w-2 h-2 bg-slate-800 rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2 border-b border-r border-white/10"></div>
                         </div>
