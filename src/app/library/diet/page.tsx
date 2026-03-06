@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
     Star,
-    ChevronDown,
     ChevronLeft,
     ChevronRight,
     SortAsc,
@@ -14,6 +13,15 @@ import {
     Leaf,
     CookingPot,
     Store,
+    LayoutGrid,
+    Apple,
+    Beef,
+    Carrot,
+    Flame,
+    Clock,
+    UtensilsCrossed,
+    Coffee,
+    CakeSlice
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,7 +33,13 @@ import Image from 'next/image';
 const EXAMPLE_IMG = '/images/example.jpg';
 
 // --- 食物数据 ---
-const FOOD_CATEGORIES = ['全部', '水果', '肉类', '蔬菜', '调味料'];
+const FOOD_CATEGORIES = [
+    { id: '全部', label: '全部', icon: LayoutGrid },
+    { id: '水果', label: '水果', icon: Apple },
+    { id: '肉类', label: '肉类', icon: Beef },
+    { id: '蔬菜', label: '蔬菜', icon: Carrot },
+    { id: '调味料', label: '调味料', icon: Flame },
+];
 
 const FOODS = [
     { id: 1, name: '苹果', category: '水果', rating: 4.5, image: EXAMPLE_IMG, notes: '### 挑选指南\n- 选择表面光滑、色泽均匀的\n- 轻轻按压有弹性最佳\n\n### 推荐搭配\n酸奶、蜂蜜、肉桂粉' },
@@ -42,61 +56,69 @@ const FOODS = [
 ];
 
 // --- 食谱数据 ---
-const RECIPE_CATEGORIES = ['全部', '简餐', '正餐', '饮料', '甜品'];
+const RECIPE_CATEGORIES = [
+    { id: '全部', label: '全部', icon: LayoutGrid },
+    { id: '简餐', label: '简餐', icon: Clock },
+    { id: '正餐', label: '正餐', icon: UtensilsCrossed },
+    { id: '饮料', label: '饮料', icon: Coffee },
+    { id: '甜品', label: '甜品', icon: CakeSlice },
+];
 
 const RECIPES = [
-    { id: 1, name: '番茄炒蛋', category: '简餐', type: 'can_cook' as const, rating: 4.5, image: EXAMPLE_IMG, notes: '### 做法\n1. 鸡蛋打散加少许盐\n2. 番茄切块\n3. 先炒蛋盛出\n4. 炒番茄出汁后加蛋\n5. 加糖提鲜', linkedFoods: [8, 3] },
-    { id: 2, name: '清蒸鲈鱼', category: '正餐', type: 'favorite' as const, rating: 5, image: EXAMPLE_IMG, notes: '### 要点\n- 鱼要新鲜\n- 蒸6-8分钟即可\n- 浇热油是灵魂', linkedFoods: [] },
-    { id: 3, name: '红烧牛腩', category: '正餐', type: 'can_cook' as const, rating: 4.5, image: EXAMPLE_IMG, notes: '### 材料\n牛腩500g、土豆2个、胡萝卜1根\n\n### 要点\n小火慢炖2小时，入口即化', linkedFoods: [4] },
-    { id: 4, name: '抹茶拿铁', category: '饮料', type: 'can_cook' as const, rating: 4, image: EXAMPLE_IMG, notes: '### 配方\n- 抹茶粉 2g\n- 牛奶 200ml\n- 热水 30ml\n\n先用热水化开抹茶粉，打发牛奶后倒入', linkedFoods: [] },
-    { id: 5, name: '提拉米苏', category: '甜品', type: 'favorite' as const, rating: 5, image: EXAMPLE_IMG, notes: '### 经典配方\n马斯卡彭芝士、手指饼干、浓缩咖啡、可可粉\n\n### 最佳食用\n冷藏4小时以上', linkedFoods: [] },
-    { id: 6, name: '西兰花炒虾仁', category: '简餐', type: 'can_cook' as const, rating: 4, image: EXAMPLE_IMG, notes: '### 技巧\n虾仁用料酒腌制去腥，西兰花提前焯水', linkedFoods: [7] },
+    { id: 1, name: '番茄炒蛋', category: '简餐', type: 'can_cook' as const, rating: 4.5, image: EXAMPLE_IMG, notes: '### 做法\n1. 鸡蛋打散加少许盐\n2. 番茄切块\n3. 先炒蛋盛出\n4. 炒番茄出汁后加蛋\n5. 加糖提鲜', linkedFoods: [8, 3], restaurantId: 1 },
+    { id: 2, name: '清蒸鲈鱼', category: '正餐', type: 'favorite' as const, rating: 5, image: EXAMPLE_IMG, notes: '### 要点\n- 鱼要新鲜\n- 蒸6-8分钟即可\n- 浇热油是灵魂', linkedFoods: [], restaurantId: undefined },
+    { id: 3, name: '红烧牛腩', category: '正餐', type: 'can_cook' as const, rating: 4.5, image: EXAMPLE_IMG, notes: '### 材料\n牛腩500g、土豆2个、胡萝卜1根\n\n### 要点\n小火慢炖2小时，入口即化', linkedFoods: [4], restaurantId: undefined },
+    { id: 4, name: '抹茶拿铁', category: '饮料', type: 'can_cook' as const, rating: 4, image: EXAMPLE_IMG, notes: '### 配方\n- 抹茶粉 2g\n- 牛奶 200ml\n- 热水 30ml\n\n先用热水化开抹茶粉，打发牛奶后倒入', linkedFoods: [], restaurantId: 2 },
+    { id: 5, name: '提拉米苏', category: '甜品', type: 'favorite' as const, rating: 5, image: EXAMPLE_IMG, notes: '### 经典配方\n马斯卡彭芝士、手指饼干、浓缩咖啡、可可粉\n\n### 最佳食用\n冷藏4小时以上', linkedFoods: [], restaurantId: undefined },
+    { id: 6, name: '西兰花炒虾仁', category: '简餐', type: 'can_cook' as const, rating: 4, image: EXAMPLE_IMG, notes: '### 技巧\n虾仁用料酒腌制去腥，西兰花提前焯水', linkedFoods: [7], restaurantId: undefined },
 ];
 
 // --- 餐厅数据 ---
+const RESTAURANT_CATEGORIES = ['全部', '日料', '法餐', '火锅'];
+
 const RESTAURANTS = [
     {
-        id: 1, name: '和风亭', address: '上海市静安区南京西路 1266 号', rating: 4.5,
+        id: 1, name: '和风亭', category: '日料', address: '上海市静安区南京西路 1266 号', rating: 4.5,
         notes: '环境幽静的日式料理店，推荐午市套餐',
         images: [EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG],
         dishes: [
-            { id: 1, name: '鳗鱼饭', image: EXAMPLE_IMG },
-            { id: 2, name: '刺身拼盘', image: EXAMPLE_IMG },
-            { id: 3, name: '天妇罗', image: EXAMPLE_IMG },
-            { id: 4, name: '味噌汤', image: EXAMPLE_IMG },
+            { id: 1, name: '鳗鱼饭', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 2, name: '刺身拼盘', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 3, name: '天妇罗', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 4, name: '味噌汤', image: EXAMPLE_IMG, recipeId: undefined },
         ]
     },
     {
-        id: 2, name: 'Café de Flore', address: '北京市朝阳区三里屯路 19 号', rating: 4,
+        id: 2, name: 'Café de Flore', category: '法餐', address: '北京市朝阳区三里屯路 19 号', rating: 4,
         notes: '法式小馆，适合周末 brunch',
         images: [EXAMPLE_IMG, EXAMPLE_IMG],
         dishes: [
-            { id: 1, name: '法式吐司', image: EXAMPLE_IMG },
-            { id: 2, name: '凯撒沙拉', image: EXAMPLE_IMG },
-            { id: 3, name: '可颂', image: EXAMPLE_IMG },
+            { id: 1, name: '法式吐司', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 2, name: '凯撒沙拉', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 3, name: '可颂', image: EXAMPLE_IMG, recipeId: undefined },
         ]
     },
     {
-        id: 3, name: '老灶火锅', address: '重庆市渝中区解放碑洪崖洞 88 号', rating: 5,
+        id: 3, name: '老灶火锅', category: '火锅', address: '重庆市渝中区解放碑洪崖洞 88 号', rating: 5,
         notes: '正宗重庆老火锅，牛油锅底一绝',
         images: [EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG],
         dishes: [
-            { id: 1, name: '毛肚', image: EXAMPLE_IMG },
-            { id: 2, name: '鸭肠', image: EXAMPLE_IMG },
-            { id: 3, name: '黄喉', image: EXAMPLE_IMG },
-            { id: 4, name: '麻辣牛肉', image: EXAMPLE_IMG },
-            { id: 5, name: '冰粉', image: EXAMPLE_IMG },
+            { id: 1, name: '毛肚', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 2, name: '鸭肠', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 3, name: '黄喉', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 4, name: '麻辣牛肉', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 5, name: '冰粉', image: EXAMPLE_IMG, recipeId: undefined },
         ]
     },
     {
-        id: 4, name: '和风亭', address: '上海市静安区南京西路 1266 号', rating: 4.5,
-        notes: '环境幽静的日式料理店，推荐午市套餐',
+        id: 4, name: '大吉烧肉', category: '日料', address: '广州市天河区天河路 208 号', rating: 4.5,
+        notes: '适合朋友聚会的日式烧肉店',
         images: [EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG],
         dishes: [
-            { id: 1, name: '鳗鱼饭', image: EXAMPLE_IMG },
-            { id: 2, name: '刺身拼盘', image: EXAMPLE_IMG },
-            { id: 3, name: '天妇罗', image: EXAMPLE_IMG },
-            { id: 4, name: '味噌汤', image: EXAMPLE_IMG },
+            { id: 1, name: '鳗鱼饭', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 2, name: '刺身拼盘', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 3, name: '天妇罗', image: EXAMPLE_IMG, recipeId: undefined },
+            { id: 4, name: '清蒸鲈鱼', image: EXAMPLE_IMG, recipeId: 2 },
         ]
     },
 ];
@@ -129,14 +151,15 @@ const RatingStars = ({ rating, size = 14 }: { rating: number; size?: number }) =
     </div>
 );
 
-const FilterPill = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+const FilterPill = ({ label, active, icon: Icon, onClick }: { label: string; active: boolean; icon?: React.ElementType; onClick: () => void }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 border ${active
+        className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-300 border ${active
             ? 'bg-stone-700 text-white border-stone-700 shadow-sm'
             : 'bg-white/60 text-stone-500 border-stone-200 hover:bg-stone-100 hover:text-stone-700'
             }`}
     >
+        {Icon && <Icon size={14} className={active ? 'opacity-100' : 'opacity-60'} />}
         {label}
     </button>
 );
@@ -196,14 +219,32 @@ function useAutoPageSize(containerRef: React.RefObject<HTMLDivElement | null>, e
 
 type Food = typeof FOODS[number];
 
-const FoodsTab = () => {
+const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number | null, onClearJump?: () => void }) => {
     const [activeCategory, setActiveCategory] = useState('全部');
     const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
     const [page, setPage] = useState(0);
     const gridRef = useRef<HTMLDivElement>(null);
 
-    // 2列，横向卡片约 220px 高
+    // 2列，横向卡片约 280px 高
     const itemsPerPage = useAutoPageSize(gridRef, 280, 2, 4);
+
+    // 监听跳转请求，自动定位页码
+    useEffect(() => {
+        if (jumpTargetFoodId && itemsPerPage > 0) {
+            setActiveCategory('全部');
+            setSortBy('name');
+            const sorted = [...FOODS].sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+            const index = sorted.findIndex(f => f.id === jumpTargetFoodId);
+            if (index !== -1) {
+                setPage(Math.floor(index / itemsPerPage));
+            }
+            // 2.5秒后清除高亮状态
+            const timer = setTimeout(() => {
+                if (onClearJump) onClearJump();
+            }, 2500);
+            return () => clearTimeout(timer);
+        }
+    }, [jumpTargetFoodId, itemsPerPage, onClearJump]);
 
     const filtered = FOODS
         .filter(f => activeCategory === '全部' || f.category === activeCategory)
@@ -224,7 +265,7 @@ const FoodsTab = () => {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
                 <div className="flex flex-wrap gap-2">
                     {FOOD_CATEGORIES.map(cat => (
-                        <FilterPill key={cat} label={cat} active={activeCategory === cat} onClick={() => handleCategoryChange(cat)} />
+                        <FilterPill key={cat.id} label={cat.label} icon={cat.icon} active={activeCategory === cat.id} onClick={() => handleCategoryChange(cat.id)} />
                     ))}
                 </div>
                 <button
@@ -247,7 +288,7 @@ const FoodsTab = () => {
                 >
                     {pageItems.map(food => (
                         <div key={food.id} className="group">
-                            <div className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-400 flex items-stretch h-[270px]">
+                            <div className={`bg-white rounded-2xl border ${jumpTargetFoodId === food.id ? 'border-amber-400 ring-4 ring-amber-400/20' : 'border-stone-200/80'} overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-400 flex items-stretch h-[270px]`}>
                                 {/* 图片 - 左侧 */}
                                 <div className="relative w-[200px] shrink-0 overflow-hidden bg-stone-100">
                                     <Image
@@ -257,7 +298,12 @@ const FoodsTab = () => {
                                         sizes="200px"
                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
-                                    <div className="absolute top-3 left-2 px-2 py-0.5 rounded-md bg-white/80 backdrop-blur-sm text-[15px] font-bold text-stone-600 tracking-wide">
+                                    <div className="absolute top-3 left-2 px-2 py-0.5 rounded-md bg-white/80 backdrop-blur-sm text-[13px] font-bold text-stone-600 tracking-wide flex items-center gap-1">
+                                        {(() => {
+                                            const cat = FOOD_CATEGORIES.find(c => c.label === food.category);
+                                            const Icon = cat?.icon;
+                                            return Icon ? <Icon size={14} className="opacity-70" /> : null;
+                                        })()}
                                         {food.category}
                                     </div>
                                 </div>
@@ -291,7 +337,17 @@ const FoodsTab = () => {
 // 食谱 Tab
 // ============================================================
 
-const RecipesTab = () => {
+const RecipesTab = ({
+    onJumpToFood,
+    jumpTargetRecipeId,
+    onClearJump,
+    onJumpToRestaurant
+}: {
+    onJumpToFood?: (id: number) => void;
+    jumpTargetRecipeId?: number | null;
+    onClearJump?: () => void;
+    onJumpToRestaurant?: (id: number) => void;
+}) => {
     const [activeCategory, setActiveCategory] = useState('全部');
     const [activeType, setActiveType] = useState<'all' | 'can_cook' | 'favorite'>('all');
     const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
@@ -314,36 +370,35 @@ const RecipesTab = () => {
 
     return (
         <div className="h-full flex flex-col">
-            {/* Sub-tab: 类型切换 */}
-            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-full w-fit mb-4 border border-stone-200/60 shrink-0">
-                {([['all', '全部'], ['can_cook', '我会做'], ['favorite', '我爱吃']] as const).map(([value, label]) => (
-                    <button
-                        key={value}
-                        onClick={() => { setActiveType(value); handleFilterChange(); }}
-                        className={`relative px-5 py-1.5 rounded-full text-sm font-bold transition-all duration-300 ${activeType === value
-                            ? 'bg-white text-stone-800 shadow-sm'
-                            : 'text-stone-500 hover:text-stone-700'
-                            }`}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
-
             {/* 工具栏 */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
                 <div className="flex flex-wrap gap-2">
                     {RECIPE_CATEGORIES.map(cat => (
-                        <FilterPill key={cat} label={cat} active={activeCategory === cat} onClick={() => { setActiveCategory(cat); handleFilterChange(); }} />
+                        <FilterPill key={cat.id} label={cat.label} icon={cat.icon} active={activeCategory === cat.id} onClick={() => { setActiveCategory(cat.id); handleFilterChange(); }} />
                     ))}
                 </div>
-                <button
-                    onClick={() => setSortBy(prev => prev === 'name' ? 'rating' : 'name')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200"
-                >
-                    <SortAsc size={14} />
-                    {sortBy === 'name' ? '按名称' : '按评分'}
-                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                    {/* 类型切换（循环按钮） */}
+                    <button
+                        onClick={() => {
+                            setActiveType(prev => prev === 'all' ? 'can_cook' : prev === 'can_cook' ? 'favorite' : 'all');
+                            handleFilterChange();
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200 bg-white"
+                    >
+                        {activeType === 'all' ? '全部菜单' : activeType === 'can_cook' ? '我会做的' : '我爱吃的'}
+                    </button>
+
+                    {/* 排序切换 */}
+                    <button
+                        onClick={() => setSortBy(prev => prev === 'name' ? 'rating' : 'name')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200"
+                    >
+                        <SortAsc size={14} />
+                        {sortBy === 'name' ? '按名称' : '按评分'}
+                    </button>
+                </div>
             </div>
 
             {/* 卡片区域 */}
@@ -356,8 +411,8 @@ const RecipesTab = () => {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
                 >
                     {pageItems.map(recipe => (
-                        <div key={recipe.id}>
-                            <div className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-400 group">
+                        <div key={recipe.id} className="group relative">
+                            <div className={`bg-white rounded-2xl border ${jumpTargetRecipeId === recipe.id ? 'border-amber-400 ring-4 ring-amber-400/20' : 'border-stone-200/80'} overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-400`}>
                                 {/* 图片 */}
                                 <div className="relative aspect-16/13 overflow-hidden bg-stone-100">
                                     <Image
@@ -368,9 +423,28 @@ const RecipesTab = () => {
                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
                                     {/* 分类标签 */}
-                                    <div className="absolute top-3 left-2 px-2.5 py-1 rounded-md bg-white/80 backdrop-blur-sm text-[16px] font-bold text-stone-600 tracking-wide">
+                                    <div className="absolute top-3 left-2 px-2.5 py-1 rounded-md bg-white/80 backdrop-blur-sm text-[14px] font-bold text-stone-600 tracking-wide flex items-center gap-1.5 shadow-sm">
+                                        {(() => {
+                                            const cat = RECIPE_CATEGORIES.find(c => c.label === recipe.category);
+                                            const Icon = cat?.icon;
+                                            return Icon ? <Icon size={16} className="opacity-70" /> : null;
+                                        })()}
                                         {recipe.category}
                                     </div>
+
+                                    {/* 来源餐厅 (可选) */}
+                                    {recipe.restaurantId && (() => {
+                                        const rest = RESTAURANTS.find(r => r.id === recipe.restaurantId);
+                                        return rest ? (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onJumpToRestaurant?.(rest.id); }}
+                                                className="absolute top-3 right-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-800/80 backdrop-blur-sm text-[13px] font-bold text-stone-50 transition-colors hover:bg-amber-600 shadow-sm z-10"
+                                            >
+                                                <Store size={14} className="opacity-80" />
+                                                {rest.name}
+                                            </button>
+                                        ) : null;
+                                    })()}
                                 </div>
 
                                 {/* 信息区 */}
@@ -384,11 +458,19 @@ const RecipesTab = () => {
                                     <div className="flex flex-wrap gap-1.5 mb-2 min-h-[24px]">
                                         {recipe.linkedFoods.map(foodId => {
                                             const food = FOODS.find(f => f.id === foodId);
-                                            return food ? (
-                                                <span key={foodId} className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-100">
-                                                    🥬 {food.name}
-                                                </span>
-                                            ) : null;
+                                            if (!food) return null;
+                                            const cat = FOOD_CATEGORIES.find(c => c.label === food.category);
+                                            const Icon = cat?.icon;
+                                            return (
+                                                <button
+                                                    key={foodId}
+                                                    onClick={(e) => { e.stopPropagation(); onJumpToFood?.(foodId); }}
+                                                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[11px] font-medium border border-stone-200/60 transition-colors hover:bg-stone-200 hover:text-stone-800 focus:outline-none"
+                                                >
+                                                    {Icon && <Icon size={12} className="opacity-60" />}
+                                                    {food.name}
+                                                </button>
+                                            );
                                         })}
                                     </div>
 
@@ -415,7 +497,7 @@ const RecipesTab = () => {
 
 type Restaurant = typeof RESTAURANTS[number];
 
-const RestaurantDetail = ({ restaurant, onClose }: { restaurant: Restaurant; onClose: () => void }) => (
+const RestaurantDetail = ({ restaurant, onClose, onJumpToRecipe }: { restaurant: Restaurant; onClose: () => void; onJumpToRecipe?: (id: number) => void }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -455,7 +537,12 @@ const RestaurantDetail = ({ restaurant, onClose }: { restaurant: Restaurant; onC
 
             {/* 餐厅信息 */}
             <div className="px-8 pb-2">
-                <h2 className="text-2xl font-serif font-bold text-stone-800 mb-2">{restaurant.name}</h2>
+                <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-serif font-bold text-stone-800">{restaurant.name}</h2>
+                    <span className="px-2 py-0.5 rounded border border-stone-200 bg-white/60 text-[11px] font-bold text-stone-500 tracking-wide">
+                        {restaurant.category}
+                    </span>
+                </div>
                 <div className="flex items-center gap-4 mb-3">
                     <RatingStars rating={restaurant.rating} />
                     <div className="flex items-center gap-1.5 text-stone-500 text-sm">
@@ -475,7 +562,23 @@ const RestaurantDetail = ({ restaurant, onClose }: { restaurant: Restaurant; onC
 
             {/* 菜品网格 */}
             <div className="p-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {restaurant.dishes.map(dish => (
+                {restaurant.dishes.map(dish => dish.recipeId ? (
+                    <button
+                        key={dish.id}
+                        onClick={() => onJumpToRecipe?.(dish.recipeId!)}
+                        className="group relative cursor-pointer block focus:outline-none"
+                    >
+                        <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-200 mb-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-2 ring-transparent group-hover:ring-amber-300 transition-all duration-300 hover:shadow-lg">
+                            <Image src={dish.image} alt={dish.name} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 justify-end">
+                                <CookingPot size={16} className="text-white drop-shadow-md" />
+                            </div>
+                        </div>
+                        <p className="text-sm font-medium text-amber-700 text-center flex items-center justify-center gap-1">
+                            {dish.name}
+                        </p>
+                    </button>
+                ) : (
                     <div key={dish.id} className="group">
                         <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-200 mb-2 shadow-sm">
                             <Image src={dish.image} alt={dish.name} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -497,25 +600,42 @@ const RestaurantDetail = ({ restaurant, onClose }: { restaurant: Restaurant; onC
     </motion.div>
 );
 
-const RestaurantsTab = ({ onSelect }: { onSelect: (r: Restaurant) => void }) => {
+const RestaurantsTab = ({ onSelect, onJumpToRecipe }: { onSelect: (r: Restaurant) => void; onJumpToRecipe?: (id: number) => void }) => {
+    const [activeCategory, setActiveCategory] = useState('全部');
     const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
     const [page, setPage] = useState(0);
 
     // 固定每页 3 条
     const itemsPerPage = 3;
 
-    const sorted = [...RESTAURANTS].sort((a, b) =>
-        sortBy === 'rating' ? b.rating - a.rating : a.name.localeCompare(b.name, 'zh')
-    );
+    const filtered = React.useMemo(() => {
+        let result = [...RESTAURANTS];
+        if (activeCategory !== '全部') {
+            result = result.filter(r => r.category === activeCategory);
+        }
+        return result.sort((a, b) =>
+            sortBy === 'rating' ? b.rating - a.rating : a.name.localeCompare(b.name, 'zh')
+        );
+    }, [activeCategory, sortBy]);
 
-    const totalPages = Math.max(1, Math.ceil(sorted.length / itemsPerPage));
+    const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
     const safePage = Math.min(page, totalPages - 1);
-    const pageItems = sorted.slice(safePage * itemsPerPage, (safePage + 1) * itemsPerPage);
+    const pageItems = filtered.slice(safePage * itemsPerPage, (safePage + 1) * itemsPerPage);
+
+    const handleCategoryChange = useCallback((cat: string) => {
+        setActiveCategory(cat);
+        setPage(0);
+    }, []);
 
     return (
         <div className="h-full flex flex-col">
             {/* 工具栏 */}
-            <div className="flex items-center justify-end mb-4 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
+                <div className="flex flex-wrap gap-2">
+                    {RESTAURANT_CATEGORIES.map(cat => (
+                        <FilterPill key={cat} label={cat} active={activeCategory === cat} onClick={() => handleCategoryChange(cat)} />
+                    ))}
+                </div>
                 <button
                     onClick={() => setSortBy(prev => prev === 'name' ? 'rating' : 'name')}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200"
@@ -555,22 +675,42 @@ const RestaurantsTab = ({ onSelect }: { onSelect: (r: Restaurant) => void }) => 
                                 {/* 信息 */}
                                 <div className="flex-1 p-6 flex flex-col justify-between">
                                     <div>
-                                        <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2 mb-2">
                                             <h3 className="font-serif font-bold text-stone-800 text-xl">{restaurant.name}</h3>
+                                            <span className="px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-[12px] font-bold text-stone-500">
+                                                {restaurant.category}
+                                            </span>
+                                        </div>
+                                        <div className="mb-2">
                                             <RatingStars rating={restaurant.rating} />
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-stone-400 text-sm mb-3">
+                                        <div className="flex items-center gap-1.5 text-stone-400 text-sm">
                                             <MapPin size={13} />
                                             {restaurant.address}
                                         </div>
-                                        {restaurant.notes && (
-                                            <p className="text-sm text-stone-500 italic">{restaurant.notes}</p>
-                                        )}
                                     </div>
                                     <div className="flex items-center gap-2 mt-4">
-                                        <span className="text-[11px] font-mono text-stone-400">{restaurant.dishes.length} 道推荐菜品</span>
-                                        <span className="text-stone-300">•</span>
-                                        <span className="text-[11px] font-mono text-stone-400">{restaurant.images.length} 张照片</span>
+                                        <div className="flex items-center gap-1.5 flex-1 overflow-hidden">
+                                            {restaurant.dishes.slice(0, 2).map((dish, idx) => dish.recipeId ? (
+                                                <button
+                                                    key={idx}
+                                                    onClick={(e) => { e.stopPropagation(); onJumpToRecipe?.(dish.recipeId!); }}
+                                                    className="px-2 py-0.5 bg-amber-50 rounded text-[11px] text-amber-700 font-medium border border-amber-200/60 hover:bg-amber-100 transition-colors flex items-center gap-1 focus:outline-none shrink-0"
+                                                >
+                                                    <CookingPot size={11} className="opacity-70" />
+                                                    {dish.name}
+                                                </button>
+                                            ) : (
+                                                <span key={idx} className="px-2 py-0.5 bg-stone-100 rounded text-[11px] text-stone-500 shrink-0">
+                                                    {dish.name}
+                                                </span>
+                                            ))}
+                                            {restaurant.dishes.length > 2 && (
+                                                <span className="text-[11px] font-mono text-stone-400 shrink-0">+{restaurant.dishes.length - 2}</span>
+                                            )}
+                                        </div>
+                                        <span className="text-stone-300 shrink-0">•</span>
+                                        <span className="text-[11px] font-mono text-stone-400 shrink-0">{restaurant.images.length} 张照片</span>
                                     </div>
                                 </div>
                             </div>
@@ -600,6 +740,28 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 export default function DietPage() {
     const [activeTab, setActiveTab] = useState<TabId>('foods');
     const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+    const [jumpTargetFoodId, setJumpTargetFoodId] = useState<number | null>(null);
+    const [jumpTargetRecipeId, setJumpTargetRecipeId] = useState<number | null>(null);
+
+    const handleJumpToFood = useCallback((foodId: number) => {
+        setJumpTargetFoodId(foodId);
+        setActiveTab('foods');
+    }, []);
+
+    const handleJumpToRecipe = useCallback((recipeId: number) => {
+        setSelectedRestaurant(null); // 关闭弹窗(若在弹窗内点击)
+        setJumpTargetRecipeId(recipeId);
+        setActiveTab('recipes');
+    }, []);
+
+    const handleJumpToRestaurant = useCallback((restId: number) => {
+        const rest = RESTAURANTS.find(r => r.id === restId);
+        if (rest) {
+            setActiveTab('restaurants');
+            // 打开弹窗以完整展示选中的餐厅信息
+            setSelectedRestaurant(rest);
+        }
+    }, []);
 
     // 弹窗打开时锁定滚动
     useEffect(() => {
@@ -645,13 +807,13 @@ export default function DietPage() {
                         <span className="text-amber-700">饮食</span>手记
                     </h1>
                     <span className="text-[10px] font-mono text-stone-400 uppercase tracking-[0.2em] mt-0.5">
-                        My Kitchen Notes
+                        My Food Archive
                     </span>
                 </div>
             </header>
 
             {/* Tab 切换 — 缩小间距 */}
-            <div className="relative z-20 flex justify-center mb-3 shrink-0">
+            <div className="relative z-20 flex justify-center mb-5 shrink-0">
                 <div className="flex items-center gap-1 p-1.5 bg-white/60 backdrop-blur-md rounded-full border border-stone-200/60 shadow-sm">
                     {TABS.map(tab => {
                         const Icon = tab.icon;
@@ -701,9 +863,16 @@ export default function DietPage() {
                         transition={{ duration: 0.25 }}
                         className="h-full"
                     >
-                        {activeTab === 'foods' && <FoodsTab />}
-                        {activeTab === 'recipes' && <RecipesTab />}
-                        {activeTab === 'restaurants' && <RestaurantsTab onSelect={setSelectedRestaurant} />}
+                        {activeTab === 'foods' && <FoodsTab jumpTargetFoodId={jumpTargetFoodId} onClearJump={() => setJumpTargetFoodId(null)} />}
+                        {activeTab === 'recipes' && (
+                            <RecipesTab
+                                jumpTargetRecipeId={jumpTargetRecipeId}
+                                onClearJump={() => setJumpTargetRecipeId(null)}
+                                onJumpToFood={handleJumpToFood}
+                                onJumpToRestaurant={handleJumpToRestaurant}
+                            />
+                        )}
+                        {activeTab === 'restaurants' && <RestaurantsTab onSelect={setSelectedRestaurant} onJumpToRecipe={handleJumpToRecipe} />}
                     </motion.div>
                 </AnimatePresence>
             </main>
@@ -722,6 +891,7 @@ export default function DietPage() {
                     <RestaurantDetail
                         restaurant={selectedRestaurant}
                         onClose={() => setSelectedRestaurant(null)}
+                        onJumpToRecipe={handleJumpToRecipe}
                     />
                 )}
             </AnimatePresence>
