@@ -13,6 +13,7 @@ import { Trash2, Edit2, Plus, Loader2, Image as ImageIcon, ArrowLeft, MenuSquare
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { deleteImageFromStorage } from '@/lib/imageUtils';
 
 type Restaurant = {
     id: number;
@@ -114,9 +115,18 @@ export default function RestaurantsManager() {
 
     const handleRestDelete = async (id: number) => {
         if (!confirm('确定要删除这家餐厅吗？关联的菜品菜单会被一同删除。')) return;
+        const itemToDelete = data?.restaurants.find((r: Restaurant) => r.id === id);
         try {
             const { error } = await supabase.from('diet_restaurants').delete().eq('id', id);
             if (error) throw error;
+
+            // 清理餐厅关联的多张图片
+            if (itemToDelete?.image_urls && itemToDelete.image_urls.length > 0) {
+                for (const url of itemToDelete.image_urls) {
+                    await deleteImageFromStorage(url);
+                }
+            }
+
             toast.success('删除成功');
             mutate();
         } catch (e: any) {
@@ -357,9 +367,16 @@ function DishManager({ restaurant, onBack }: { restaurant: Restaurant; onBack: (
 
     const handleDishDelete = async (id: number) => {
         if (!confirm('确定要移出这道菜？')) return;
+        const itemToDelete = dishes?.find((d: Dish) => d.id === id);
         try {
             const { error } = await supabase.from('diet_restaurant_dishes').delete().eq('id', id);
             if (error) throw error;
+
+            // 清理菜品图片
+            if (itemToDelete?.image_url) {
+                await deleteImageFromStorage(itemToDelete.image_url);
+            }
+
             toast.success('删除成功');
             mutate();
         } catch (e: any) {

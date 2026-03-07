@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import {
@@ -14,7 +14,9 @@ import {
     X,
     Save,
     Plus,
-    Trash2
+    Trash2,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -29,7 +31,101 @@ import { Textarea } from '@/components/ui/textarea';
 import remarkGfm from 'remark-gfm';
 import { handleHtmlTablePaste } from '@/lib/markdownUtils';
 
-// === Mock Data (To be replaced by Supabase later) ===
+// -------------------------------------------------------------------
+// 子组件：自适应折叠的提示词内容
+// -------------------------------------------------------------------
+function PromptContent({
+    content,
+    id,
+    isExpanded,
+    onToggle
+}: {
+    content: string,
+    id: number,
+    isExpanded: boolean,
+    onToggle: (id: number) => void
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isCollapsible, setIsCollapsible] = useState(false);
+
+    // 检测内容高度是否超过阈值 (450px)
+    useLayoutEffect(() => {
+        if (containerRef.current) {
+            // 使用 scrollHeight 获取内容的真实高度
+            if (containerRef.current.scrollHeight > 500) {
+                setIsCollapsible(true);
+            } else {
+                setIsCollapsible(false);
+            }
+        }
+    }, [content]);
+
+    return (
+        <div className="p-10 md:pl-20 prose prose-stone max-w-none">
+            <div
+                ref={containerRef}
+                className={`relative transition-all duration-500 ease-in-out overflow-hidden ${isCollapsible && !isExpanded ? 'max-h-[400px]' : 'max-h-none'
+                    } ${isExpanded ? 'pb-12' : ''}`}
+            >
+                <div className="font-sans text-[16px] text-zinc-800 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-100/80">
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            p: ({ ...props }) => <p className="mb-4 last:mb-0" {...props} />,
+                            h1: ({ ...props }) => <h1 className="text-3xl font-bold mt-10 mb-6 text-zinc-900 tracking-tight" {...props} />,
+                            h2: ({ ...props }) => <h2 className="text-2xl font-bold mt-8 mb-4 text-zinc-800 tracking-tight" {...props} />,
+                            h3: ({ ...props }) => <h3 className="text-xl font-bold mt-6 mb-3 text-zinc-800" {...props} />,
+                            code: ({ ...props }) => (
+                                <code className="bg-zinc-100 text-pink-600 px-1.5 py-0.5 rounded-md font-mono text-[0.9em] border border-zinc-200/50" {...props} />
+                            ),
+                            strong: ({ ...props }) => <strong className="font-bold text-zinc-900" {...props} />,
+                            ul: ({ ...props }) => <ul className="list-disc pl-6 my-6 space-y-2.5 text-zinc-700" {...props} />,
+                            ol: ({ ...props }) => <ol className="list-decimal pl-6 my-6 space-y-2.5 text-zinc-700" {...props} />,
+                            li: ({ ...props }) => <li className="leading-7" {...props} />,
+                            blockquote: ({ ...props }) => (
+                                <blockquote className="border-l-4 border-zinc-200 pl-4 py-1 my-6 italic text-zinc-600" {...props} />
+                            ),
+                            hr: () => <hr className="my-10 border-zinc-100" />,
+                            table: ({ ...props }) => (
+                                <div className="overflow-x-auto -mt-4 mb-4 border border-zinc-200 rounded-xl max-w-full">
+                                    <table className="w-full text-left border-collapse text-sm" {...props} />
+                                </div>
+                            ),
+                            thead: ({ ...props }) => <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-semibold" {...props} />,
+                            tbody: ({ ...props }) => <tbody className="divide-y divide-zinc-100 bg-white" {...props} />,
+                            tr: ({ ...props }) => <tr className="hover:bg-zinc-50/50 transition-colors" {...props} />,
+                            th: ({ ...props }) => <th className="px-5 py-3.5 whitespace-nowrap" {...props} />,
+                            td: ({ ...props }) => <td className="px-5 py-4 leading-relaxed text-zinc-700" {...props} />
+                        }}
+                    >
+                        {content}
+                    </ReactMarkdown>
+                </div>
+
+                {/* 折叠状态下的渐变遮罩 */}
+                {isCollapsible && !isExpanded && (
+                    <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-[#fdfbf7] via-[#fdfbf7]/80 to-transparent pointer-events-none" />
+                )}
+            </div>
+
+            {/* 仅当内容确实过长时显示展开/收起按钮 */}
+            {isCollapsible && (
+                <div className="mt-4 flex justify-center border-t border-stone-100 pt-6">
+                    <button
+                        onClick={() => onToggle(id)}
+                        className="flex items-center gap-2 px-6 py-2 rounded-full bg-white border border-stone-100 text-stone-400 hover:text-orange-500 hover:border-orange-200 hover:shadow-md transition-all text-xs font-bold uppercase tracking-widest"
+                    >
+                        {isExpanded ? (
+                            <>收起全文 <ChevronUp size={16} /></>
+                        ) : (
+                            <>展开全文 <ChevronDown size={16} /></>
+                        )}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 
 
@@ -50,6 +146,16 @@ export default function CategoryDetailPage() {
     const [isAdding, setIsAdding] = useState(false);
     const [addForm, setAddForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [expandedPromptIds, setExpandedPromptIds] = useState<Set<number>>(new Set());
+
+    const toggleExpand = (id: number) => {
+        setExpandedPromptIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     // --- SWR: parallel fetch category + prompts + auth ---
     const { data: pageData, isLoading: loading, mutate } = useSWR(
@@ -411,42 +517,12 @@ export default function CategoryDetailPage() {
                                         {/* Decoration Lines */}
                                         <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
 
-                                        <div className="p-10 md:pl-20 prose prose-stone max-w-none">
-                                            <div className="font-sans text-[16px] text-zinc-800 leading-relaxed wrap-break-word whitespace-pre-wrap selection:bg-orange-100/80">
-                                                <ReactMarkdown
-                                                    remarkPlugins={[remarkGfm]}
-                                                    components={{
-                                                        p: ({ ...props }) => <p className="mb-4 last:mb-0" {...props} />,
-                                                        h1: ({ ...props }) => <h1 className="text-3xl font-bold mt-10 mb-6 text-zinc-900 tracking-tight" {...props} />,
-                                                        h2: ({ ...props }) => <h2 className="text-2xl font-bold mt-8 mb-4 text-zinc-800 tracking-tight" {...props} />,
-                                                        h3: ({ ...props }) => <h3 className="text-xl font-bold mt-6 mb-3 text-zinc-800" {...props} />,
-                                                        code: ({ ...props }) => (
-                                                            <code className="bg-zinc-100 text-pink-600 px-1.5 py-0.5 rounded-md font-mono text-[0.9em] border border-zinc-200/50" {...props} />
-                                                        ),
-                                                        strong: ({ ...props }) => <strong className="font-bold text-zinc-900" {...props} />,
-                                                        ul: ({ ...props }) => <ul className="list-disc pl-6 my-6 space-y-2.5 text-zinc-700" {...props} />,
-                                                        ol: ({ ...props }) => <ol className="list-decimal pl-6 my-6 space-y-2.5 text-zinc-700" {...props} />,
-                                                        li: ({ ...props }) => <li className="leading-7" {...props} />,
-                                                        blockquote: ({ ...props }) => (
-                                                            <blockquote className="border-l-4 border-zinc-200 pl-4 py-1 my-6 italic text-zinc-600" {...props} />
-                                                        ),
-                                                        hr: () => <hr className="my-10 border-zinc-100" />,
-                                                        table: ({ ...props }) => (
-                                                            <div className="overflow-x-auto -mt-4 mb-4 border border-zinc-200 rounded-xl max-w-full">
-                                                                <table className="w-full text-left border-collapse text-sm" {...props} />
-                                                            </div>
-                                                        ),
-                                                        thead: ({ ...props }) => <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-semibold" {...props} />,
-                                                        tbody: ({ ...props }) => <tbody className="divide-y divide-zinc-100 bg-white" {...props} />,
-                                                        tr: ({ ...props }) => <tr className="hover:bg-zinc-50/50 transition-colors" {...props} />,
-                                                        th: ({ ...props }) => <th className="px-5 py-3.5 whitespace-nowrap" {...props} />,
-                                                        td: ({ ...props }) => <td className="px-5 py-4 leading-relaxed text-zinc-700" {...props} />
-                                                    }}
-                                                >
-                                                    {prompt.content}
-                                                </ReactMarkdown>
-                                            </div>
-                                        </div>
+                                        <PromptContent
+                                            content={prompt.content}
+                                            id={prompt.id}
+                                            isExpanded={expandedPromptIds.has(prompt.id)}
+                                            onToggle={toggleExpand}
+                                        />
 
                                         {/* Bottom Tech Bar */}
                                         <div className="px-8 py-3 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center text-[9px] font-mono text-stone-300">

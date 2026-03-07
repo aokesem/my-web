@@ -13,6 +13,7 @@ import { Trash2, Edit2, Plus, Loader2, Image as ImageIcon, ArrowUpDown, ArrowUp,
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { deleteImageFromStorage } from '@/lib/imageUtils';
 
 type Recipe = {
     id: number;
@@ -122,9 +123,16 @@ export default function RecipesManager() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('确定要删除这个食谱吗？关联的食材记录会被级联删除，但餐厅推荐菜单如果引用了它可能会受影响。')) return;
+        const itemToDelete = data?.recipes.find((r: Recipe) => r.id === id);
         try {
             const { error } = await supabase.from('diet_recipes').delete().eq('id', id);
             if (error) throw error;
+
+            // 如果有图片，尝试从 Storage 删除
+            if (itemToDelete?.image_url) {
+                await deleteImageFromStorage(itemToDelete.image_url);
+            }
+
             toast.success('删除成功');
             mutate();
         } catch (e: any) {
