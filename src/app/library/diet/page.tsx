@@ -2,127 +2,120 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    ArrowLeft,
-    Star,
-    ChevronLeft,
-    ChevronRight,
-    SortAsc,
-    X,
-    MapPin,
-    Leaf,
-    CookingPot,
-    Store,
-    LayoutGrid,
-    Apple,
-    Beef,
-    Carrot,
-    Flame,
-    Clock,
-    UtensilsCrossed,
-    Coffee,
-    CakeSlice
-} from 'lucide-react';
+import { UtensilsCrossed, Settings2, ArrowLeft, Star, MapPin, SortAsc, LayoutGrid, Leaf, CookingPot, Store, Apple, Beef, Carrot, Flame, Clock, Coffee, CakeSlice, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import useSWR from 'swr';
+import { supabase } from '@/lib/supabaseClient';
 
 // ============================================================
-// 静态样例数据
+// ============================================================
+// 数据结构与类型定义
 // ============================================================
 
-const EXAMPLE_IMG = '/images/example.jpg';
+export type Food = {
+    id: number;
+    name: string;
+    category: string;
+    rating: number;
+    image: string;
+    notes: string;
+};
 
-// --- 食物数据 ---
-const FOOD_CATEGORIES = [
-    { id: '全部', label: '全部', icon: LayoutGrid },
-    { id: '水果', label: '水果', icon: Apple },
-    { id: '肉类', label: '肉类', icon: Beef },
-    { id: '蔬菜', label: '蔬菜', icon: Carrot },
-    { id: '调味料', label: '调味料', icon: Flame },
-];
+export type Recipe = {
+    id: number;
+    name: string;
+    category: string;
+    type: 'can_cook' | 'favorite';
+    rating: number;
+    image: string;
+    notes: string;
+    restaurantId?: number;
+    linkedFoods: number[];
+};
 
-const FOODS = [
-    { id: 1, name: '苹果', category: '水果', rating: 4.5, image: EXAMPLE_IMG, notes: '### 挑选指南\n- 选择表面光滑、色泽均匀的\n- 轻轻按压有弹性最佳\n\n### 推荐搭配\n酸奶、蜂蜜、肉桂粉' },
-    { id: 2, name: '蓝莓', category: '水果', rating: 5, image: EXAMPLE_IMG, notes: '### 保存方法\n冷藏保存，食用前再清洗\n\n### 口感\n酸甜多汁，果皮微涩' },
-    { id: 3, name: '芒果', category: '水果', rating: 4, image: EXAMPLE_IMG, notes: '### 品种推荐\n- 贵妃芒：香甜浓郁\n- 小台芒：细腻丝滑' },
-    { id: 4, name: '牛腩', category: '肉类', rating: 5, image: EXAMPLE_IMG, notes: '### 处理方法\n1. 冷水浸泡30分钟去血水\n2. 切块后焯水\n3. 加料酒、姜片去腥\n\n### 价格参考\n约 35-50 元/斤' },
-    { id: 5, name: '三文鱼', category: '肉类', rating: 4.5, image: EXAMPLE_IMG, notes: '### 新鲜度判断\n- 色泽鲜亮的橙红色\n- 无腥味、有淡淡海洋气息\n- 按压后能迅速回弹' },
-    { id: 6, name: '鸡胸肉', category: '肉类', rating: 3.5, image: EXAMPLE_IMG, notes: '### 烹饪技巧\n腌制后再煎，避免过于干柴\n\n### 搭配\n沙拉、三明治、炒饭' },
-    { id: 7, name: '西兰花', category: '蔬菜', rating: 4, image: EXAMPLE_IMG, notes: '### 处理方法\n掰成小朵，盐水浸泡15分钟\n\n### 烹饪建议\n焯水后冰镇，保持翠绿' },
-    { id: 8, name: '番茄', category: '蔬菜', rating: 4.5, image: EXAMPLE_IMG, notes: '### 品种\n- 大番茄：炒菜、炖汤\n- 小番茄：沙拉、零食' },
-    { id: 9, name: '花椒', category: '调味料', rating: 4, image: EXAMPLE_IMG, notes: '### 使用方法\n热油爆香，提取麻味\n\n### 存放\n密封避光保存，保持香气' },
-    { id: 10, name: '罗勒', category: '调味料', rating: 4, image: EXAMPLE_IMG, notes: '### 用途\n意面、披萨、沙拉的灵魂\n\n### 新鲜保存\n根部包湿纸巾，放入密封袋冷藏' },
-    { id: 11, name: '罗勒', category: '调味料', rating: 4, image: EXAMPLE_IMG, notes: '### 用途\n意面、披萨、沙拉的灵魂\n\n### 新鲜保存\n根部包湿纸巾，放入密封袋冷藏' },
-];
+export type RestaurantDish = {
+    id: number;
+    name: string;
+    image: string;
+    recipeId?: number;
+};
 
-// --- 食谱数据 ---
-const RECIPE_CATEGORIES = [
-    { id: '全部', label: '全部', icon: LayoutGrid },
-    { id: '简餐', label: '简餐', icon: Clock },
-    { id: '正餐', label: '正餐', icon: UtensilsCrossed },
-    { id: '饮料', label: '饮料', icon: Coffee },
-    { id: '甜品', label: '甜品', icon: CakeSlice },
-];
+export type Restaurant = {
+    id: number;
+    name: string;
+    category: string;
+    address: string;
+    rating: number;
+    notes: string;
+    images: string[];
+    dishes: RestaurantDish[];
+};
 
-const RECIPES = [
-    { id: 1, name: '番茄炒蛋', category: '简餐', type: 'can_cook' as const, rating: 4.5, image: EXAMPLE_IMG, notes: '### 做法\n1. 鸡蛋打散加少许盐\n2. 番茄切块\n3. 先炒蛋盛出\n4. 炒番茄出汁后加蛋\n5. 加糖提鲜', linkedFoods: [8, 3], restaurantId: 1 },
-    { id: 2, name: '清蒸鲈鱼', category: '正餐', type: 'favorite' as const, rating: 5, image: EXAMPLE_IMG, notes: '### 要点\n- 鱼要新鲜\n- 蒸6-8分钟即可\n- 浇热油是灵魂', linkedFoods: [], restaurantId: undefined },
-    { id: 3, name: '红烧牛腩', category: '正餐', type: 'can_cook' as const, rating: 4.5, image: EXAMPLE_IMG, notes: '### 材料\n牛腩500g、土豆2个、胡萝卜1根\n\n### 要点\n小火慢炖2小时，入口即化', linkedFoods: [4], restaurantId: undefined },
-    { id: 4, name: '抹茶拿铁', category: '饮料', type: 'can_cook' as const, rating: 4, image: EXAMPLE_IMG, notes: '### 配方\n- 抹茶粉 2g\n- 牛奶 200ml\n- 热水 30ml\n\n先用热水化开抹茶粉，打发牛奶后倒入', linkedFoods: [], restaurantId: 2 },
-    { id: 5, name: '提拉米苏', category: '甜品', type: 'favorite' as const, rating: 5, image: EXAMPLE_IMG, notes: '### 经典配方\n马斯卡彭芝士、手指饼干、浓缩咖啡、可可粉\n\n### 最佳食用\n冷藏4小时以上', linkedFoods: [], restaurantId: undefined },
-    { id: 6, name: '西兰花炒虾仁', category: '简餐', type: 'can_cook' as const, rating: 4, image: EXAMPLE_IMG, notes: '### 技巧\n虾仁用料酒腌制去腥，西兰花提前焯水', linkedFoods: [7], restaurantId: undefined },
-];
+export type Category = {
+    id: number;
+    module: string;
+    name: string;
+    icon?: string;
+    sort_order: number;
+};
 
-// --- 餐厅数据 ---
-const RESTAURANT_CATEGORIES = ['全部', '日料', '法餐', '火锅'];
+// --- SWR Hooks 打包获取 ---
+const fetchFoods = async () => {
+    const { data, error } = await supabase.from('diet_foods').select('*').order('id');
+    if (error) throw error;
+    return data.map(d => ({ ...d, image: d.image_url })) as Food[];
+};
 
-const RESTAURANTS = [
-    {
-        id: 1, name: '和风亭', category: '日料', address: '上海市静安区南京西路 1266 号', rating: 4.5,
-        notes: '环境幽静的日式料理店，推荐午市套餐',
-        images: [EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG],
-        dishes: [
-            { id: 1, name: '鳗鱼饭', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 2, name: '刺身拼盘', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 3, name: '天妇罗', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 4, name: '味噌汤', image: EXAMPLE_IMG, recipeId: undefined },
-        ]
-    },
-    {
-        id: 2, name: 'Café de Flore', category: '法餐', address: '北京市朝阳区三里屯路 19 号', rating: 4,
-        notes: '法式小馆，适合周末 brunch',
-        images: [EXAMPLE_IMG, EXAMPLE_IMG],
-        dishes: [
-            { id: 1, name: '法式吐司', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 2, name: '凯撒沙拉', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 3, name: '可颂', image: EXAMPLE_IMG, recipeId: undefined },
-        ]
-    },
-    {
-        id: 3, name: '老灶火锅', category: '火锅', address: '重庆市渝中区解放碑洪崖洞 88 号', rating: 5,
-        notes: '正宗重庆老火锅，牛油锅底一绝',
-        images: [EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG],
-        dishes: [
-            { id: 1, name: '毛肚', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 2, name: '鸭肠', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 3, name: '黄喉', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 4, name: '麻辣牛肉', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 5, name: '冰粉', image: EXAMPLE_IMG, recipeId: undefined },
-        ]
-    },
-    {
-        id: 4, name: '大吉烧肉', category: '日料', address: '广州市天河区天河路 208 号', rating: 4.5,
-        notes: '适合朋友聚会的日式烧肉店',
-        images: [EXAMPLE_IMG, EXAMPLE_IMG, EXAMPLE_IMG],
-        dishes: [
-            { id: 1, name: '鳗鱼饭', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 2, name: '刺身拼盘', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 3, name: '天妇罗', image: EXAMPLE_IMG, recipeId: undefined },
-            { id: 4, name: '清蒸鲈鱼', image: EXAMPLE_IMG, recipeId: 2 },
-        ]
-    },
-];
+const fetchRecipes = async () => {
+    const { data: recipes, error: recipesError } = await supabase.from('diet_recipes').select('*').order('id');
+    if (recipesError) throw recipesError;
+    const { data: relations, error: relError } = await supabase.from('diet_recipe_foods').select('*');
+    if (relError) throw relError;
 
+    return recipes.map(r => ({
+        ...r,
+        image: r.image_url,
+        restaurantId: r.restaurant_id || undefined,
+        linkedFoods: relations.filter((rel: any) => rel.recipe_id === r.id).map((rel: any) => rel.food_id)
+    })) as Recipe[];
+};
+
+const fetchRestaurants = async () => {
+    const { data: restaurants, error: restError } = await supabase.from('diet_restaurants').select('*').order('id');
+    if (restError) throw restError;
+    const { data: dishes, error: dishError } = await supabase.from('diet_restaurant_dishes').select('*').order('sort_order');
+    if (dishError) throw dishError;
+
+    return restaurants.map(r => ({
+        ...r,
+        dishes: dishes.filter((d: any) => d.restaurant_id === r.id)
+            .map((d: any) => ({ ...d, image: d.image_url, recipeId: d.recipe_id || undefined }))
+    })) as Restaurant[];
+};
+
+const fetchCategories = async () => {
+    const { data, error } = await supabase.from('diet_categories').select('*').order('module').order('sort_order');
+    if (error) throw error;
+    return data as Category[];
+};
+
+export function useDietData() {
+    const { data: foods, error: errFoods } = useSWR('diet_foods', fetchFoods);
+    const { data: recipes, error: errRecipes } = useSWR('diet_recipes', fetchRecipes);
+    const { data: restaurants, error: errRests } = useSWR('diet_restaurants', fetchRestaurants);
+    const { data: categories, error: errCats } = useSWR('diet_categories', fetchCategories);
+
+    return {
+        foods: foods || [],
+        recipes: recipes || [],
+        restaurants: restaurants || [],
+        categories: categories || [],
+        isLoading: !foods || !recipes || !restaurants || !categories,
+        isError: errFoods || errRecipes || errRests || errCats
+    };
+}
 // ============================================================
 // 工具组件
 // ============================================================
@@ -217,9 +210,7 @@ function useAutoPageSize(containerRef: React.RefObject<HTMLDivElement | null>, e
 // 食物 Tab
 // ============================================================
 
-type Food = typeof FOODS[number];
-
-const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number | null, onClearJump?: () => void }) => {
+const FoodsTab = ({ foods, categories, jumpTargetFoodId, onClearJump }: { foods: Food[], categories: Category[], jumpTargetFoodId?: number | null, onClearJump?: () => void }) => {
     const [activeCategory, setActiveCategory] = useState('全部');
     const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
     const [page, setPage] = useState(0);
@@ -233,7 +224,7 @@ const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number
         if (jumpTargetFoodId && itemsPerPage > 0) {
             setActiveCategory('全部');
             setSortBy('name');
-            const sorted = [...FOODS].sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+            const sorted = [...foods].sort((a, b) => a.name.localeCompare(b.name, 'zh'));
             const index = sorted.findIndex(f => f.id === jumpTargetFoodId);
             if (index !== -1) {
                 setPage(Math.floor(index / itemsPerPage));
@@ -244,9 +235,9 @@ const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number
             }, 2500);
             return () => clearTimeout(timer);
         }
-    }, [jumpTargetFoodId, itemsPerPage, onClearJump]);
+    }, [jumpTargetFoodId, itemsPerPage, onClearJump, foods]);
 
-    const filtered = FOODS
+    const filtered = foods
         .filter(f => activeCategory === '全部' || f.category === activeCategory)
         .sort((a, b) => sortBy === 'rating' ? b.rating - a.rating : a.name.localeCompare(b.name, 'zh'));
 
@@ -259,12 +250,21 @@ const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number
         setPage(0);
     }, []);
 
+    const dynamicCategories = [
+        { id: '全部', label: '全部', icon: LayoutGrid },
+        ...categories.map(c => ({
+            id: c.name,
+            label: c.name,
+            icon: c.icon ? (LucideIcons as any)[c.icon] : undefined
+        }))
+    ];
+
     return (
         <div className="h-full flex flex-col">
             {/* 工具栏 */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
                 <div className="flex flex-wrap gap-2">
-                    {FOOD_CATEGORIES.map(cat => (
+                    {dynamicCategories.map(cat => (
                         <FilterPill key={cat.id} label={cat.label} icon={cat.icon} active={activeCategory === cat.id} onClick={() => handleCategoryChange(cat.id)} />
                     ))}
                 </div>
@@ -290,19 +290,19 @@ const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number
                         <div key={food.id} className="group">
                             <div className={`bg-white rounded-2xl border ${jumpTargetFoodId === food.id ? 'border-amber-400 ring-4 ring-amber-400/20' : 'border-stone-200/80'} overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-400 flex items-stretch h-[270px]`}>
                                 {/* 图片 - 左侧 */}
-                                <div className="relative w-[200px] shrink-0 overflow-hidden bg-stone-100">
+                                <div className="relative w-[250px] shrink-0 overflow-hidden bg-stone-100">
                                     <Image
                                         src={food.image}
                                         alt={food.name}
                                         fill
-                                        sizes="200px"
+                                        sizes="250px"
                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
                                     <div className="absolute top-3 left-2 px-2 py-0.5 rounded-md bg-white/80 backdrop-blur-sm text-[13px] font-bold text-stone-600 tracking-wide flex items-center gap-1">
                                         {(() => {
-                                            const cat = FOOD_CATEGORIES.find(c => c.label === food.category);
+                                            const cat = dynamicCategories.find(c => c.label === food.category);
                                             const Icon = cat?.icon;
-                                            return Icon ? <Icon size={14} className="opacity-70" /> : null;
+                                            return Icon ? <Icon size={14} className="opacity-70" /> : <LayoutGrid size={14} className="opacity-70" />;
                                         })()}
                                         {food.category}
                                     </div>
@@ -316,7 +316,7 @@ const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number
                                     </div>
                                     <div className="border-t border-dashed border-stone-200 pt-2 flex-1 overflow-y-auto no-scrollbar">
                                         <div className="text-xs text-stone-600 leading-relaxed whitespace-pre-line">
-                                            {food.notes.replace(/### /g, '').replace(/- /g, '· ')}
+                                            {food.notes.replace(/\\n/g, '\n').replace(/### /g, '').replace(/- /g, '· ')}
                                         </div>
                                     </div>
                                 </div>
@@ -338,11 +338,19 @@ const FoodsTab = ({ jumpTargetFoodId, onClearJump }: { jumpTargetFoodId?: number
 // ============================================================
 
 const RecipesTab = ({
+    foods,
+    recipes,
+    restaurants,
+    categories,
     onJumpToFood,
     jumpTargetRecipeId,
     onClearJump,
     onJumpToRestaurant
 }: {
+    foods: Food[];
+    recipes: Recipe[];
+    restaurants: Restaurant[];
+    categories: Category[];
     onJumpToFood?: (id: number) => void;
     jumpTargetRecipeId?: number | null;
     onClearJump?: () => void;
@@ -357,7 +365,7 @@ const RecipesTab = ({
     // 3列，每个卡片约 360px 高
     const itemsPerPage = useAutoPageSize(gridRef, 370, 3, 6);
 
-    const filtered = RECIPES
+    const filtered = recipes
         .filter(r => activeCategory === '全部' || r.category === activeCategory)
         .filter(r => activeType === 'all' || r.type === activeType)
         .sort((a, b) => sortBy === 'rating' ? b.rating - a.rating : a.name.localeCompare(b.name, 'zh'));
@@ -368,12 +376,21 @@ const RecipesTab = ({
 
     const handleFilterChange = useCallback(() => setPage(0), []);
 
+    const dynamicCategories = [
+        { id: '全部', label: '全部', icon: LayoutGrid },
+        ...categories.map(c => ({
+            id: c.name,
+            label: c.name,
+            icon: c.icon ? (LucideIcons as any)[c.icon] : undefined
+        }))
+    ];
+
     return (
         <div className="h-full flex flex-col">
             {/* 工具栏 */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
                 <div className="flex flex-wrap gap-2">
-                    {RECIPE_CATEGORIES.map(cat => (
+                    {dynamicCategories.map(cat => (
                         <FilterPill key={cat.id} label={cat.label} icon={cat.icon} active={activeCategory === cat.id} onClick={() => { setActiveCategory(cat.id); handleFilterChange(); }} />
                     ))}
                 </div>
@@ -425,16 +442,16 @@ const RecipesTab = ({
                                     {/* 分类标签 */}
                                     <div className="absolute top-3 left-2 px-2.5 py-1 rounded-md bg-white/80 backdrop-blur-sm text-[14px] font-bold text-stone-600 tracking-wide flex items-center gap-1.5 shadow-sm">
                                         {(() => {
-                                            const cat = RECIPE_CATEGORIES.find(c => c.label === recipe.category);
+                                            const cat = dynamicCategories.find(c => c.label === recipe.category);
                                             const Icon = cat?.icon;
-                                            return Icon ? <Icon size={16} className="opacity-70" /> : null;
+                                            return Icon ? <Icon size={16} className="opacity-70" /> : <LayoutGrid size={16} className="opacity-70" />;
                                         })()}
                                         {recipe.category}
                                     </div>
 
                                     {/* 来源餐厅 (可选) */}
                                     {recipe.restaurantId && (() => {
-                                        const rest = RESTAURANTS.find(r => r.id === recipe.restaurantId);
+                                        const rest = restaurants.find(r => r.id === recipe.restaurantId);
                                         return rest ? (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onJumpToRestaurant?.(rest.id); }}
@@ -457,17 +474,24 @@ const RecipesTab = ({
                                     {/* 关联食材（始终占位） */}
                                     <div className="flex flex-wrap gap-1.5 mb-2 min-h-[24px]">
                                         {recipe.linkedFoods.map(foodId => {
-                                            const food = FOODS.find(f => f.id === foodId);
+                                            const food = foods.find(f => f.id === foodId);
                                             if (!food) return null;
-                                            const cat = FOOD_CATEGORIES.find(c => c.label === food.category);
-                                            const Icon = cat?.icon;
+
+                                            const Icon = food.category ? (
+                                                (() => {
+                                                    // 尝试在全局查找此食材所属分类的图标
+                                                    const matchCat = categories.find(c => c.module === 'foods' && c.name === food.category);
+                                                    return matchCat?.icon ? (LucideIcons as any)[matchCat.icon] : LayoutGrid;
+                                                })()
+                                            ) : LayoutGrid;
+
                                             return (
                                                 <button
                                                     key={foodId}
                                                     onClick={(e) => { e.stopPropagation(); onJumpToFood?.(foodId); }}
                                                     className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[11px] font-medium border border-stone-200/60 transition-colors hover:bg-stone-200 hover:text-stone-800 focus:outline-none"
                                                 >
-                                                    {Icon && <Icon size={12} className="opacity-60" />}
+                                                    <Icon size={12} className="opacity-60" />
                                                     {food.name}
                                                 </button>
                                             );
@@ -476,7 +500,7 @@ const RecipesTab = ({
 
                                     {/* 笔记摘要 */}
                                     <p className="text-base text-stone-500 leading-relaxed line-clamp-4">
-                                        {recipe.notes.replace(/### /g, '').replace(/- /g, '· ').replace(/\n/g, ' ')}
+                                        {recipe.notes.replace(/\\n/g, ' ').replace(/\n/g, ' ').replace(/### /g, '').replace(/- /g, '· ')}
                                     </p>
                                 </div>
                             </div>
@@ -495,7 +519,7 @@ const RecipesTab = ({
 // 餐厅 Tab
 // ============================================================
 
-type Restaurant = typeof RESTAURANTS[number];
+const RESTAURANT_CATEGORIES = ['全部', '日料', '法餐', '火锅'];
 
 const RestaurantDetail = ({ restaurant, onClose, onJumpToRecipe }: { restaurant: Restaurant; onClose: () => void; onJumpToRecipe?: (id: number) => void }) => (
     <motion.div
@@ -551,7 +575,7 @@ const RestaurantDetail = ({ restaurant, onClose, onJumpToRecipe }: { restaurant:
                     </div>
                 </div>
                 {restaurant.notes && (
-                    <p className="text-sm text-stone-500 italic mb-6">{restaurant.notes}</p>
+                    <p className="text-sm text-stone-500 italic mb-6 whitespace-pre-line">{restaurant.notes.replace(/\\n/g, '\n')}</p>
                 )}
             </div>
 
@@ -600,7 +624,7 @@ const RestaurantDetail = ({ restaurant, onClose, onJumpToRecipe }: { restaurant:
     </motion.div>
 );
 
-const RestaurantsTab = ({ onSelect, onJumpToRecipe }: { onSelect: (r: Restaurant) => void; onJumpToRecipe?: (id: number) => void }) => {
+const RestaurantsTab = ({ restaurants, categories, onSelect, onJumpToRecipe }: { restaurants: Restaurant[]; categories: Category[]; onSelect: (r: Restaurant) => void; onJumpToRecipe?: (id: number) => void }) => {
     const [activeCategory, setActiveCategory] = useState('全部');
     const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
     const [page, setPage] = useState(0);
@@ -609,7 +633,7 @@ const RestaurantsTab = ({ onSelect, onJumpToRecipe }: { onSelect: (r: Restaurant
     const itemsPerPage = 3;
 
     const filtered = React.useMemo(() => {
-        let result = [...RESTAURANTS];
+        let result = [...restaurants];
         if (activeCategory !== '全部') {
             result = result.filter(r => r.category === activeCategory);
         }
@@ -627,13 +651,22 @@ const RestaurantsTab = ({ onSelect, onJumpToRecipe }: { onSelect: (r: Restaurant
         setPage(0);
     }, []);
 
+    const dynamicCategories = [
+        { id: '全部', label: '全部', icon: Store },
+        ...categories.map(c => ({
+            id: c.name,
+            label: c.name,
+            icon: c.icon ? (LucideIcons as any)[c.icon] : undefined
+        }))
+    ];
+
     return (
         <div className="h-full flex flex-col">
             {/* 工具栏 */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
                 <div className="flex flex-wrap gap-2">
-                    {RESTAURANT_CATEGORIES.map(cat => (
-                        <FilterPill key={cat} label={cat} active={activeCategory === cat} onClick={() => handleCategoryChange(cat)} />
+                    {dynamicCategories.map(cat => (
+                        <FilterPill key={cat.id} label={cat.label} icon={cat.icon} active={activeCategory === cat.id} onClick={() => handleCategoryChange(cat.id)} />
                     ))}
                 </div>
                 <button
@@ -738,6 +771,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function DietPage() {
+    const { foods, recipes, restaurants, categories, isLoading, isError } = useDietData();
     const [activeTab, setActiveTab] = useState<TabId>('foods');
     const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
     const [jumpTargetFoodId, setJumpTargetFoodId] = useState<number | null>(null);
@@ -755,13 +789,13 @@ export default function DietPage() {
     }, []);
 
     const handleJumpToRestaurant = useCallback((restId: number) => {
-        const rest = RESTAURANTS.find(r => r.id === restId);
+        const rest = restaurants.find(r => r.id === restId);
         if (rest) {
             setActiveTab('restaurants');
             // 打开弹窗以完整展示选中的餐厅信息
             setSelectedRestaurant(rest);
         }
-    }, []);
+    }, [restaurants]);
 
     // 弹窗打开时锁定滚动
     useEffect(() => {
@@ -854,27 +888,46 @@ export default function DietPage() {
 
             {/* 主内容区 — flex-1 填满剩余空间 */}
             <main className="relative z-10 max-w-6xl w-full mx-auto px-8 flex-1 overflow-hidden pb-2">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={activeTab}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.25 }}
-                        className="h-full"
-                    >
-                        {activeTab === 'foods' && <FoodsTab jumpTargetFoodId={jumpTargetFoodId} onClearJump={() => setJumpTargetFoodId(null)} />}
-                        {activeTab === 'recipes' && (
-                            <RecipesTab
-                                jumpTargetRecipeId={jumpTargetRecipeId}
-                                onClearJump={() => setJumpTargetRecipeId(null)}
-                                onJumpToFood={handleJumpToFood}
-                                onJumpToRestaurant={handleJumpToRestaurant}
-                            />
-                        )}
-                        {activeTab === 'restaurants' && <RestaurantsTab onSelect={setSelectedRestaurant} onJumpToRecipe={handleJumpToRecipe} />}
-                    </motion.div>
-                </AnimatePresence>
+                {isLoading ? (
+                    <div className="h-full flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-4 text-stone-500">
+                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}>
+                                <CookingPot size={32} className="opacity-80" />
+                            </motion.div>
+                            <span className="font-mono text-sm tracking-widest uppercase">Fetching Data...</span>
+                        </div>
+                    </div>
+                ) : isError ? (
+                    <div className="h-full flex items-center justify-center text-red-500 font-medium">
+                        发生错误：未能加载厨房档案数据。请检查网络。
+                    </div>
+                ) : (
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.25 }}
+                            className="h-full"
+                        >
+                            {activeTab === 'foods' && <FoodsTab foods={foods} categories={categories.filter(c => c.module === 'foods')} jumpTargetFoodId={jumpTargetFoodId} onClearJump={() => setJumpTargetFoodId(null)} />}
+                            {activeTab === 'recipes' && (
+                                <RecipesTab
+                                    foods={foods}
+                                    recipes={recipes}
+                                    restaurants={restaurants}
+                                    categories={categories.filter(c => c.module === 'recipes')}
+                                    jumpTargetRecipeId={jumpTargetRecipeId}
+                                    onClearJump={() => setJumpTargetRecipeId(null)}
+                                    onJumpToFood={handleJumpToFood}
+                                    onJumpToRestaurant={handleJumpToRestaurant}
+                                />
+                            )}
+                            {activeTab === 'restaurants' && <RestaurantsTab restaurants={restaurants} categories={categories.filter(c => c.module === 'restaurants')} onSelect={setSelectedRestaurant} onJumpToRecipe={handleJumpToRecipe} />}
+                        </motion.div>
+                    </AnimatePresence>
+                )}
             </main>
 
             {/* 底部 */}
