@@ -56,7 +56,7 @@ export default function GardenCard({ module }: ModuleProps) {
                         className="group-hover:text-teal-400/30 transition-colors duration-700"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
-                        transition={{ duration: 2.5, ease: "easeInOut" }}
+                        transition={{ duration: 1.2, ease: "easeInOut" }}
                     />
                     <motion.path
                         d="M400,300 Q300,200 350,150 T200,100"
@@ -66,7 +66,7 @@ export default function GardenCard({ module }: ModuleProps) {
                         className="group-hover:text-teal-300/30 transition-colors duration-700 delay-100"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
-                        transition={{ duration: 3, ease: "easeInOut", delay: 0.5 }}
+                        transition={{ duration: 1.5, ease: "easeInOut", delay: 0.2 }}
                     />
                 </svg>
             </div>
@@ -75,7 +75,7 @@ export default function GardenCard({ module }: ModuleProps) {
             <motion.div
                 className="absolute left-0 w-full h-px bg-linear-to-r from-transparent via-teal-300/20 to-transparent z-10 pointer-events-none"
                 animate={{ top: ['0%', '100%'] }}
-                transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
             />
 
             <div className="relative p-10 h-[360px] flex flex-col z-20">
@@ -101,7 +101,7 @@ export default function GardenCard({ module }: ModuleProps) {
                         <motion.div
                             className="absolute inset-0 rounded-full border border-teal-200/30"
                             animate={{ scale: [1, 1.15, 1], opacity: [0, 0.4, 0] }}
-                            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                         />
 
                         {/* Glass/Petri Dish Circle */}
@@ -112,7 +112,7 @@ export default function GardenCard({ module }: ModuleProps) {
 
                         <motion.div
                             animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                             className="relative z-10"
                         >
                             <Sprout size={48} className="text-teal-600/80 fill-teal-50 group-hover:text-teal-600 group-hover:fill-teal-100 transition-colors duration-500 drop-shadow-sm" strokeWidth={1.5} />

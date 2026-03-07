@@ -23,10 +23,10 @@ export default function PrismCard({ module }: ModuleProps) {
 
             {/* Ambient Corner Glows - Entrance Animated */}
             <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}
                 className="absolute top-0 left-0 w-64 h-64 bg-fuchsia-600/10 rounded-full blur-[80px] pointer-events-none" />
             <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2, delay: 0.5 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.2 }}
                 className="absolute bottom-0 right-0 w-64 h-64 bg-cyan-600/10 rounded-full blur-[80px] pointer-events-none" />
 
             {/* Animated Spectrum Light Beam */}
@@ -63,10 +63,10 @@ export default function PrismCard({ module }: ModuleProps) {
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
                     </filter>
                     <clipPath id="beam-clip-in">
-                        <motion.circle cx="-20" cy="-20" initial={{ r: 0 }} animate={{ r: 350 }} transition={{ duration: 1.0, delay: 0.8, ease: "easeInOut" }} />
+                        <motion.circle cx="-20" cy="-20" initial={{ r: 0 }} animate={{ r: 350 }} transition={{ duration: 0.6, delay: 0.3, ease: "easeInOut" }} />
                     </clipPath>
                     <clipPath id="beam-clip-out">
-                        <motion.circle cx="105" cy="160" initial={{ r: 0 }} animate={{ r: 600 }} transition={{ duration: 1.5, delay: 1.6, ease: "easeOut" }} />
+                        <motion.circle cx="105" cy="160" initial={{ r: 0 }} animate={{ r: 600 }} transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }} />
                     </clipPath>
                 </defs>
 
@@ -78,7 +78,7 @@ export default function PrismCard({ module }: ModuleProps) {
                     clipPath="url(#beam-clip-in)"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 0.7 }}
-                    transition={{ duration: 0.5, delay: 0.8 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}
                 />
 
                 {/* Outgoing Spectrum - Center-Left to Bottom Right */}
@@ -86,7 +86,7 @@ export default function PrismCard({ module }: ModuleProps) {
                     clipPath="url(#beam-clip-out)"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 1.6 }}
+                    transition={{ duration: 0.3, delay: 0.7 }}
                 >
                     <path d="M 105,160 L 550,230 L 550,250 Z" fill="url(#spectrum-red)" filter="url(#glow)" className="mix-blend-screen" />
                     <path d="M 105,160 L 550,250 L 550,280 Z" fill="url(#spectrum-yellow)" filter="url(#glow)" className="mix-blend-screen" />
@@ -100,7 +100,7 @@ export default function PrismCard({ module }: ModuleProps) {
             <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 1.5, delay: 2.4, ease: "easeOut" }}
+                transition={{ duration: 0.8, delay: 1.0, ease: "easeOut" }}
                 className="absolute right-16 bottom-16 w-64 h-48 pointer-events-none flex flex-col gap-5 justify-end items-end z-0"
             >
                 <div className="w-32 h-14 border border-white/10 rounded-lg backdrop-blur-md bg-white/5 transform -skew-x-12 -rotate-6 flex flex-col justify-center px-4 shadow-[0_0_20px_rgba(255,255,255,0.05)]">
@@ -166,9 +166,9 @@ export default function PrismCard({ module }: ModuleProps) {
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1, y: [-4, 4, -4] }}
                         transition={{
-                            opacity: { duration: 1, delay: 0 },
-                            scale: { duration: 1, delay: 0 },
-                            y: { repeat: Infinity, duration: 5, ease: "easeInOut" }
+                            opacity: { duration: 0.6, delay: 0 },
+                            scale: { duration: 0.6, delay: 0 },
+                            y: { repeat: Infinity, duration: 4, ease: "easeInOut" }
                         }}
                     >
                         {/* Central Prism Base (Solid blur clip) */}
@@ -177,7 +177,7 @@ export default function PrismCard({ module }: ModuleProps) {
                             style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }}
                             initial={{ backgroundColor: "rgba(255,255,255,0)" }}
                             animate={{ backgroundColor: "rgba(255,255,255,0.03)" }}
-                            transition={{ duration: 0.8, delay: 1.5 }}
+                            transition={{ duration: 0.4, delay: 0.7 }}
                         />
 
                         {/* Sharp glass edges and inner facets via SVG */}
@@ -203,7 +203,7 @@ export default function PrismCard({ module }: ModuleProps) {
                         <motion.div
                             initial={{ filter: "drop-shadow(0 0 0px rgba(255,255,255,0))", color: "rgba(255,255,255,0.2)" }}
                             animate={{ filter: "drop-shadow(0 0 15px rgba(255,255,255,0.6))", color: "rgba(255,255,255,0.8)" }}
-                            transition={{ duration: 0.8, delay: 1.5 }}
+                            transition={{ duration: 0.4, delay: 0.7 }}
                             className="z-10 text-white"
                         >
                             <Triangle size={24} strokeWidth={1.5} className="group-hover/prism:text-white transition-colors duration-500 scale-y-125" style={{ color: "currentColor" }} />
@@ -215,7 +215,7 @@ export default function PrismCard({ module }: ModuleProps) {
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.5, delay: 2.6 }}
+                    transition={{ duration: 0.8, delay: 1.2 }}
                     className="absolute bottom-13 left-14 text-[18px] leading-[1.8] font-serif text-white/50 tracking-[0.4em] pointer-events-none whitespace-pre-line"
                 >
                     {module.description}
