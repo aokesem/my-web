@@ -316,7 +316,7 @@ const RealisticBookCard = ({ book, onClick }: { book: Book; onClick: () => void 
                                 transition={{ duration: 0.5 }}
                                 className="absolute top-0 left-0 w-full"
                             >
-                                <p className="font-serif italic text-xs text-gray-500 leading-relaxed line-clamp-2 group-hover:text-gray-400 transition-colors">
+                                <p className="font-serif italic text-xs text-gray-500 leading-relaxed line-clamp-2 group-hover:text-gray-400 transition-colors whitespace-pre-wrap">
                                     "{currentQuote.text}"
                                 </p>
                             </motion.div>
@@ -385,7 +385,7 @@ const BookDetailModal = ({ book, onClose }: { book: Book; onClose: () => void })
                                     className="relative pl-8 border-l border-blue-900/40"
                                 >
                                     <Quote size={20} className="absolute -left-[11px] top-0 text-black fill-gray-800 stroke-none" />
-                                    <p className="text-2xl md:text-3xl font-serif text-gray-300 leading-relaxed">
+                                    <p className="text-2xl md:text-3xl font-serif text-gray-300 leading-relaxed whitespace-pre-wrap">
                                         {quote.text}
                                     </p>
                                     <div className="mt-6 text-right">

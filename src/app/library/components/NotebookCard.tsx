@@ -69,8 +69,8 @@ export default function NotebookCard({ module }: ModuleProps) {
                             />
                             {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg, i) => {
                                 const rad = (deg * Math.PI) / 180;
-                                const x = 72 + 65 * Math.cos(rad);
-                                const y = 72 + 65 * Math.sin(rad);
+                                const x = (72 + 65 * Math.cos(rad)).toFixed(3);
+                                const y = (72 + 65 * Math.sin(rad)).toFixed(3);
                                 return (
                                     <motion.circle
                                         key={i}

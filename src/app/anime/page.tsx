@@ -320,7 +320,7 @@ export default function AnimeArchive() {
 
                                     <div className="pt-12 border-t border-white/5">
                                         <p className="text-[10px] font-mono text-gray-600 mb-8 tracking-[0.6em] uppercase">Observation_Log</p>
-                                        <p className="text-base text-gray-400 font-light leading-relaxed italic">
+                                        <p className="text-base text-gray-400 font-light leading-relaxed italic whitespace-pre-wrap">
                                             “{selectedAnime.comment}”
                                         </p>
                                     </div>

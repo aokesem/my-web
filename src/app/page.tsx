@@ -8,24 +8,29 @@ import { Tv, Film, BookOpen, ArrowUpRight, LucideIcon, Lock, DoorOpen } from 'lu
 import { IoLibraryOutline } from "react-icons/io5";
 import { supabase } from '@/lib/supabaseClient';
 
-// ... (0. 常量与工具函数定义 - 保持不变) ...
-const ANIME_IMAGES = [
-  "/images/anime_poster/败犬女主.png", "/images/anime_poster/冰菓.png", "/images/anime_poster/冰海战记.png",
-  "/images/anime_poster/芙莉莲.png", "/images/anime_poster/钢炼fa.png", "/images/anime_poster/高达0080.png",
-  "/images/anime_poster/化物语.png", "/images/anime_poster/高木第二季.png", "/images/anime_poster/欢迎加入nhk.png", "/images/anime_poster/辉夜第三季.png",
-  "/images/anime_poster/寄生兽.png", "/images/anime_poster/少女歌剧.png", "/images/anime_poster/巨人第三季part2.png", "/images/anime_poster/来自新世界.png",
-  "/images/anime_poster/凉宫春日的消失.png", "/images/anime_poster/琉璃的宝石.png", "/images/anime_poster/鲁鲁修.png",
-  "/images/anime_poster/迷宫饭.png", "/images/anime_poster/女高中生的无所事事.png", "/images/anime_poster/命运石之门.png", "/images/anime_poster/赌博默示录.png", "/images/anime_poster/末日后酒店.png",
-  "/images/anime_poster/女高日常.png", "/images/anime_poster/千年女优.png", "/images/anime_poster/轻音少女第二季.png", "/images/anime_poster/幸运星.png",
-  "/images/anime_poster/小魔女学院.png", "/images/anime_poster/小樱.png", "/images/anime_poster/咲良田.png", "/images/anime_poster/斩服少女.png",
-  "/images/anime_poster/悠哉日常大王.png", "/images/anime_poster/月色真美.png", "/images/anime_poster/mygo.png", "/images/anime_poster/EVA.png",
+// --- 0. 常量与工具函数定义 ---
+const ANIME_BASE_PATH = "/images/anime_poster/";
+const MOVIE_BASE_PATH = "/images/film_poster/";
+
+const ANIME_NAMES = [
+  "败犬女主.png", "冰菓.png", "冰海战记.png", "芙莉莲.png", "钢炼fa.png", "高达0080.png",
+  "化物语.png", "高木第二季.png", "欢迎加入nhk.png", "辉夜第三季.png", "寄生兽.png", "少女歌剧.png",
+  "巨人第三季part2.png", "来自新世界.png", "凉宫春日的消失.png", "琉璃的宝石.png", "鲁鲁修.png",
+  "迷宫饭.png", "女高中生的无所事事.png", "命运石之门.png", "赌博默示录.png", "末日后酒店.png",
+  "女高日常.png", "千年女优.png", "轻音少女第二季.png", "幸运星.png", "辉夜第二季.png", "辉夜第一季.png",
+  "小魔女学院.png", "小樱.png", "咲良田.png", "斩服少女.png", "小邪神.png",
+  "悠哉日常大王.png", "月色真美.png", "mygo.png", "EVA.png",
 ];
-const MOVIE_STILLS = [
-  "/images/film_poster/地狱的眼睛.png", "/images/film_poster/怀抱孩子的竹千代.png", "/images/film_poster/埋藏黄金的墓地.png",
-  "/images/film_poster/面朝阳光.png", "/images/film_poster/狮子云.png", "/images/film_poster/是你们武士.png",
-  "/images/film_poster/天国与地狱.png", "/images/film_poster/夕阳.png", "/images/film_poster/Micheal的沉思.png",
-  "/images/film_poster/tuco的笑.png", "/images/film_poster/我很好.png", "/images/film_poster/追忆似水年华.png"
+
+const MOVIE_NAMES = [
+  "地狱的眼睛.png", "怀抱孩子的竹千代.png", "埋藏黄金的墓地.png",
+  "面朝阳光.png", "狮子云.png", "是你们武士.png",
+  "天国与地狱.png", "夕阳.png", "Micheal的沉思.png",
+  "tuco的笑.png", "我很好.png", "追忆似水年华.png"
 ];
+
+const ANIME_IMAGES = ANIME_NAMES.map(name => `${ANIME_BASE_PATH}${name}`);
+const MOVIE_STILLS = MOVIE_NAMES.map(name => `${MOVIE_BASE_PATH}${name}`);
 const RAIN_WORDS = [
   "春琦，重启吧", "于是，魔女敲响了爱人的窗", "髣髴兮若轻云之蔽月，飘飖兮若流风之回雪",
   "有善始者实繁，能克终者盖寡", "虽复尘埋无所用，犹能夜夜气冲天",

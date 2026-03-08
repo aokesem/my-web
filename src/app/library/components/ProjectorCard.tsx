@@ -33,27 +33,62 @@ export default function ProjectorCard({ module }: ModuleProps) {
                 >
                     <svg viewBox="0 0 200 200" className="w-full h-full text-indigo-900">
                         {/* Circles */}
-                        <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 4" />
-                        <circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" strokeWidth="0.3" />
-                        <circle cx="100" cy="100" r="45" fill="none" stroke="currentColor" strokeWidth="0.3" />
+                        <mask id="projector-dash-mask">
+                            <motion.circle cx="100" cy="100" r="95" fill="none" stroke="white" strokeWidth="2"
+                                initial={{ pathLength: 0 }}
+                                animate={{ pathLength: 1 }}
+                                transition={{ duration: 2, ease: "easeInOut", delay: 0.2 }}
+                            />
+                        </mask>
+                        <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 4" mask="url(#projector-dash-mask)" />
+
+                        <motion.circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" strokeWidth="0.3"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.8, ease: "easeInOut", delay: 0.5 }}
+                        />
+                        <motion.circle cx="100" cy="100" r="45" fill="none" stroke="currentColor" strokeWidth="0.3"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut", delay: 0.8 }}
+                        />
 
                         {/* Axis Lines */}
-                        <line x1="100" y1="0" x2="100" y2="200" stroke="currentColor" strokeWidth="0.2" />
-                        <line x1="0" y1="100" x2="200" y2="100" stroke="currentColor" strokeWidth="0.2" />
-                        <line x1="30" y1="30" x2="170" y2="170" stroke="currentColor" strokeWidth="0.2" />
-                        <line x1="170" y1="30" x2="30" y2="170" stroke="currentColor" strokeWidth="0.2" />
+                        <motion.line x1="100" y1="0" x2="100" y2="200" stroke="currentColor" strokeWidth="0.2"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut", delay: 1 }}
+                        />
+                        <motion.line x1="0" y1="100" x2="200" y2="100" stroke="currentColor" strokeWidth="0.2"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut", delay: 1 }}
+                        />
+                        <motion.line x1="30" y1="30" x2="170" y2="170" stroke="currentColor" strokeWidth="0.2"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut", delay: 1.2 }}
+                        />
+                        <motion.line x1="170" y1="30" x2="30" y2="170" stroke="currentColor" strokeWidth="0.2"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut", delay: 1.2 }}
+                        />
 
                         {/* Compass Marks */}
-                        {[0, 90, 180, 270].map(deg => (
-                            <text
+                        {[0, 90, 180, 270].map((deg, i) => (
+                            <motion.text
                                 key={deg}
                                 x="100" y="10"
                                 transform={`rotate(${deg}, 100, 100)`}
                                 textAnchor="middle"
                                 className="text-[6px] font-mono fill-indigo-900/60"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 1, delay: 1.5 + i * 0.2 }}
                             >
                                 {deg}°
-                            </text>
+                            </motion.text>
                         ))}
                     </svg>
                 </motion.div>

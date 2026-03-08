@@ -250,7 +250,7 @@ export default function CinemaArchive() {
 
                             <div className="pt-8 border-t border-white/5 max-w-2xl">
                                 <p className="text-[10px] font-mono text-gray-600 mb-6 tracking-[0.6em] uppercase">Observation_Log</p>
-                                <p className="text-xl font-light text-gray-400 italic leading-relaxed">
+                                <p className="text-xl font-light text-gray-400 italic leading-relaxed whitespace-pre-wrap">
                                     "{current.comment}"
                                 </p>
                             </div>
