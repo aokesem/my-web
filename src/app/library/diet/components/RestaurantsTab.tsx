@@ -123,6 +123,7 @@ export const RestaurantsTab = ({
     onJumpToRecipe?: (id: number) => void
 }) => {
     const [activeCategory, setActiveCategory] = useState('全部');
+    const [activeRegion, setActiveRegion] = useState('全部');
     const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
     const [page, setPage] = useState(0);
 
@@ -133,10 +134,13 @@ export const RestaurantsTab = ({
         if (activeCategory !== '全部') {
             result = result.filter(r => r.category === activeCategory);
         }
+        if (activeRegion !== '全部') {
+            result = result.filter(r => r.region === activeRegion);
+        }
         return result.sort((a, b) =>
             sortBy === 'rating' ? b.rating - a.rating : a.name.localeCompare(b.name, 'zh')
         );
-    }, [activeCategory, sortBy, restaurants]);
+    }, [activeCategory, activeRegion, sortBy, restaurants]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
     const safePage = Math.min(page, totalPages - 1);
@@ -149,10 +153,18 @@ export const RestaurantsTab = ({
 
     const dynamicCategories = [
         { id: '全部', label: '全部', icon: Store },
-        ...categories.map(c => ({
+        ...categories.filter(c => c.module === 'restaurants').map(c => ({
             id: c.name,
             label: c.name,
             icon: c.icon ? (LucideIcons as any)[c.icon] : undefined
+        }))
+    ];
+
+    const regionCategories = [
+        { id: '全部', label: '全部区域' },
+        ...categories.filter(c => c.module === 'restaurant_regions').map(c => ({
+            id: c.name,
+            label: c.name
         }))
     ];
 
@@ -164,13 +176,28 @@ export const RestaurantsTab = ({
                         <FilterPill key={cat.id} label={cat.label} icon={cat.icon} active={activeCategory === cat.id} onClick={() => handleCategoryChange(cat.id)} />
                     ))}
                 </div>
-                <button
-                    onClick={() => setSortBy(prev => prev === 'name' ? 'rating' : 'name')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200 bg-white"
-                >
-                    <SortAsc size={14} />
-                    {sortBy === 'name' ? '按名称' : '按评分'}
-                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => {
+                            const idx = regionCategories.findIndex(r => r.id === activeRegion);
+                            const next = regionCategories[(idx + 1) % regionCategories.length];
+                            setActiveRegion(next.id);
+                            setPage(0);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200 bg-white"
+                    >
+                        {regionCategories.find(r => r.id === activeRegion)?.label || '全部区域'}
+                    </button>
+
+                    <button
+                        onClick={() => setSortBy(prev => prev === 'name' ? 'rating' : 'name')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors border border-stone-200 bg-white"
+                    >
+                        <SortAsc size={14} />
+                        {sortBy === 'name' ? '按名称' : '按评分'}
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
@@ -205,6 +232,11 @@ export const RestaurantsTab = ({
                                             <span className="px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-[12px] font-bold text-stone-500">
                                                 {restaurant.category}
                                             </span>
+                                            {restaurant.region && (
+                                                <span className="px-1.5 py-0.5 rounded border border-stone-100 bg-stone-100 text-[12px] font-medium text-stone-400">
+                                                    {restaurant.region}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="mb-2">
                                             <RatingStars rating={restaurant.rating} />

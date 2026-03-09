@@ -180,7 +180,7 @@ export default function DietPage() {
                             {activeTab === 'restaurants' && (
                                 <RestaurantsTab
                                     restaurants={restaurants}
-                                    categories={categories.filter(c => c.module === 'restaurants')}
+                                    categories={categories.filter(c => c.module === 'restaurants' || c.module === 'restaurant_regions')}
                                     onSelect={setSelectedRestaurant}
                                     onJumpToRecipe={handleJumpToRecipe}
                                 />

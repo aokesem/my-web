@@ -13,16 +13,17 @@ import { toast } from 'sonner';
 
 type Category = {
     id: number;
-    module: 'foods' | 'recipes' | 'restaurants';
+    module: 'foods' | 'recipes' | 'restaurants' | 'restaurant_regions';
     name: string;
     icon?: string;
     sort_order: number;
 };
 
-const MODULE_LABELS: Record<'foods' | 'recipes' | 'restaurants', string> = {
+const MODULE_LABELS: Record<'foods' | 'recipes' | 'restaurants' | 'restaurant_regions', string> = {
     foods: '食材库',
     recipes: '食谱大纲',
-    restaurants: '合作餐厅'
+    restaurants: '合作餐厅',
+    restaurant_regions: '餐厅区域'
 };
 
 const fetchCategories = async () => {
@@ -129,7 +130,7 @@ export default function CategoriesManager() {
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar rounded-xl border border-zinc-800 bg-zinc-950/30 p-4 space-y-8">
-                {(['foods', 'recipes', 'restaurants'] as const).map(mod => (
+                {(['foods', 'recipes', 'restaurants', 'restaurant_regions'] as const).map(mod => (
                     <div key={mod} className="space-y-3">
                         <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
                             <span className="text-sm font-bold text-zinc-300 uppercase tracking-wider">{MODULE_LABELS[mod]}</span>
@@ -180,6 +181,7 @@ export default function CategoriesManager() {
                                     <SelectItem value="foods">食材库</SelectItem>
                                     <SelectItem value="recipes">食谱大纲</SelectItem>
                                     <SelectItem value="restaurants">合作餐厅</SelectItem>
+                                    <SelectItem value="restaurant_regions">餐厅区域</SelectItem>
                                 </SelectContent>
                             </Select>
                             {!!editingId && <p className="text-xs text-amber-500/70">分类的所属模块一旦确立无法变更，只能重新创建。</p>}

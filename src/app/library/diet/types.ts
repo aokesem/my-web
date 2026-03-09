@@ -35,6 +35,7 @@ export type Restaurant = {
     address: string;
     rating: number;
     notes: string;
+    region: string;
     images: string[];
     dishes: RestaurantDish[];
 };

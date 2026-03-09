@@ -22,7 +22,8 @@ type Restaurant = {
     address: string;
     rating: number;
     notes: string;
-    image_urls: string[];
+    region: string;
+    images: string[];
 };
 
 type Dish = {
@@ -35,16 +36,19 @@ type Dish = {
 };
 
 const fetchRestaurants = async () => {
-    const [restRes, catsRes] = await Promise.all([
+    const [restRes, catsRes, regionsRes] = await Promise.all([
         supabase.from('diet_restaurants').select('*').order('id', { ascending: false }),
-        supabase.from('diet_categories').select('name').eq('module', 'restaurants').order('sort_order')
+        supabase.from('diet_categories').select('name').eq('module', 'restaurants').order('sort_order'),
+        supabase.from('diet_categories').select('name').eq('module', 'restaurant_regions').order('sort_order')
     ]);
     if (restRes.error) throw restRes.error;
     if (catsRes.error) throw catsRes.error;
+    if (regionsRes.error) throw regionsRes.error;
 
     return {
         restaurants: restRes.data as Restaurant[],
-        categories: catsRes.data.map(c => c.name) as string[]
+        categories: catsRes.data.map(c => c.name) as string[],
+        regions: regionsRes.data.map(c => c.name) as string[]
     };
 };
 
@@ -59,14 +63,19 @@ export default function RestaurantsManager() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [restEditingId, setRestEditingId] = useState<number | null>(null);
     const [restFormData, setRestFormData] = useState<Partial<Restaurant>>({
-        name: '', category: '', address: '', rating: 5, notes: '', image_urls: []
+        name: '', category: '', address: '', rating: 5, notes: '', region: '', images: []
     });
     // 简单处理多图：用逗号分隔的字符串在输入框编辑，保存时拆分
     const [imageUrlsString, setImageUrlsString] = useState('');
 
     const openCreateRestModal = () => {
         setRestEditingId(null);
-        setRestFormData({ name: '', category: data?.categories[0] || '', address: '', rating: 5, notes: '', image_urls: [] });
+        setRestFormData({
+            name: '',
+            category: data?.categories[0] || '',
+            region: data?.regions[0] || '其他',
+            address: '', rating: 5, notes: '', images: []
+        });
         setImageUrlsString('');
         setIsRestModalOpen(true);
     };
@@ -109,7 +118,7 @@ export default function RestaurantsManager() {
     const openEditRestModal = (r: Restaurant) => {
         setRestEditingId(r.id);
         setRestFormData({ ...r });
-        setImageUrlsString(r.image_urls?.join(',\n') || '');
+        setImageUrlsString(r.images?.join(',\n') || '');
         setIsRestModalOpen(true);
     };
 
@@ -121,8 +130,8 @@ export default function RestaurantsManager() {
             if (error) throw error;
 
             // 清理餐厅关联的多张图片
-            if (itemToDelete?.image_urls && itemToDelete.image_urls.length > 0) {
-                for (const url of itemToDelete.image_urls) {
+            if (itemToDelete?.images && itemToDelete.images.length > 0) {
+                for (const url of itemToDelete.images) {
                     await deleteImageFromStorage(url);
                 }
             }
@@ -150,7 +159,8 @@ export default function RestaurantsManager() {
                 address: restFormData.address,
                 rating: restFormData.rating,
                 notes: restFormData.notes,
-                image_urls: urls
+                region: restFormData.region || '其他',
+                images: urls
             };
 
             if (restEditingId) {
@@ -202,6 +212,7 @@ export default function RestaurantsManager() {
                                 评分 <SortIcon sortKey="rating" />
                             </th>
                             <th className="px-4 py-3 font-medium hidden lg:table-cell">地址</th>
+                            <th className="px-4 py-3 font-medium">区域</th>
                             <th className="px-4 py-3 font-medium text-right">操作</th>
                         </tr>
                     </thead>
@@ -210,8 +221,8 @@ export default function RestaurantsManager() {
                             <tr key={r.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors flex flex-col md:table-row">
                                 <td className="px-4 py-3 flex items-center gap-3">
                                     <div className="relative w-10 h-10 rounded-md overflow-hidden bg-zinc-800 shrink-0">
-                                        {r.image_urls?.[0] ? (
-                                            <Image src={r.image_urls[0]} alt={r.name} fill sizes="40px" className="object-cover" />
+                                        {r.images?.[0] ? (
+                                            <Image src={r.images[0]} alt={r.name} fill sizes="40px" className="object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-zinc-600"><ImageIcon size={16} /></div>
                                         )}
@@ -224,6 +235,9 @@ export default function RestaurantsManager() {
                                 </td>
                                 <td className="px-4 py-1.5 md:py-3 text-amber-500 text-xs md:text-sm">★ {r.rating}</td>
                                 <td className="px-4 py-1.5 md:py-3 text-xs md:text-sm text-zinc-500 line-clamp-1 hidden lg:table-cell">{r.address}</td>
+                                <td className="px-4 py-1.5 md:py-3">
+                                    <span className="text-zinc-400 text-xs px-2 py-0.5 rounded bg-zinc-800/50 border border-zinc-700/50">{r.region || '其他'}</span>
+                                </td>
                                 <td className="px-4 py-3 text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         <Button variant="secondary" size="sm" onClick={() => setManagingRestaurantData(r)} className="h-8 bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-700">
@@ -266,6 +280,17 @@ export default function RestaurantsManager() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>所属区域</Label>
+                            <Select value={restFormData.region} onValueChange={v => setRestFormData({ ...restFormData, region: v })}>
+                                <SelectTrigger className="bg-zinc-950 border-zinc-800">
+                                    <SelectValue placeholder="选择区域" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+                                    {data?.regions?.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="address">详细地址</Label>
