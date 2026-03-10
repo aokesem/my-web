@@ -1,8 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import PlaybookModal from './PlaybookModal';
+import EnglishModuleModal from './EnglishModuleModal';
+import VocabularyListModal from './VocabularyListModal';
+
+import { supabase } from '@/lib/supabaseClient';
+
+
 
 interface WindowViewProps {
     isOpen: boolean;
@@ -15,11 +21,50 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
     const [mounted, setMounted] = useState(false);
     // [新增] Playbook展开状态
     const [isPlaybookOpen, setIsPlaybookOpen] = useState(false);
+    // [新增] EnglishModule展开状态
+    const [isEnglishOpen, setIsEnglishOpen] = useState(false);
+    // [新增] VocabularyList展开状态
+    const [isListOpen, setIsListOpen] = useState(false);
+
+    // [新增] 静止态滚动词：从数据库第1批的未掌握词中随机抽 30 个
+    const [idleWords, setIdleWords] = useState<string[]>([]);
+
+    useEffect(() => {
+        const fetchIdleWords = async () => {
+            const { data, error } = await supabase
+                .from('vocabulary')
+                .select('word')
+                .eq('batch_id', 1)
+                .neq('status', 'mastered')
+                .limit(250);
+
+            if (data && data.length > 0) {
+                const shuffled = [...data].sort(() => Math.random() - 0.5);
+                setIdleWords(shuffled.slice(0, 30).map(w => w.word));
+            } else {
+                setIdleWords(["SYSTEM_READY", "AWAITING_VOCABULARY", "CONNECTION_SECURED"]);
+            }
+        };
+
+        fetchIdleWords();
+    }, []);
+
+    // [新增] 静止态滚动词引用的定时器状态
+    const [idleWordIndex, setIdleWordIndex] = useState(0);
 
     // [新增] 仅在客户端执行
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // [新增] 定时器：控制轮播
+    useEffect(() => {
+        if (!mounted || idleWords.length === 0) return;
+        const timer = setInterval(() => {
+            setIdleWordIndex(prev => (prev + 1) % idleWords.length);
+        }, 4000); // 💡【动画调整】这里控制单词停留时间，3500代表3.5秒换一个词
+        return () => clearInterval(timer);
+    }, [mounted, idleWords]);
 
     return (
         <>
@@ -166,7 +211,7 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                         }}
                     >
                         {/* Tooltip positioned relative to the entire group */}
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/playbook:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
+                        <div className="absolute -top-13 left-1/2 -translate-x-1/2 opacity-0 group-hover/playbook:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
                             <div className="bg-slate-800 text-white text-[16px] py-1.5 px-3 rounded-md font-mono tracking-widest whitespace-nowrap shadow-xl border border-white/10">
                                 目标与任务森林
                             </div>
@@ -213,6 +258,73 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                             <div className="absolute -top-[2px] left-px right-px h-[2px] bg-[#fdfbf7] border-t border-slate-300 transform skew-x-18 origin-bottom shadow-inner"></div>
                         </div>
                     </div>
+
+                    {/* --- 4. English Module 入口 (Vintage E-Dictionary) --- */}
+                    <div
+                        className="absolute bottom-full left-[187px] mb-px flex items-end group/english cursor-pointer transition-transform duration-500 hover:scale-[1.03] z-50"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isBlurred) {
+                                setIsEnglishOpen(true);
+                            }
+                        }}
+                    >
+                        {/* Tooltip */}
+                        <div className="absolute -top-13 left-1/2 -translate-x-1/2 opacity-0 group-hover/english:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
+                            <div className="bg-slate-800 text-white text-[16px] py-1.5 px-3 rounded-md font-mono tracking-widest whitespace-nowrap shadow-xl border border-white/10">
+                                单词学习
+                            </div>
+                            <div className="w-2 h-2 bg-slate-800 rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2 border-b border-r border-white/10"></div>
+                        </div>
+
+                        {/* E-Dictionary Body */}
+                        {/* 💡【外观调整】如需调整单词机物理大小，修改此处的 w-24 h-32（原本是 w-20 h-28） */}
+                        <div className="relative w-32 h-32 origin-bottom transition-all duration-300 group-hover/english:-translate-y-1">
+                            {/* Outer Shell */}
+                            <div className="absolute inset-0 bg-[#2a2d35] rounded-[4px] shadow-[3px_2px_10px_rgba(0,0,0,0.4)] border border-slate-600/30 flex flex-col overflow-hidden">
+                                {/* Top strip (brand area) */}
+                                <div className="flex items-center justify-between px-1.5 py-1 bg-[#1e2028] border-b border-white/5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 animate-pulse" />
+                                    <span className="text-[5px] font-mono text-slate-500 tracking-[0.15em]">LEXICON</span>
+                                </div>
+
+                                {/* LCD Screen */}
+                                <div className="flex-1 mx-1.5 my-1 bg-[#1a1c22] rounded-sm border border-white/5 flex items-center justify-center overflow-hidden relative">
+                                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(148,163,184,0.04),transparent_70%)]" />
+                                    {mounted && idleWords.length > 0 && (
+                                        <AnimatePresence mode="wait">
+                                            <motion.div
+                                                key={idleWordIndex}
+                                                initial={{ y: 6, opacity: 0 }}
+                                                animate={{ y: 0, opacity: 1 }}
+                                                exit={{ y: -6, opacity: 0 }}
+                                                transition={{ duration: 0.5 }} // 💡【动画调整】这里控制淡入淡出的速度，0.5代表0.5秒
+                                                className="absolute inset-0 flex items-center justify-center"
+                                            >
+                                                {/* 💡【外观调整】如需调整屏幕内英文单词字号大小，修改此处的 text-xs（原本是 text-[8px]），或改成 text-[10px], text-sm 等 */}
+                                                <span className="text-base font-mono font-bold text-slate-400/90 tracking-widest text-center px-1">
+                                                    {idleWords[idleWordIndex]}
+                                                </span>
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    )}
+                                </div>
+
+                                {/* Bottom buttons area */}
+                                <div className="flex justify-center gap-1 px-1.5 py-1">
+                                    <div className="w-4 h-1.5 rounded-full bg-slate-600/40" />
+                                    <div className="w-4 h-1.5 rounded-full bg-slate-600/40" />
+                                    <div className="w-4 h-1.5 rounded-full bg-slate-600/40" />
+                                </div>
+                            </div>
+                            {/* Top edge highlight */}
+                            <div className="absolute -top-px left-1 right-1 h-px bg-slate-500/20" />
+
+                            {/* --- 新增：底部的两个支脚 (Little stands/feet) --- */}
+                            <div className="absolute -bottom-1 left-2 w-3 h-2 bg-[#1e2028] border border-t-0 border-[#475569]/30 rounded-b-sm shadow-[0_2px_4px_rgba(0,0,0,0.5)] skew-x-6 z-[-1]"></div>
+                            <div className="absolute -bottom-1 right-2 w-3 h-2 bg-[#1e2028] border border-t-0 border-[#475569]/30 rounded-b-sm shadow-[0_2px_4px_rgba(0,0,0,0.5)] -skew-x-6 z-[-1]"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -220,6 +332,28 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                 <PlaybookModal
                     isOpen={isPlaybookOpen}
                     onClose={() => setIsPlaybookOpen(false)}
+                />
+            )}
+
+            {mounted && (
+                <EnglishModuleModal
+                    isOpen={isEnglishOpen}
+                    onClose={() => setIsEnglishOpen(false)}
+                    onOpenList={() => {
+                        setIsEnglishOpen(false);
+                        setIsListOpen(true);
+                    }}
+                />
+            )}
+
+            {mounted && (
+                <VocabularyListModal
+                    isOpen={isListOpen}
+                    onClose={() => setIsListOpen(false)}
+                    onBackToDevice={() => {
+                        setIsListOpen(false);
+                        setIsEnglishOpen(true);
+                    }}
                 />
             )}
         </>
