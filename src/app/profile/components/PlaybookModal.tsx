@@ -389,7 +389,7 @@ export default function PlaybookModal({ isOpen, onClose }: PlaybookModalProps) {
                         </div>
 
                         {/* Right Page (Index: currentTreeIndex + 1) */}
-                        <div className="flex-1 bg-[#F9F7F1]/80 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col">
+                        <div className="flex-1 bg-[#F9F7F1]/80 p-8 md:p-12 relative overflow-y-auto subtle-scrollbar flex flex-col" style={{ scrollbarGutter: 'stable' }}>
                             {rightPageContent ? (
                                 <>
                                     <div className="w-full border-b border-[#7A8B76]/20 pb-4 mb-12 flex justify-between items-center px-4">

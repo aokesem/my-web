@@ -11,7 +11,7 @@ interface WordEntry {
     id: number;
     word: string;
     translation: string;
-    status: "unknown" | "vague" | "mastered";
+    status: "unseen" | "unknown" | "vague" | "mastered" | "discarded";
     batch_id: number;
 }
 
@@ -46,7 +46,7 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
             setStatuses({});
             setShowTranslation(false);
             // 直接从拉取到的数据里抽第一个词，避免二次触发
-            const pool = words.filter(w => w.status !== 'mastered');
+            const pool = words.filter(w => w.status !== 'mastered' && w.status !== 'discarded');
             if (pool.length > 0) {
                 setCurrentWord(pool[Math.floor(Math.random() * pool.length)]);
             } else {
@@ -95,11 +95,11 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
         setMounted(true);
     }, []);
 
-    // 从未掌握的词中随机抽一个
+    // 从未掌握的词中随机抽一个（池子里只包括 unseen, unknown, vague）
     const pickNextWord = () => {
         const pool = batch.filter(w => {
-            const s = statuses[w.id] || w.status;
-            return s !== "mastered";
+            const s = statuses[w.id] || w.status || "unseen";
+            return s !== "mastered" && s !== "discarded";
         });
         if (pool.length === 0) {
             setCurrentWord(null);
@@ -124,6 +124,17 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
         await supabase
             .from('vocabulary')
             .update({ status: feedback })
+            .eq('id', currentWord.id);
+    };
+
+    // 丢弃当前单词
+    const handleDiscard = async () => {
+        if (!currentWord) return;
+        setStatuses(prev => ({ ...prev, [currentWord.id]: "discarded" }));
+        pickNextWord();
+        await supabase
+            .from('vocabulary')
+            .update({ status: 'discarded' })
             .eq('id', currentWord.id);
     };
 
@@ -296,6 +307,16 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
                                         </motion.div>
                                     </AnimatePresence>
 
+                                    {/* Discard Button (Bottom Left corner) */}
+                                    <div className="absolute bottom-4 left-5 z-10">
+                                        <button
+                                            onClick={handleDiscard}
+                                            className="text-base font-mono text-slate-600 hover:text-red-400/70 transition-colors"
+                                        >
+                                            [ 丢弃 ]
+                                        </button>
+                                    </div>
+
                                     {/* Skip Button (Bottom Right corner，移出动画区域保持位置固定) */}
                                     <div className="absolute bottom-4 right-5 z-10">
                                         <button
@@ -308,8 +329,8 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
                                 </>
                             ) : (
                                 <div className="text-center">
-                                    <p className="text-slate-500 font-mono text-sm">ALL_WORDS_MASTERED</p>
-                                    <p className="text-slate-600 text-xs mt-2">当前批次已全部掌握</p>
+                                    <p className="text-slate-500 font-mono text-sm">ALL_WORDS_COMPLETED</p>
+                                    <p className="text-slate-600 text-xs mt-2">当前批次已全部处理</p>
                                 </div>
                             )}
                         </div>

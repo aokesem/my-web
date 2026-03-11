@@ -36,6 +36,7 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                 .select('word')
                 .eq('batch_id', 1)
                 .neq('status', 'mastered')
+                .neq('status', 'discarded')
                 .limit(250);
 
             if (data && data.length > 0) {

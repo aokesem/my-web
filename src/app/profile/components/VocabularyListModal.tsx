@@ -10,7 +10,7 @@ interface WordEntry {
     id: number;
     word: string;
     translation: string;
-    status: "unknown" | "vague" | "mastered";
+    status: "unseen" | "unknown" | "vague" | "mastered" | "discarded";
     batch_id: number;
 }
 
@@ -22,7 +22,7 @@ interface VocabularyListModalProps {
 
 export default function VocabularyListModal({ isOpen, onClose, onBackToDevice }: VocabularyListModalProps) {
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<"all" | "unknown" | "vague" | "mastered">("all");
+    const [activeTab, setActiveTab] = useState<"all" | "unseen" | "unknown" | "vague" | "mastered" | "discarded">("all");
     const [searchQuery, setSearchQuery] = useState("");
     // 💡【批次切换】当前显示的批次 ID
     const [currentBatchId, setCurrentBatchId] = useState(1);
@@ -108,13 +108,18 @@ export default function VocabularyListModal({ isOpen, onClose, onBackToDevice }:
 
     // 获取某个词的有效状态（本地覆盖优先）
     const getStatus = (item: WordEntry) => {
-        return (statuses[item.id] || item.status || "unknown") as "unknown" | "vague" | "mastered";
+        return (statuses[item.id] || item.status || "unseen") as "unseen" | "unknown" | "vague" | "mastered" | "discarded";
     };
 
-    // 点击状态标签时轮换：unknown → vague → mastered → unknown
+    // 点击状态标签时轮换：unseen → unknown → vague → mastered → unseen（不经过 discarded）
     const cycleStatus = async (item: WordEntry) => {
         const current = getStatus(item);
-        const next = current === "unknown" ? "vague" : current === "vague" ? "mastered" : "unknown";
+        let next: string;
+        if (current === "discarded") {
+            next = "unseen"; // 从抛弃状态可以救回来
+        } else {
+            next = current === "unseen" ? "unknown" : current === "unknown" ? "vague" : current === "vague" ? "mastered" : "unseen";
+        }
 
         // 乐观更新
         setStatuses(prev => ({ ...prev, [item.id]: next }));
@@ -128,32 +133,42 @@ export default function VocabularyListModal({ isOpen, onClose, onBackToDevice }:
 
     // 统计各状态的数量
     const counts = useMemo(() => {
+        let unseen = 0;
         let unknown = 0;
         let vague = 0;
         let mastered = 0;
+        let discarded = 0;
         basePool.forEach(w => {
             const s = getStatus(w);
             if (s === "mastered") mastered++;
             else if (s === "vague") vague++;
-            else unknown++;
+            else if (s === "unknown") unknown++;
+            else if (s === "discarded") discarded++;
+            else unseen++;
         });
         return {
             all: basePool.length,
+            unseen,
             unknown,
             vague,
-            mastered
+            mastered,
+            discarded
         };
     }, [basePool, statuses]);
 
     // Filter logic
     const filteredWords = useMemo(() => {
         let result = basePool;
-        if (activeTab === "unknown") {
+        if (activeTab === "unseen") {
+            result = result.filter(w => getStatus(w) === "unseen");
+        } else if (activeTab === "unknown") {
             result = result.filter(w => getStatus(w) === "unknown");
         } else if (activeTab === "vague") {
             result = result.filter(w => getStatus(w) === "vague");
         } else if (activeTab === "mastered") {
             result = result.filter(w => getStatus(w) === "mastered");
+        } else if (activeTab === "discarded") {
+            result = result.filter(w => getStatus(w) === "discarded");
         }
         return result;
     }, [basePool, activeTab, statuses]);
@@ -263,27 +278,39 @@ export default function VocabularyListModal({ isOpen, onClose, onBackToDevice }:
                             <div className="flex bg-[#232630] p-1 rounded-lg">
                                 <button
                                     onClick={() => setActiveTab("all")}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "all" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "all" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
                                 >
                                     所有 ({counts.all})
                                 </button>
                                 <button
+                                    onClick={() => setActiveTab("unseen")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "unseen" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                                >
+                                    未学习 ({counts.unseen})
+                                </button>
+                                <button
                                     onClick={() => setActiveTab("unknown")}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "unknown" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "unknown" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
                                 >
                                     没见过 ({counts.unknown})
                                 </button>
                                 <button
                                     onClick={() => setActiveTab("vague")}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "vague" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "vague" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
                                 >
                                     模糊 ({counts.vague})
                                 </button>
                                 <button
                                     onClick={() => setActiveTab("mastered")}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "mastered" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "mastered" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
                                 >
                                     已掌握 ({counts.mastered})
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("discarded")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "discarded" ? "bg-[#333745] text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                                >
+                                    已丢弃 ({counts.discarded})
                                 </button>
                             </div>
 
@@ -339,23 +366,29 @@ export default function VocabularyListModal({ isOpen, onClose, onBackToDevice }:
                                             <div className="col-span-6 text-slate-400 text-sm truncate pr-4" title={item.translation}>
                                                 {item.translation || <span className="text-slate-600 italic">No translation yet</span>}
                                             </div>
-                                            {/* 💡【可点击状态】点击轮换 unknown→vague→mastered→unknown */}
+                                            {/* 💡【可点击状态】点击轮换 unseen→unknown→vague→mastered→unseen */}
                                             <div className="col-span-2 flex justify-center">
                                                 <button
                                                     onClick={() => cycleStatus(item)}
                                                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer hover:scale-105 active:scale-95 transition-all
                                                         ${getStatus(item) === "mastered" ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20 hover:bg-emerald-400/20" :
                                                             getStatus(item) === "vague" ? "text-amber-400 bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/20" :
-                                                                "text-slate-400 bg-slate-400/10 border-slate-400/20 hover:bg-slate-400/20"}`}
+                                                                getStatus(item) === "unknown" ? "text-red-400 bg-red-400/10 border-red-400/20 hover:bg-red-400/20" :
+                                                                    getStatus(item) === "discarded" ? "text-slate-500 bg-slate-500/10 border-slate-500/20 hover:bg-slate-500/20 line-through" :
+                                                                        "text-slate-400 bg-slate-400/10 border-slate-400/20 hover:bg-slate-400/20"}`}
                                                     title="Click to change status"
                                                 >
                                                     <span className={`w-1.5 h-1.5 rounded-full 
                                                         ${getStatus(item) === "mastered" ? "bg-emerald-400" :
                                                             getStatus(item) === "vague" ? "bg-amber-400" :
-                                                                "bg-slate-400 animate-pulse"}`}
+                                                                getStatus(item) === "unknown" ? "bg-red-400" :
+                                                                    getStatus(item) === "discarded" ? "bg-slate-500" :
+                                                                        "bg-slate-400 animate-pulse"}`}
                                                     />
                                                     {getStatus(item) === "mastered" ? "Mastered" :
-                                                        getStatus(item) === "vague" ? "Vague" : "Unknown"}
+                                                        getStatus(item) === "vague" ? "Vague" :
+                                                            getStatus(item) === "unknown" ? "Unknown" :
+                                                                getStatus(item) === "discarded" ? "Dropped" : "Unseen"}
                                                 </button>
                                             </div>
                                         </div>
