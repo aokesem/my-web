@@ -23,6 +23,7 @@ import {
     Sprout, // [New] for Garden
     BookMarked,
     Utensils, // [New] for Diet
+    Box, // [New] for Prism
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -48,12 +49,12 @@ const ROOM_NAV_ITEMS = [
     { title: "任务森林", href: "/admin/playbook", icon: BookMarked },
 ];
 
-// [New] Library Space Items
 const LIBRARY_NAV_ITEMS = [
     { title: "提示词仓库", href: "/admin/library/prompts", icon: SearchCode },
     { title: "思维导图", href: "/admin/library/mindmap", icon: Layers },
     { title: "数字花园", href: "/admin/library/garden", icon: Sprout },
     { title: "饮食手记", href: "/admin/library/diet", icon: Utensils },
+    { title: "论文体系", href: "/admin/library/prism", icon: Box },
 ];
 
 export default function AdminLayout({

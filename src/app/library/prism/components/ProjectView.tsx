@@ -16,38 +16,13 @@ import type { PaperDetail } from './PaperDetailModal';
 // TYPES
 // ============================================================
 
-export interface ProjectTimelineEvent {
-    id: string;
-    date: string;
-    content: string;
-}
+import { ProjectData, ProjectCategory, ProjectInsight, ProjectOutcome, ProjectTimelineEvent } from '../types';
 
-export interface ProjectInsight {
-    id: string;
-    content: string;
-    paper_id?: string;
-}
-
-export interface ProjectOutcome {
-    id: string;
-    content: string;
-}
-
-export interface ProjectCategory<T> {
-    category: string;
-    items: T[];
-}
-
-export interface ProjectData {
-    name: string;
-    timeline: ProjectTimelineEvent[];
-    insights: ProjectCategory<ProjectInsight>[];
-    outcomes: ProjectCategory<ProjectOutcome>[];
-}
+export type { ProjectData, ProjectCategory, ProjectInsight, ProjectOutcome, ProjectTimelineEvent };
 
 interface ProjectViewProps {
     projects: ProjectData[];
-    allPapers: PaperDetail[];
+    allPapers: any[]; // Used for type compatibility in props if need be, actually it receives PaperDetail[]
     onOpenPaper: (id: string) => void;
 }
 

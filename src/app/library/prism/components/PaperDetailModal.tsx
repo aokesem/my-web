@@ -16,25 +16,8 @@ import Link from 'next/link';
 // ============================================================
 // TYPES
 // ============================================================
-
-export interface PaperDetail {
-    id: string;
-    title: string;
-    nickname?: string;
-    authors?: string;
-    year?: number;
-    url?: string;
-    projects: string[];
-    directions: string[];
-    types: string[];
-    summary?: string;
-    notes?: string;
-    rating?: number;
-    read_depth: '精读' | '粗读';
-    created_at: string;
-    key_contributions?: string[];
-    figures?: { url: string; description: string }[];
-}
+import { PaperDetail } from '../types';
+export type { PaperDetail };
 
 interface PaperDetailModalProps {
     paper: PaperDetail | null;
@@ -89,6 +72,17 @@ export default function PaperDetailModal({
     }, [open, onClose, onPrev, onNext, hasPrev, hasNext]);
 
     if (!paper) return null;
+
+    const formatUrl = (url: string) => {
+        if (!url) return "";
+        // 处理 arXiv:2410.16322 格式
+        const arxivRegex = /^arXiv:(\d+\.\d+.*)$/i;
+        const match = url.match(arxivRegex);
+        if (match) {
+            return `https://arxiv.org/abs/${match[1]}`;
+        }
+        return url;
+    };
 
     const allTags = [
         ...paper.projects.map(t => ({ label: t, kind: 'project' as const })),
@@ -244,7 +238,7 @@ export default function PaperDetailModal({
                             <div className="pt-6 mt-6 border-t border-stone-100 flex flex-col gap-3">
                                 {paper.url && (
                                     <Link
-                                        href={paper.url}
+                                        href={formatUrl(paper.url)}
                                         target="_blank"
                                         className="w-full flex items-center gap-2 justify-center px-4 py-2.5 rounded-xl bg-stone-800 text-white hover:bg-stone-900 transition-colors shadow-sm"
                                     >
@@ -288,10 +282,17 @@ export default function PaperDetailModal({
                                             {paper.figures.map((fig, idx) => (
                                                 <div key={idx} className="flex flex-col gap-3">
                                                     <div className="w-full bg-white rounded-2xl border border-stone-200/70 p-2 shadow-sm overflow-hidden flex items-center justify-center min-h-[200px]">
-                                                        {/* Placeholder for actual image */}
-                                                        <div className="w-full h-full bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center min-h-[300px]">
-                                                            <span className="text-stone-300 font-mono text-sm">[ Image: {fig.url} ]</span>
-                                                        </div>
+                                                        {fig.url ? (
+                                                            <img 
+                                                                src={fig.url} 
+                                                                alt={fig.description || "Figure"} 
+                                                                className="max-w-full h-auto rounded-xl"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center min-h-[300px]">
+                                                                <span className="text-stone-300 font-mono text-sm">[ No Image ]</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="px-2">
                                                         <p className="text-sm text-stone-500 leading-relaxed border-l-2 border-stone-200 pl-3">
@@ -316,34 +317,20 @@ export default function PaperDetailModal({
                                     </div>
                                 )}
 
-                                {/* Detailed Notes (Placeholder for Markdown) */}
-                                <div>
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <BookOpen size={16} className="text-stone-400" />
-                                        <h3 className="text-[13px] font-mono font-bold uppercase tracking-widest text-stone-500">
-                                            详细笔记 (Notes)
-                                        </h3>
+                                {paper.notes && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-6">
+                                            <BookOpen size={16} className="text-stone-400" />
+                                            <h3 className="text-[13px] font-mono font-bold uppercase tracking-widest text-stone-500">
+                                                详细笔记 (Notes)
+                                            </h3>
+                                        </div>
+                                        <div 
+                                            className="prose prose-stone prose-p:leading-loose prose-h3:font-serif max-w-none text-stone-700"
+                                            dangerouslySetInnerHTML={{ __html: paper.notes }}
+                                        />
                                     </div>
-                                    <div className="prose prose-stone prose-p:leading-loose prose-h3:font-serif max-w-none text-stone-700">
-                                        {/* Since this is a static demo, we render some placeholder content if notes are missing */}
-                                        {paper.notes ? (
-                                            <div dangerouslySetInnerHTML={{ __html: paper.notes }} />
-                                        ) : (
-                                            <>
-                                                <p>
-                                                    这是一段关于 <strong>{paper.title}</strong> 的详细阅读笔记预留区域。未来这里将支持丰富的 Markdown 渲染，包括复杂的行内数学公式 $E=mc^2$、代码块高亮以及多级嵌套列表。
-                                                </p>
-                                                <h3>1. 核心动机分析</h3>
-                                                <p>
-                                                    在阅读此文时，可以发现作者解决该问题的切入点非常独特。这里通常会有大段的分析文字，用来记录当时的思考...（示例文本，请在实际使用中替换为真实 Markdown 内容）。
-                                                </p>
-                                                <p>
-                                                    The quick brown fox jumps over the lazy dog. 这种左右分栏的设计确保了即使右侧内容非常长，左侧的核心元数据和成果也能始终处于可见范围（如果通过 CSS 设置为 sticky 的话，不过我们这里采用了独立滚动区域架构）。
-                                                </p>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
+                                )}
 
                             </div>
                         </div>

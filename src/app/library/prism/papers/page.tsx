@@ -13,8 +13,10 @@ import {
     Star,
 } from 'lucide-react';
 import Link from 'next/link';
-import PaperDetailModal, { PaperDetail } from '../components/PaperDetailModal';
-import ProjectView, { ProjectData } from '../components/ProjectView';
+import PaperDetailModal from '../components/PaperDetailModal';
+import ProjectView from '../components/ProjectView';
+import { usePrismPapers, usePrismProjects } from '../hooks/usePrismData';
+import { PaperDetail, ProjectData } from '../types';
 
 // ============================================================
 // TYPES & DATA
@@ -23,224 +25,8 @@ import ProjectView, { ProjectData } from '../components/ProjectView';
 // 引用 Modal 中的扩展数据类型
 type Paper = PaperDetail;
 
-// 静态示例数据
-const EXAMPLE_PAPERS: Paper[] = [
-    {
-        id: '1',
-        title: 'Attention Is All You Need',
-        nickname: 'Transformer',
-        authors: 'Vaswani et al.',
-        year: 2017,
-        url: 'https://arxiv.org/abs/1706.03762',
-        projects: ['对话系统'],
-        directions: ['Transformer', '注意力机制'],
-        types: ['算法'],
-        summary: '提出了基于自注意力机制的 Transformer 架构，取代了传统的 RNN/CNN 序列建模方式。',
-        rating: 9.5,
-        read_depth: '精读',
-        created_at: '2026-01-15',
-        key_contributions: [
-            '摒弃了RNN结构，完全依赖自注意力计算序列依赖',
-            '提出了多头注意力机制（Multi-Head Attention）',
-            '在WMT 2014英德翻译任务上达到新的SOTA'
-        ],
-        figures: [
-            {
-                url: 'transformer-arch.png',
-                description: 'Transformer 整体编码器-解码器架构，左侧为Encoder，右侧为Decoder。'
-            },
-            {
-                url: 'multi-head.png',
-                description: '多头自注意力模块，将特征映射到多个子空间并行计算注意力，最后拼接。'
-            }
-        ]
-    },
-    {
-        id: '2',
-        title: 'Proximal Policy Optimization Algorithms',
-        nickname: 'PPO',
-        authors: 'Schulman et al.',
-        year: 2017,
-        projects: ['智能体训练'],
-        directions: ['强化学习', '策略优化'],
-        types: ['算法'],
-        summary: '提出 PPO 算法，通过 clipped surrogate objective 实现稳定的策略梯度更新。',
-        rating: 9.0,
-        read_depth: '精读',
-        created_at: '2026-01-20',
-    },
-    {
-        id: '3',
-        title: 'LoRA: Low-Rank Adaptation of Large Language Models',
-        nickname: 'LoRA',
-        authors: 'Hu et al.',
-        year: 2021,
-        projects: ['对话系统'],
-        directions: ['参数微调', 'LLM'],
-        types: ['算法', '应用'],
-        summary: '通过低秩矩阵分解实现大模型的高效微调，大幅降低训练成本。',
-        rating: 8.5,
-        read_depth: '精读',
-        created_at: '2026-02-03',
-    },
-    {
-        id: '4',
-        title: 'A Survey of Reinforcement Learning from Human Feedback',
-        authors: 'Kaufmann et al.',
-        year: 2023,
-        projects: [],
-        directions: ['强化学习', 'RLHF'],
-        types: ['综述'],
-        summary: '系统梳理了 RLHF 的发展脉络、关键方法和主要挑战。',
-        rating: 7.5,
-        read_depth: '粗读',
-        created_at: '2026-02-10',
-    },
-    {
-        id: '5',
-        title: 'Constitutional AI: Harmlessness from AI Feedback',
-        authors: 'Bai et al.',
-        year: 2022,
-        projects: ['对话系统'],
-        directions: ['AI安全', 'RLHF'],
-        types: ['算法', '应用'],
-        summary: '提出通过 AI 自身反馈来训练无害性，减少对人类标注的依赖。',
-        read_depth: '粗读',
-        created_at: '2026-02-18',
-    },
-    {
-        id: '6',
-        title: 'Deep Residual Learning for Image Recognition',
-        authors: 'He et al.',
-        year: 2015,
-        projects: [],
-        directions: ['计算机视觉'],
-        types: ['算法'],
-        summary: '提出残差连接解决深层网络退化问题，使得训练极深网络成为可能。',
-        rating: 9.8,
-        read_depth: '精读',
-        created_at: '2026-02-25',
-    },
-    {
-        id: '7',
-        title: 'Scaling Laws for Neural Language Models',
-        authors: 'Kaplan et al.',
-        year: 2020,
-        projects: ['对话系统'],
-        directions: ['LLM', 'Scaling'],
-        types: ['应用'],
-        summary: '发现了模型规模、数据量和计算量之间的幂律关系。',
-        rating: 8.0,
-        read_depth: '粗读',
-        created_at: '2026-03-01',
-    },
-    {
-        id: '8',
-        title: 'Decision Transformer: Reinforcement Learning via Sequence Modeling',
-        nickname: 'Decision Transformer',
-        authors: 'Chen et al.',
-        year: 2021,
-        projects: ['智能体训练'],
-        directions: ['强化学习', 'Transformer'],
-        types: ['算法'],
-        summary: '将离线强化学习重新表述为序列建模问题，使用 Transformer 架构进行决策。',
-        rating: 8.5,
-        read_depth: '精读',
-        created_at: '2026-03-05',
-    },
-    {
-        id: '9',
-        title: 'Tool Learning with Foundation Models',
-        authors: 'Qin et al.',
-        year: 2023,
-        projects: ['智能体训练'],
-        directions: ['LLM', 'Agent'],
-        types: ['综述'],
-        summary: '综述了基础模型使用外部工具的研究进展，涵盖了工具学习的范式和评估。',
-        read_depth: '粗读',
-        created_at: '2026-03-08',
-    },
-    {
-        id: '10',
-        title: 'FlashAttention: Fast and Memory-Efficient Exact Attention',
-        authors: 'Dao et al.',
-        year: 2022,
-        projects: [],
-        directions: ['Transformer', '系统优化'],
-        types: ['算法', '工具'],
-        summary: '通过 IO 感知的分块计算实现精确注意力的加速，无需近似。',
-        rating: 9.0,
-        read_depth: '精读',
-        created_at: '2026-03-10',
-    },
-];
-
-// 静态项目示例数据
-const EXAMPLE_PROJECTS: ProjectData[] = [
-    {
-        name: '对话系统',
-        timeline: [
-            { id: 't1', date: '2026.03.11', content: '完成了基于自注意力的架构设计初步验证' },
-            { id: 't2', date: '2026.02.20', content: '引入 RLHF 流程进行安全性对齐' },
-            { id: 't3', date: '2026.01.10', content: '项目立项：探索下一代对话系统架构' },
-        ],
-        insights: [
-            {
-                category: '模型架构优化',
-                items: [
-                    { id: 'i1', content: '可以尝试用 FlashAttention 替换标准注意力，解决长文本瓶颈。', paper_id: '1' },
-                    { id: 'i2', content: '考虑在特定层使用 LoRA 降低微调阶段的显存爆炸风险。', paper_id: '3' },
-                ]
-            },
-            {
-                category: '对齐与安全性',
-                items: [
-                    { id: 'i3', content: 'RLHF 中关于 reward model 的设计需要更加细分人类反馈维度。', paper_id: '4' },
-                    { id: 'i4', content: '或许可以让模型自主提供 Constitutional Feedback，以加速标注。', paper_id: '5' }
-                ]
-            }
-        ],
-        outcomes: [
-            {
-                category: '基座模型设计',
-                items: [
-                    { id: 'o1', content: '确定采用 Decoder-only 的 Transformer 变体架构' },
-                    { id: 'o2', content: '确立词表大小与嵌入维度基准配置方案' },
-                ]
-            },
-            {
-                category: '训练策略',
-                items: [
-                    { id: 'o3', content: '针对对话进行多阶段 SFT 训练' },
-                ]
-            }
-        ]
-    },
-    {
-        name: '智能体训练',
-        timeline: [
-            { id: 't4', date: '2026.03.05', content: '开始测试将强化学习重构为序列预测的方案' },
-            { id: 't5', date: '2026.02.15', content: '梳理多工具调用的评估流程' }
-        ],
-        insights: [
-            {
-                category: '决策机制',
-                items: [
-                    { id: 'i5', content: '决策 Transformer 这种抛弃传统 Q-learning 的思路很新颖，直接输入 Return-to-go。', paper_id: '8' },
-                    { id: 'i6', content: '在连续动作空间下，PPO 依旧是最稳的选择。', paper_id: '2' }
-                ]
-            }
-        ],
-        outcomes: [
-            {
-                category: '动作空间设计',
-                items: [
-                    { id: 'o4', content: '离散化基础工具调用字典' }
-                ]
-            }
-        ]
-    }
-];
+// 静态示例数据已移除，转为由 Supabase 提供实时数据
+// 静态项目示例数据已移除，转为由 Supabase 提供实时数据
 
 // ============================================================
 // CONSTANTS
@@ -387,8 +173,15 @@ function PaperCard({ paper, index, onClick }: { paper: Paper; index: number; onC
 // MAIN PAGE
 // ============================================================
 
-export default function PapersPage() {
-    const [activeTab, setActiveTab] = useState('all');
+export default function LibraryPapersPage() {
+    // API Data Fetching
+    const { papers: allPapers, isLoading: papersLoading } = usePrismPapers();
+    const { projects: allProjects, isLoading: projectsLoading } = usePrismProjects();
+
+    const isLoading = papersLoading || projectsLoading;
+
+    // View State
+    const [activeTab, setActiveTab] = useState('projects');
     const [sortBy, setSortBy] = useState<SortKey>('created_at');
     const [sortDesc, setSortDesc] = useState(true);
     const [readDepthFilter, setReadDepthFilter] = useState<'all' | '精读' | '粗读'>('all');
@@ -397,9 +190,9 @@ export default function PapersPage() {
     // Modal State
     const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
 
-    // Filter & Sorting
+    // Derived Data
     const sortedPapers = useMemo(() => {
-        let papers = [...EXAMPLE_PAPERS];
+        let papers = [...allPapers];
 
         // Filter
         if (readDepthFilter !== 'all') {
@@ -408,27 +201,24 @@ export default function PapersPage() {
 
         // Sort
         papers.sort((a, b) => {
-            let valA: number, valB: number;
-            switch (sortBy) {
-                case 'created_at':
-                    valA = new Date(a.created_at).getTime();
-                    valB = new Date(b.created_at).getTime();
-                    break;
-                case 'year':
-                    valA = a.year ?? 0;
-                    valB = b.year ?? 0;
-                    break;
-                case 'rating':
-                    valA = a.rating ?? 0;
-                    valB = b.rating ?? 0;
-                    break;
-                default:
-                    return 0;
+            let valA = a[sortBy] as any;
+            let valB = b[sortBy] as any;
+
+            if (sortBy === 'created_at') {
+                valA = new Date(valA || 0).getTime();
+                valB = new Date(valB || 0).getTime();
+            } else if (sortBy === 'rating' || sortBy === 'year') {
+                valA = valA || 0;
+                valB = valB || 0;
             }
-            return sortDesc ? valB - valA : valA - valB;
+
+            if (valA < valB) return sortDesc ? 1 : -1;
+            if (valA > valB) return sortDesc ? -1 : 1;
+            return 0;
         });
+
         return papers;
-    }, [sortBy, sortDesc, readDepthFilter]);
+    }, [allPapers, sortBy, sortDesc, readDepthFilter]);
 
     // Pagination
     const totalPages = Math.ceil(sortedPapers.length / ITEMS_PER_PAGE);
@@ -533,8 +323,16 @@ export default function PapersPage() {
                     </div>
                 </div>
 
-                {/* 当处于不同TAB时的内容切换渲染 */}
-                {activeTab === 'all' && (
+                {/* ===== LOADING STATE ===== */}
+            {isLoading && (
+                <div className="w-full flex-1 flex flex-col items-center justify-center -mt-20">
+                    <div className="w-8 h-8 rounded-full border-2 border-stone-200 border-t-violet-500 animate-spin mb-4" />
+                    <span className="text-stone-400 font-mono text-sm tracking-wider uppercase">Loading Data...</span>
+                </div>
+            )}
+
+            {/* 当处于不同TAB时的内容切换渲染 */}
+            {!isLoading && activeTab === 'all' && (
                     <>
                         {/* ===== TOOLBAR ===== */}
                         <div className="w-full px-10 pb-6 shrink-0">
@@ -657,13 +455,13 @@ export default function PapersPage() {
                     </>
                 )}
 
-                {activeTab === 'projects' && (
-                    <ProjectView
-                        projects={EXAMPLE_PROJECTS}
-                        allPapers={EXAMPLE_PAPERS}
-                        onOpenPaper={(id) => setSelectedPaperId(id)}
-                    />
-                )}
+                {!isLoading && activeTab === 'projects' && (
+                <ProjectView
+                    projects={allProjects}
+                    allPapers={allPapers}
+                    onOpenPaper={(id) => setSelectedPaperId(id)}
+                />
+            )}
 
             </div>
 
