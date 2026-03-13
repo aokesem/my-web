@@ -86,7 +86,7 @@ export default function HobbiesPage() {
 
             <div className="border border-zinc-800 rounded-lg overflow-hidden">
                 <Table>
-                    <TableHeader><TableRow className="bg-zinc-900/50 border-zinc-800"><TableHead>Cat</TableHead><TableHead>Name</TableHead><TableHead>Desc</TableHead><TableHead>Lv</TableHead><TableHead className="text-right">Act</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow className="bg-zinc-900/50 border-zinc-800"><TableHead className="text-zinc-400">Cat</TableHead><TableHead className="text-zinc-400">Name</TableHead><TableHead className="text-zinc-400">Desc</TableHead><TableHead className="text-zinc-400">Lv</TableHead><TableHead className="text-right text-zinc-400">Act</TableHead></TableRow></TableHeader>
                     <TableBody>
                         {hobbies.map((h) => (
                             <TableRow key={h.id} className={`border-zinc-800 hover:bg-zinc-900/30 ${editingId === h.id ? 'bg-zinc-900/80' : ''}`}>

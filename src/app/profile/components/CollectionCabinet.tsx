@@ -14,6 +14,7 @@ import {
     BookOpen,
     Film
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
@@ -333,10 +334,21 @@ export default function CollectionCabinet({ isActive, onToggle, isAdmin }: Colle
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                 {routines.length > 0 ? (
                                     routines.map((routine) => {
-                                        // 根据数据库的 key 查找图标配置，找不到就用默认的
-                                        const config = ICON_MAP[routine.key] || ICON_MAP.default;
+                                        // 根据数据库的 key 查找图标配置，找不到就尝试动态渲染
+                                        let config = ICON_MAP[routine.key];
+                                        let Icon;
+                                        if (config) {
+                                            Icon = config.icon;
+                                        } else {
+                                            const pascalName = routine.key.charAt(0).toUpperCase() + routine.key.slice(1);
+                                            Icon = (LucideIcons as any)[routine.key] || (LucideIcons as any)[pascalName] || Clock;
+                                            config = {
+                                                icon: Icon,
+                                                color: 'text-slate-500',
+                                                bg: 'bg-slate-50/50'
+                                            };
+                                        }
                                         const isDone = routine.isCompleted;
-                                        const Icon = config.icon;
 
                                         return (
                                             <button

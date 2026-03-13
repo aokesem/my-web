@@ -23,7 +23,7 @@ interface EnglishModuleModalProps {
 
 export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: EnglishModuleModalProps) {
     const [mounted, setMounted] = useState(false);
-    const [poolFilter, setPoolFilter] = useState<"learning" | "unseen" | "unknown" | "vague" | "all">("learning");
+    const [poolFilter, setPoolFilter] = useState<"unseen" | "unknown" | "vague" | "mastered" | "all">("unseen");
 
     // 💡【批次切换与数据源】
     const [totalBatches, setTotalBatches] = useState(39);
@@ -92,32 +92,82 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
     // 是否显示译文
     const [showTranslation, setShowTranslation] = useState(false);
 
+    // 我们维护一个“复习队列”（存 index 或 id），确保一轮内不重复
+    const [reviewQueue, setReviewQueue] = useState<number[]>([]);
+
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    // 根据选定的过滤池抽词
-    const pickNextWord = () => {
+    // 核心函数：根据当前池子生成一个随机打乱的 ID 列表
+    const generateShuffledQueue = (filterStrategy: string): number[] => {
         const pool = batch.filter(w => {
             const s = statuses[w.id] || w.status || "unseen";
-            // 永远排除 discarded
             if (s === "discarded") return false;
-            
-            // 根据过滤器选择
-            if (poolFilter === "learning") {
-                return s !== "mastered"; // 默认：学所有没掌握的
-            } else if (poolFilter === "all") {
-                return true; // 包含已掌握的，强行复习
-            } else {
-                return s === poolFilter; // 精确复习某个状态
-            }
+
+            if (filterStrategy === "all") return true;
+            return s === filterStrategy;
         });
-        if (pool.length === 0) {
-            setCurrentWord(null);
-            return;
+
+        const ids = pool.map(w => w.id);
+        // Fisher-Yates shuffle
+        for (let i = ids.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [ids[i], ids[j]] = [ids[j], ids[i]];
         }
-        const idx = Math.floor(Math.random() * pool.length);
-        setCurrentWord(pool[idx]);
+        return ids;
+    };
+
+    // 监听过滤器变化：每当 filter 或 batch 改变，强制刷新队列并抽第一个词
+    useEffect(() => {
+        if (batch.length > 0) {
+            const newQueue = generateShuffledQueue(poolFilter);
+            setReviewQueue(newQueue);
+            if (newQueue.length > 0) {
+                const nextId = newQueue[0];
+                const nextWord = batch.find(w => w.id === nextId) || null;
+                setCurrentWord(nextWord);
+            } else {
+                setCurrentWord(null);
+            }
+            setShowTranslation(false);
+        }
+    }, [poolFilter, batch, statuses]);
+
+    // 用户在当前池子里要求切换下一个词（不改变过滤器，消耗队列）
+    const pickNextWord = () => {
+        let currentQueue = [...reviewQueue];
+
+        // 如果当前有词，把它从队列头移除（因为它正在被消费）
+        // 实际逻辑中，队列头部应该是 currentWord，这里我们在取“下一个”词
+        if (currentWord && currentQueue[0] === currentWord.id) {
+            currentQueue.shift();
+        }
+
+        // 过滤掉因为状态改变而不再适合留在当前队列的词
+        currentQueue = currentQueue.filter(id => {
+            const w = batch.find(w => w.id === id);
+            if (!w) return false;
+            const s = statuses[id] || w.status || "unseen";
+            if (s === "discarded") return false;
+            if (poolFilter === "all") return true;
+            return s === poolFilter;
+        });
+
+        // 如果队列空了，重新生成一轮
+        if (currentQueue.length === 0) {
+            currentQueue = generateShuffledQueue(poolFilter);
+            // 重新生成后如果还是空，说明是真的一滴都没有了
+            if (currentQueue.length === 0) {
+                setReviewQueue([]);
+                setCurrentWord(null);
+                return;
+            }
+        }
+
+        const nextId = currentQueue[0];
+        setReviewQueue(currentQueue);
+        setCurrentWord(batch.find(w => w.id === nextId) || null);
         setShowTranslation(false);
     };
 
@@ -239,22 +289,21 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
                             </div>
                             <div className="flex items-center gap-2">
                                 {/* 💡【学习池过滤器】 */}
-                                <select 
+                                <select
                                     value={poolFilter}
                                     onChange={(e) => {
                                         setPoolFilter(e.target.value as any);
-                                        // 切换过滤器后需要重新抽词
-                                        setTimeout(pickNextWord, 0); 
+                                        // 切换过滤器后，上述挂载的 useEffect 会监听到 poolFilter 改变，自动重新生成队列并抽词，无需 setTimeout
                                     }}
-                                    className="bg-transparent text-slate-500 hover:text-slate-300 text-[10px] font-mono tracking-wider outline-none cursor-pointer border-none appearance-none pr-1"
+                                    className="bg-transparent text-slate-500 hover:text-slate-300 text-[10px] font-mono tracking-wider outline-none cursor-pointer border-none appearance-none pr-1 uppercase"
                                 >
-                                    <option value="learning" className="bg-[#1e2028]">LEARNING</option>
                                     <option value="unseen" className="bg-[#1e2028]">UNSEEN</option>
                                     <option value="unknown" className="bg-[#1e2028]">UNKNOWN</option>
                                     <option value="vague" className="bg-[#1e2028]">VAGUE</option>
+                                    <option value="mastered" className="bg-[#1e2028]">MASTERED</option>
                                     <option value="all" className="bg-[#1e2028]">ALL</option>
                                 </select>
-                                <div className="w-[1px] h-3 bg-white/10 mx-1"></div>
+                                <div className="w-px h-3 bg-white/10 mx-1"></div>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenList(); }}
                                     className="p-1 text-slate-500 hover:text-slate-300 transition-colors rounded-full hover:bg-white/5"
