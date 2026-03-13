@@ -16,6 +16,12 @@ import {
     Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import remarkBreaks from 'remark-breaks';
+import 'katex/dist/katex.min.css';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
@@ -73,6 +79,13 @@ export default function PaperDetailModal({
     const [editingFigures, setEditingFigures] = useState(false);
     const [tempFigures, setTempFigures] = useState<{ url: string; description: string }[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+
+    const handleKeyDown = (e: React.KeyboardEvent, type: 'summary' | 'notes', value: string) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleUpdate(type, value);
+        }
+    };
 
     // Sync state when paper changes
     useEffect(() => {
@@ -410,8 +423,9 @@ export default function PaperDetailModal({
                                             <textarea 
                                                 value={tempSummary}
                                                 onChange={e => setTempSummary(e.target.value)}
-                                                className="w-full bg-white border border-stone-200 rounded-xl p-4 text-sm font-serif italic text-stone-600 focus:ring-1 focus:ring-stone-300 outline-hidden min-h-[100px]"
-                                                placeholder="输入一句话摘要..."
+                                                onKeyDown={e => handleKeyDown(e, 'summary', tempSummary)}
+                                                className="w-full bg-white border border-stone-200 rounded-xl p-4 text-sm font-serif italic text-stone-600 focus:ring-1 focus:ring-stone-300 outline-none min-h-[100px] leading-relaxed"
+                                                placeholder="输入一句话摘要... (Enter 保存, Shift+Enter 换行)"
                                             />
                                             <div className="flex justify-end gap-2">
                                                 <button 
@@ -568,8 +582,9 @@ export default function PaperDetailModal({
                                             <textarea 
                                                 value={tempNotes}
                                                 onChange={e => setTempNotes(e.target.value)}
-                                                className="w-full bg-white border border-stone-200 rounded-2xl p-6 text-sm font-mono leading-relaxed text-stone-700 focus:ring-1 focus:ring-stone-300 outline-hidden min-h-[400px]"
-                                                placeholder="写点什么... (支持 HTML/Markdown)"
+                                                onKeyDown={e => handleKeyDown(e, 'notes', tempNotes)}
+                                                className="w-full bg-white border border-stone-200 rounded-2xl p-8 text-[15px] font-mono leading-relaxed text-stone-700 focus:ring-1 focus:ring-stone-300 outline-none min-h-[500px]"
+                                                placeholder="在此输入笔记... (支持 Markdown 和 LaTeX 公式 $E=mc^2$。Enter 保存, Shift+Enter 换行)"
                                             />
                                             <div className="flex justify-end gap-2">
                                                 <button 
@@ -584,10 +599,14 @@ export default function PaperDetailModal({
                                         </div>
                                     ) : (
                                         paper.notes ? (
-                                            <div 
-                                                className="prose prose-stone prose-p:leading-loose prose-h3:font-serif max-w-none text-stone-700"
-                                                dangerouslySetInnerHTML={{ __html: paper.notes }}
-                                            />
+                                            <div className="prose prose-stone prose-p:leading-relaxed prose-pre:bg-stone-100 prose-pre:text-stone-800 max-w-none text-stone-700 selection:bg-amber-100">
+                                                <ReactMarkdown 
+                                                    remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]} 
+                                                    rehypePlugins={[rehypeKatex]}
+                                                >
+                                                    {paper.notes}
+                                                </ReactMarkdown>
+                                            </div>
                                         ) : (
                                             <div className="py-12 border-2 border-dashed border-stone-200 rounded-3xl flex flex-col items-center justify-center text-stone-400 gap-3">
                                                 <Pencil size={24} className="opacity-20" />

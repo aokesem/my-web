@@ -9,7 +9,13 @@ import {
     Lightbulb,
     Target,
     Link as LinkIcon,
+    Pencil,
+    Save,
+    X,
+    Loader2,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 import type { PaperDetail } from './PaperDetailModal';
 
 // ============================================================
@@ -22,18 +28,60 @@ export type { ProjectData, ProjectCategory, ProjectInsight, ProjectOutcome, Proj
 
 interface ProjectViewProps {
     projects: ProjectData[];
-    allPapers: any[]; // Used for type compatibility in props if need be, actually it receives PaperDetail[]
+    allPapers: any[];
     onOpenPaper: (id: string) => void;
+    onUpdateProjects: () => Promise<void>;
 }
 
 // ============================================================
 // COMPONENT
 // ============================================================
 
-export default function ProjectView({ projects, allPapers, onOpenPaper }: ProjectViewProps) {
+export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdateProjects }: ProjectViewProps) {
     const [activeProjectName, setActiveProjectName] = useState<string>(projects[0]?.name || '');
     const [isTimelineOpen, setIsTimelineOpen] = useState(false);
     const [paperGroupMode, setPaperGroupMode] = useState<'direction' | 'type' | 'depth'>('direction');
+
+    // Editing State
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [tempContent, setTempContent] = useState('');
+    const [tempPaperIds, setTempPaperIds] = useState<string[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async (table: 'prism_project_insights' | 'prism_project_outcomes', junctionTable: 'prism_insight_papers' | 'prism_outcome_papers', idField: 'insight_id' | 'outcome_id') => {
+        if (!editingId) return;
+        setIsSaving(true);
+        try {
+            // 1. Update content
+            const { error: txtErr } = await supabase
+                .from(table)
+                .update({ content: tempContent })
+                .eq('id', editingId);
+            if (txtErr) throw txtErr;
+
+            // 2. Refresh associations
+            const { error: delErr } = await supabase
+                .from(junctionTable)
+                .delete()
+                .eq(idField, editingId);
+            if (delErr) throw delErr;
+
+            if (tempPaperIds.length > 0) {
+                const { error: insErr } = await supabase
+                    .from(junctionTable)
+                    .insert(tempPaperIds.map(pid => ({ [idField]: editingId, paper_id: pid })));
+                if (insErr) throw insErr;
+            }
+
+            toast.success('保存成功');
+            await onUpdateProjects();
+            setEditingId(null);
+        } catch (e: any) {
+            toast.error('保存失败: ' + e.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Group papers by direction for the active project
     const activeProject = projects.find(p => p.name === activeProjectName);
@@ -223,26 +271,82 @@ export default function ProjectView({ projects, allPapers, onOpenPaper }: Projec
                         {activeProject.insights.map(group => (
                             <AccordionGroup key={group.category} title={group.category} count={group.items.length} defaultOpen={true}>
                                 {group.items.map(insight => (
-                                    <div key={insight.id} className="p-3 rounded-xl border border-stone-200/60 bg-amber-50/30 hover:bg-white transition-colors relative group">
-                                        <div className="text-base text-stone-700 leading-relaxed mb-2">
-                                            {insight.content}
-                                        </div>
-                                        {insight.paper_id && (() => {
-                                            const linkedPaper = allPapers.find(p => p.id === insight.paper_id);
-                                            const pName = linkedPaper ? (linkedPaper.nickname || linkedPaper.title) : '未知论文';
-                                            return (
-                                                <button
-                                                    onClick={() => onOpenPaper(insight.paper_id!)}
-                                                    className="w-full flex items-center justify-between px-2 py-1.5 mt-2 bg-white border border-stone-100 rounded-lg text-[13px] font-mono text-blue-500 hover:bg-stone-50 hover:text-amber-600 transition-colors group-hover:border-amber-200"
+                                    <div key={insight.id} className="p-3 rounded-xl border border-stone-200/60 bg-amber-50/30 hover:bg-white transition-colors relative group/item">
+                                        {editingId === insight.id ? (
+                                            <div className="space-y-3">
+                                                <textarea 
+                                                    value={tempContent}
+                                                    onChange={e => setTempContent(e.target.value)}
+                                                    className="w-full bg-white border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-amber-200 outline-none min-h-[80px]"
+                                                />
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">关联论文 (多选)</label>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {relatedPapers.map(p => {
+                                                            const isSelected = tempPaperIds.includes(p.id);
+                                                            return (
+                                                                <button
+                                                                    key={p.id}
+                                                                    onClick={() => {
+                                                                        setTempPaperIds(prev => isSelected ? prev.filter(id => id !== p.id) : [...prev, p.id]);
+                                                                    }}
+                                                                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all border ${
+                                                                        isSelected 
+                                                                        ? 'bg-amber-100 border-amber-300 text-amber-800' 
+                                                                        : 'bg-stone-50 border-stone-200 text-stone-500 hover:border-stone-300'
+                                                                    }`}
+                                                                >
+                                                                    {p.nickname || p.title.slice(0, 15)}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2 pt-1">
+                                                    <button onClick={() => setEditingId(null)} className="p-1.5 text-stone-400 hover:text-stone-600 transition-colors"><X size={14}/></button>
+                                                    <button 
+                                                        onClick={() => handleSave('prism_project_insights', 'prism_insight_papers', 'insight_id')}
+                                                        disabled={isSaving}
+                                                        className="flex items-center gap-1 px-3 py-1 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors disabled:opacity-50"
+                                                    >
+                                                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                                        保存
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingId(insight.id);
+                                                        setTempContent(insight.content);
+                                                        setTempPaperIds(insight.paper_ids || []);
+                                                    }}
+                                                    className="absolute top-2 right-2 opacity-0 group-hover/item:opacity-100 p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all z-10"
                                                 >
-                                                    <span className="flex items-center gap-1.5 overflow-hidden">
-                                                        <LinkIcon size={10} className="shrink-0" />
-                                                        <span className="truncate">{pName}</span>
-                                                    </span>
-                                                    <ChevronRight size={12} className="opacity-50 shrink-0 ml-1" />
+                                                    <Pencil size={12} />
                                                 </button>
-                                            );
-                                        })()}
+                                                <div className="text-base text-stone-700 leading-relaxed mb-2 pr-6">
+                                                    {insight.content}
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {insight.paper_ids?.map(pid => {
+                                                        const linkedPaper = allPapers.find(p => p.id === pid);
+                                                        if (!linkedPaper) return null;
+                                                        return (
+                                                            <button
+                                                                key={pid}
+                                                                onClick={() => onOpenPaper(pid)}
+                                                                className="flex items-center gap-1.5 px-2 py-1 bg-white border border-stone-100 rounded-lg text-[12px] font-mono text-blue-500 hover:bg-stone-50 hover:text-amber-600 transition-colors border-dashed"
+                                                            >
+                                                                <LinkIcon size={10} className="shrink-0" />
+                                                                <span className="truncate max-w-[150px]">{linkedPaper.nickname || linkedPaper.title}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 ))}
                             </AccordionGroup>
@@ -259,11 +363,87 @@ export default function ProjectView({ projects, allPapers, onOpenPaper }: Projec
                         {activeProject.outcomes.map(group => (
                             <AccordionGroup key={group.category} title={group.category} count={group.items.length} defaultOpen={true}>
                                 {group.items.map(outcome => (
-                                    <div key={outcome.id} className="flex items-start gap-2.5 p-1 mb-1">
-                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                                        <span className="text-[15px] text-stone-700 leading-relaxed font-medium">
-                                            {outcome.content}
-                                        </span>
+                                    <div key={outcome.id} className="group/item rounded-xl border border-transparent hover:border-emerald-200 hover:bg-white transition-all relative">
+                                        {editingId === outcome.id ? (
+                                            <div className="p-3 space-y-3">
+                                                <textarea 
+                                                    value={tempContent}
+                                                    onChange={e => setTempContent(e.target.value)}
+                                                    className="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-emerald-200 outline-none min-h-[80px]"
+                                                />
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">关联论文 (多选)</label>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {relatedPapers.map(p => {
+                                                            const isSelected = tempPaperIds.includes(p.id);
+                                                            return (
+                                                                <button
+                                                                    key={p.id}
+                                                                    onClick={() => {
+                                                                        setTempPaperIds(prev => isSelected ? prev.filter(id => id !== p.id) : [...prev, p.id]);
+                                                                    }}
+                                                                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all border ${
+                                                                        isSelected 
+                                                                        ? 'bg-emerald-100 border-emerald-300 text-emerald-800' 
+                                                                        : 'bg-stone-50 border-stone-200 text-stone-500 hover:border-stone-300'
+                                                                    }`}
+                                                                >
+                                                                    {p.nickname || p.title.slice(0, 15)}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2 pt-1">
+                                                    <button onClick={() => setEditingId(null)} className="p-1.5 text-stone-400 hover:text-stone-600 transition-colors"><X size={14}/></button>
+                                                    <button 
+                                                        onClick={() => handleSave('prism_project_outcomes', 'prism_outcome_papers', 'outcome_id')}
+                                                        disabled={isSaving}
+                                                        className="flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                                                    >
+                                                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                                        保存
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingId(outcome.id);
+                                                        setTempContent(outcome.content);
+                                                        setTempPaperIds(outcome.paper_ids || []);
+                                                    }}
+                                                    className="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 p-1 text-stone-300 hover:text-emerald-500 transition-all z-10"
+                                                >
+                                                    <Pencil size={11} />
+                                                </button>
+                                                <div className="flex items-start gap-2.5 p-2 mb-1">
+                                                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                                                    <div className="flex-1 flex flex-col gap-1">
+                                                        <span className="text-[15px] text-stone-700 leading-relaxed font-medium pr-6">
+                                                            {outcome.content}
+                                                        </span>
+                                                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                                            {outcome.paper_ids?.map(pid => {
+                                                                const linkedPaper = allPapers.find(p => p.id === pid);
+                                                                if (!linkedPaper) return null;
+                                                                return (
+                                                                    <button
+                                                                        key={pid}
+                                                                        onClick={() => onOpenPaper(pid)}
+                                                                        className="flex items-center gap-1 text-[11px] font-mono text-stone-400 hover:text-emerald-600 transition-colors"
+                                                                    >
+                                                                        <LinkIcon size={9} />
+                                                                        <span className="truncate max-w-[120px]">{linkedPaper.nickname || linkedPaper.title}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 ))}
                             </AccordionGroup>

@@ -82,22 +82,30 @@ const fetchPapers = async (): Promise<PaperDetail[]> => {
 };
 
 const fetchProjects = async (): Promise<ProjectData[]> => {
+    const results = await Promise.all([
+        supabase.from('prism_projects').select('*').order('sort_order'),
+        supabase.from('prism_project_timeline').select('*').order('sort_order'),
+        supabase.from('prism_project_insights').select('*').order('sort_order'),
+        supabase.from('prism_project_outcomes').select('*').order('sort_order'),
+        supabase.from('prism_insight_papers').select('*'),
+        supabase.from('prism_outcome_papers').select('*'),
+    ]);
+
     const [
         { data: projects, error: pErr },
         { data: timeline, error: tErr },
         { data: insights, error: iErr },
         { data: outcomes, error: oErr },
-    ] = await Promise.all([
-        supabase.from('prism_projects').select('*').order('sort_order'),
-        supabase.from('prism_project_timeline').select('*').order('sort_order'),
-        supabase.from('prism_project_insights').select('*').order('sort_order'),
-        supabase.from('prism_project_outcomes').select('*').order('sort_order'),
-    ]);
+        { data: insightPapers, error: ipErr },
+        { data: outcomePapers, error: opErr },
+    ] = results;
 
     if (pErr) throw pErr;
     if (tErr) throw tErr;
     if (iErr) throw iErr;
     if (oErr) throw oErr;
+    if (ipErr) throw ipErr;
+    if (opErr) throw opErr;
 
     return projects.map((proj: any) => {
         const pTimeline = timeline
@@ -111,6 +119,19 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
         const pInsightsData = insights.filter((i: any) => i.project_id === proj.id);
         const pOutcomesData = outcomes.filter((o: any) => o.project_id === proj.id);
 
+        // Map junction data
+        const insightIdToPapers = new Map();
+        insightPapers.forEach((ip: any) => {
+            if (!insightIdToPapers.has(ip.insight_id)) insightIdToPapers.set(ip.insight_id, []);
+            insightIdToPapers.get(ip.insight_id).push(ip.paper_id);
+        });
+
+        const outcomeIdToPapers = new Map();
+        outcomePapers.forEach((op: any) => {
+            if (!outcomeIdToPapers.has(op.outcome_id)) outcomeIdToPapers.set(op.outcome_id, []);
+            outcomeIdToPapers.get(op.outcome_id).push(op.paper_id);
+        });
+
         // 分组启示
         const insCats = Array.from(new Set(pInsightsData.map((i: any) => i.category)));
         const pInsights: ProjectCategory<ProjectInsight>[] = insCats.map(cat => ({
@@ -118,7 +139,7 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             items: pInsightsData.filter((i: any) => i.category === cat).map((i: any) => ({
                 id: i.id,
                 content: i.content,
-                paper_id: i.paper_id || undefined
+                paper_ids: insightIdToPapers.get(i.id) || []
             }))
         }));
 
@@ -128,7 +149,8 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             category: cat as string,
             items: pOutcomesData.filter((o: any) => o.category === cat).map((o: any) => ({
                 id: o.id,
-                content: o.content
+                content: o.content,
+                paper_ids: outcomeIdToPapers.get(o.id) || []
             }))
         }));
 

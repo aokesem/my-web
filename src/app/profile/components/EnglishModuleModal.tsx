@@ -23,6 +23,7 @@ interface EnglishModuleModalProps {
 
 export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: EnglishModuleModalProps) {
     const [mounted, setMounted] = useState(false);
+    const [poolFilter, setPoolFilter] = useState<"learning" | "unseen" | "unknown" | "vague" | "all">("learning");
 
     // 💡【批次切换与数据源】
     const [totalBatches, setTotalBatches] = useState(39);
@@ -95,11 +96,21 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
         setMounted(true);
     }, []);
 
-    // 从未掌握的词中随机抽一个（池子里只包括 unseen, unknown, vague）
+    // 根据选定的过滤池抽词
     const pickNextWord = () => {
         const pool = batch.filter(w => {
             const s = statuses[w.id] || w.status || "unseen";
-            return s !== "mastered" && s !== "discarded";
+            // 永远排除 discarded
+            if (s === "discarded") return false;
+            
+            // 根据过滤器选择
+            if (poolFilter === "learning") {
+                return s !== "mastered"; // 默认：学所有没掌握的
+            } else if (poolFilter === "all") {
+                return true; // 包含已掌握的，强行复习
+            } else {
+                return s === poolFilter; // 精确复习某个状态
+            }
         });
         if (pool.length === 0) {
             setCurrentWord(null);
@@ -163,8 +174,8 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
 
     if (!mounted) return null;
 
-    const masteredCount = Object.values(statuses).filter(s => s === "mastered").length;
-    const totalInBatch = batch.length;
+    const masteredCount = batch.filter(w => (statuses[w.id] || w.status) === "mastered").length;
+    const totalInBatch = batch.filter(w => (statuses[w.id] || w.status) !== "discarded").length; // 不算废弃的词
 
     const modalContent = (
         <AnimatePresence>
@@ -226,7 +237,24 @@ export default function EnglishModuleModal({ isOpen, onClose, onOpenList }: Engl
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                {/* 💡【学习池过滤器】 */}
+                                <select 
+                                    value={poolFilter}
+                                    onChange={(e) => {
+                                        setPoolFilter(e.target.value as any);
+                                        // 切换过滤器后需要重新抽词
+                                        setTimeout(pickNextWord, 0); 
+                                    }}
+                                    className="bg-transparent text-slate-500 hover:text-slate-300 text-[10px] font-mono tracking-wider outline-none cursor-pointer border-none appearance-none pr-1"
+                                >
+                                    <option value="learning" className="bg-[#1e2028]">LEARNING</option>
+                                    <option value="unseen" className="bg-[#1e2028]">UNSEEN</option>
+                                    <option value="unknown" className="bg-[#1e2028]">UNKNOWN</option>
+                                    <option value="vague" className="bg-[#1e2028]">VAGUE</option>
+                                    <option value="all" className="bg-[#1e2028]">ALL</option>
+                                </select>
+                                <div className="w-[1px] h-3 bg-white/10 mx-1"></div>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenList(); }}
                                     className="p-1 text-slate-500 hover:text-slate-300 transition-colors rounded-full hover:bg-white/5"

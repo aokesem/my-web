@@ -26,12 +26,13 @@ export interface ProjectTimelineEvent {
 export interface ProjectInsight {
     id: string;
     content: string;
-    paper_id?: string;
+    paper_ids: string[];
 }
 
 export interface ProjectOutcome {
     id: string;
     content: string;
+    paper_ids: string[];
 }
 
 export interface ProjectCategory<T> {
