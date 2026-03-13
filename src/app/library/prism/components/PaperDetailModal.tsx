@@ -18,6 +18,7 @@ import {
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 // ============================================================
 // TYPES
@@ -69,6 +70,8 @@ export default function PaperDetailModal({
     const [tempNotes, setTempNotes] = useState('');
     const [editingKeyContributions, setEditingKeyContributions] = useState(false);
     const [tempKeyContributions, setTempKeyContributions] = useState<string[]>([]);
+    const [editingFigures, setEditingFigures] = useState(false);
+    const [tempFigures, setTempFigures] = useState<{ url: string; description: string }[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
     // Sync state when paper changes
@@ -77,11 +80,49 @@ export default function PaperDetailModal({
             setTempSummary(paper.summary || '');
             setTempNotes(paper.notes || '');
             setTempKeyContributions(paper.key_contributions || []);
+            setTempFigures(paper.figures || []);
             setEditingSummary(false);
             setEditingNotes(false);
             setEditingKeyContributions(false);
+            setEditingFigures(false);
         }
     }, [paper]);
+
+    const handleUpdateFigures = async () => {
+        if (!paper) return;
+        setIsSaving(true);
+        try {
+            // Delete old figures for this paper
+            const { error: delErr } = await supabase
+                .from('prism_paper_figures')
+                .delete()
+                .eq('paper_id', paper.id);
+            if (delErr) throw delErr;
+
+            // Insert new figures
+            const figInserts = tempFigures.map((f, i) => ({
+                paper_id: paper.id,
+                url: f.url,
+                description: f.description,
+                sort_order: i
+            }));
+
+            if (figInserts.length > 0) {
+                const { error: insErr } = await supabase
+                    .from('prism_paper_figures')
+                    .insert(figInserts);
+                if (insErr) throw insErr;
+            }
+
+            toast.success('图表更新成功');
+            if (onUpdate) await onUpdate();
+            setEditingFigures(false);
+        } catch (e: any) {
+            toast.error('图表更新失败: ' + e.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleUpdate = async (field: 'summary' | 'notes' | 'key_contributions', value: any) => {
         if (!paper) return;
@@ -125,17 +166,6 @@ export default function PaperDetailModal({
     }, [open, onClose, onPrev, onNext, hasPrev, hasNext]);
 
     if (!paper) return null;
-
-    const formatUrl = (url: string) => {
-        if (!url) return "";
-        // 处理 arXiv:2410.16322 格式
-        const arxivRegex = /^arXiv:(\d+\.\d+.*)$/i;
-        const match = url.match(arxivRegex);
-        if (match) {
-            return `https://arxiv.org/abs/${match[1]}`;
-        }
-        return url;
-    };
 
     const allTags = [
         ...paper.projects.map(t => ({ label: t, kind: 'project' as const })),
@@ -341,7 +371,7 @@ export default function PaperDetailModal({
                             <div className="pt-6 mt-6 border-t border-stone-100 flex flex-col gap-3">
                                 {paper.url && (
                                     <Link
-                                        href={formatUrl(paper.url)}
+                                        href={paper.url}
                                         target="_blank"
                                         className="w-full flex items-center gap-2 justify-center px-4 py-2.5 rounded-xl bg-stone-800 text-white hover:bg-stone-900 transition-colors shadow-sm"
                                     >
@@ -404,41 +434,105 @@ export default function PaperDetailModal({
                                 </div>
 
                                 {/* Figures Module */}
-                                {paper.figures && paper.figures.length > 0 && (
-                                    <div className="mb-14">
-                                        <div className="flex items-center gap-2 mb-6">
+                                <div className="mb-14 group/figures">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-2">
                                             <ImageIcon size={16} className="text-stone-400" />
                                             <h3 className="text-[13px] font-mono font-bold uppercase tracking-widest text-stone-500">
                                                 论文图表 (Figures)
                                             </h3>
                                         </div>
-                                        <div className="grid gap-8">
-                                            {paper.figures.map((fig, idx) => (
-                                                <div key={idx} className="flex flex-col gap-3">
-                                                    <div className="w-full bg-white rounded-2xl border border-stone-200/70 p-2 shadow-sm overflow-hidden flex items-center justify-center min-h-[200px]">
-                                                        {fig.url ? (
-                                                            <img 
-                                                                src={fig.url} 
-                                                                alt={fig.description || "Figure"} 
-                                                                className="max-w-full h-auto rounded-xl"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center min-h-[300px]">
-                                                                <span className="text-stone-300 font-mono text-sm">[ No Image ]</span>
-                                                            </div>
-                                                        )}
+                                        <button 
+                                            onClick={() => setEditingFigures(!editingFigures)}
+                                            className="opacity-0 group-hover/figures:opacity-100 text-[11px] font-mono flex items-center gap-1 text-stone-400 hover:text-stone-600 transition-colors"
+                                        >
+                                            <Pencil size={10} />
+                                            {editingFigures ? '取消' : '编辑图表'}
+                                        </button>
+                                    </div>
+
+                                    {editingFigures ? (
+                                        <div className="space-y-6 bg-stone-50 rounded-2xl border border-stone-200/60 p-6">
+                                            {tempFigures.map((fig, idx) => (
+                                                <div key={idx} className="relative bg-white rounded-xl border border-stone-200 p-4 flex flex-col gap-4">
+                                                    <button 
+                                                        onClick={() => setTempFigures(tempFigures.filter((_, i) => i !== idx))}
+                                                        className="absolute top-2 right-2 p-1.5 text-stone-300 hover:text-red-500 hover:bg-stone-50 rounded-md transition-colors z-10"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                    <div className="w-full">
+                                                        <ImageUpload
+                                                            value={fig.url}
+                                                            onChange={(url: string) => {
+                                                                const newArr = [...tempFigures];
+                                                                newArr[idx].url = url;
+                                                                setTempFigures(newArr);
+                                                            }}
+                                                            bucket="paper_images"
+                                                            folder="figures"
+                                                        />
                                                     </div>
-                                                    <div className="px-2">
-                                                        <p className="text-sm text-stone-500 leading-relaxed border-l-2 border-stone-200 pl-3">
-                                                            <span className="font-bold text-stone-700 font-mono mr-2">Fig {idx + 1}.</span>
-                                                            {fig.description}
-                                                        </p>
-                                                    </div>
+                                                    <textarea
+                                                        value={fig.description}
+                                                        onChange={e => {
+                                                            const newArr = [...tempFigures];
+                                                            newArr[idx].description = e.target.value;
+                                                            setTempFigures(newArr);
+                                                        }}
+                                                        placeholder="图表描述..."
+                                                        className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-sm text-stone-600 focus:outline-hidden focus:border-stone-300 min-h-[80px]"
+                                                    />
                                                 </div>
                                             ))}
+                                            <button 
+                                                onClick={() => setTempFigures([...tempFigures, { url: '', description: '' }])}
+                                                className="w-full py-3 border-2 border-dashed border-stone-200 rounded-xl text-stone-400 hover:bg-white hover:border-stone-300 hover:text-stone-600 transition-all text-sm font-bold flex items-center justify-center gap-2"
+                                            >
+                                                + 添加新图表
+                                            </button>
+                                            
+                                            <div className="pt-4 flex justify-end">
+                                                <button 
+                                                    onClick={handleUpdateFigures}
+                                                    disabled={isSaving}
+                                                    className="flex items-center gap-1.5 px-5 py-2.5 bg-stone-800 text-white rounded-xl text-sm font-bold hover:bg-stone-900 transition-colors disabled:opacity-50 shadow-sm"
+                                                >
+                                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                                    保存图表
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        (paper.figures && paper.figures.length > 0) && (
+                                            <div className="grid gap-8">
+                                                {paper.figures.map((fig, idx) => (
+                                                    <div key={idx} className="flex flex-col gap-3">
+                                                        <div className="w-full bg-white rounded-2xl border border-stone-200/70 p-2 shadow-sm overflow-hidden flex items-center justify-center min-h-[200px]">
+                                                            {fig.url ? (
+                                                                <img 
+                                                                    src={fig.url} 
+                                                                    alt={fig.description || "Figure"} 
+                                                                    className="max-w-full h-auto rounded-xl"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center min-h-[300px]">
+                                                                    <span className="text-stone-300 font-mono text-sm">[ No Image ]</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="px-2">
+                                                            <p className="text-sm text-stone-500 leading-relaxed border-l-2 border-stone-200 pl-3">
+                                                                <span className="font-bold text-stone-700 font-mono mr-2">Fig {idx + 1}.</span>
+                                                                {fig.description}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
+                                    )}
+                                </div>
 
                                 {/* Divider */}
                                 {(paper.figures && paper.figures.length > 0) && (
