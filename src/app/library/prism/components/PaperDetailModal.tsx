@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -9,9 +9,15 @@ import {
     Star,
     ExternalLink,
     ListChecks,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Pencil,
+    Save,
+    RotateCcw,
+    Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 // ============================================================
 // TYPES
@@ -23,6 +29,7 @@ interface PaperDetailModalProps {
     paper: PaperDetail | null;
     open: boolean;
     onClose: () => void;
+    onUpdate?: () => Promise<void>;
     onPrev?: () => void;
     onNext?: () => void;
     hasPrev?: boolean;
@@ -47,12 +54,58 @@ export default function PaperDetailModal({
     paper,
     open,
     onClose,
+    onUpdate,
     onPrev,
     onNext,
     hasPrev,
     hasNext
 }: PaperDetailModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
+
+    // Editing State
+    const [editingSummary, setEditingSummary] = useState(false);
+    const [tempSummary, setTempSummary] = useState('');
+    const [editingNotes, setEditingNotes] = useState(false);
+    const [tempNotes, setTempNotes] = useState('');
+    const [editingKeyContributions, setEditingKeyContributions] = useState(false);
+    const [tempKeyContributions, setTempKeyContributions] = useState<string[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Sync state when paper changes
+    useEffect(() => {
+        if (paper) {
+            setTempSummary(paper.summary || '');
+            setTempNotes(paper.notes || '');
+            setTempKeyContributions(paper.key_contributions || []);
+            setEditingSummary(false);
+            setEditingNotes(false);
+            setEditingKeyContributions(false);
+        }
+    }, [paper]);
+
+    const handleUpdate = async (field: 'summary' | 'notes' | 'key_contributions', value: any) => {
+        if (!paper) return;
+        setIsSaving(true);
+        try {
+            const { error } = await supabase
+                .from('prism_papers')
+                .update({ [field]: value })
+                .eq('id', paper.id);
+            
+            if (error) throw error;
+            
+            toast.success('更新成功');
+            if (onUpdate) await onUpdate();
+            
+            if (field === 'summary') setEditingSummary(false);
+            else if (field === 'notes') setEditingNotes(false);
+            else setEditingKeyContributions(false);
+        } catch (e: any) {
+            toast.error('更新失败: ' + e.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Keyboard navigation
     useEffect(() => {
@@ -211,26 +264,76 @@ export default function PaperDetailModal({
                             <div className="h-px w-full bg-linear-to-r from-stone-200 to-transparent my-2" />
 
                             {/* Key Contributions */}
-                            {paper.key_contributions && paper.key_contributions.length > 0 && (
-                                <div className="mt-6 mb-8">
-                                    <div className="flex items-center gap-2 mb-4">
+                            <div className="mt-6 mb-8 group/contributions">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
                                         <ListChecks size={16} className="text-stone-400" />
                                         <h3 className="text-[13px] font-mono font-bold uppercase tracking-widest text-stone-500">
                                             主要成果
                                         </h3>
                                     </div>
-                                    <div className="bg-stone-50 rounded-xl border border-stone-200/60 p-5">
-                                        <ul className="space-y-3">
-                                            {paper.key_contributions.map((item, idx) => (
-                                                <li key={idx} className="flex items-start gap-2.5 text-sm text-stone-700 leading-relaxed">
-                                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
-                                                    <span>{item}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                    <button 
+                                        onClick={() => setEditingKeyContributions(!editingKeyContributions)}
+                                        className="opacity-0 group-hover/contributions:opacity-100 text-[11px] font-mono flex items-center gap-1 text-stone-400 hover:text-stone-600 transition-colors"
+                                    >
+                                        <Pencil size={10} />
+                                        {editingKeyContributions ? '取消' : '编辑'}
+                                    </button>
                                 </div>
-                            )}
+
+                                {editingKeyContributions ? (
+                                    <div className="space-y-3 bg-stone-50 rounded-xl border border-stone-200/60 p-4">
+                                        {tempKeyContributions.map((item, idx) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <input 
+                                                    value={item}
+                                                    onChange={e => {
+                                                        const newArr = [...tempKeyContributions];
+                                                        newArr[idx] = e.target.value;
+                                                        setTempKeyContributions(newArr);
+                                                    }}
+                                                    className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-700 focus:outline-hidden focus:ring-1 focus:ring-stone-300"
+                                                />
+                                                <button 
+                                                    onClick={() => setTempKeyContributions(tempKeyContributions.filter((_, i) => i !== idx))}
+                                                    className="text-stone-300 hover:text-red-400 p-1"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button 
+                                            onClick={() => setTempKeyContributions([...tempKeyContributions, ""])}
+                                            className="w-full py-2 border border-dashed border-stone-200 rounded-lg text-[11px] text-stone-400 hover:bg-white hover:text-stone-600 transition-colors"
+                                        >
+                                            + 添加项
+                                        </button>
+                                        <div className="pt-2 border-t border-stone-100 flex justify-end">
+                                            <button 
+                                                onClick={() => handleUpdate('key_contributions', tempKeyContributions)}
+                                                disabled={isSaving}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 text-white rounded-lg text-xs font-bold hover:bg-stone-900 transition-colors disabled:opacity-50"
+                                            >
+                                                {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                                保存成果
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    paper.key_contributions && paper.key_contributions.length > 0 && (
+                                        <div className="bg-stone-50 rounded-xl border border-stone-200/60 p-5">
+                                            <ul className="space-y-3">
+                                                {paper.key_contributions.map((item, idx) => (
+                                                    <li key={idx} className="flex items-start gap-2.5 text-sm text-stone-700 leading-relaxed">
+                                                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
+                                                        <span>{item}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )
+                                )}
+                            </div>
 
                             <div className="flex-1" />
 
@@ -261,13 +364,44 @@ export default function PaperDetailModal({
                             <div className="max-w-3xl mx-auto pb-20">
 
                                 {/* Summary */}
-                                {paper.summary && (
-                                    <div className="mb-12">
-                                        <p className="text-xl font-serif text-stone-600 leading-relaxed max-w-2xl italic">
-                                            "{paper.summary}"
-                                        </p>
+                                <div className="mb-12 group/section">
+                                    <div className="flex items-center gap-2 mb-3 opacity-0 group-hover/section:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => setEditingSummary(!editingSummary)}
+                                            className="text-[11px] font-mono flex items-center gap-1 text-stone-400 hover:text-stone-600 transition-colors"
+                                        >
+                                            <Pencil size={10} />
+                                            {editingSummary ? '取消编辑' : '编辑摘要'}
+                                        </button>
                                     </div>
-                                )}
+
+                                    {editingSummary ? (
+                                        <div className="space-y-3">
+                                            <textarea 
+                                                value={tempSummary}
+                                                onChange={e => setTempSummary(e.target.value)}
+                                                className="w-full bg-white border border-stone-200 rounded-xl p-4 text-sm font-serif italic text-stone-600 focus:ring-1 focus:ring-stone-300 outline-hidden min-h-[100px]"
+                                                placeholder="输入一句话摘要..."
+                                            />
+                                            <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => handleUpdate('summary', tempSummary)}
+                                                    disabled={isSaving}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 text-white rounded-lg text-xs font-bold hover:bg-stone-900 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                                    保存摘要
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        paper.summary && (
+                                            <p className="text-xl font-serif text-stone-600 leading-relaxed max-w-2xl italic">
+                                                "{paper.summary}"
+                                            </p>
+                                        )
+                                    )}
+                                </div>
 
                                 {/* Figures Module */}
                                 {paper.figures && paper.figures.length > 0 && (
@@ -317,20 +451,57 @@ export default function PaperDetailModal({
                                     </div>
                                 )}
 
-                                {paper.notes && (
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-6">
+                                {/* Notes Section */}
+                                <div className="group/notes">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-2">
                                             <BookOpen size={16} className="text-stone-400" />
                                             <h3 className="text-[13px] font-mono font-bold uppercase tracking-widest text-stone-500">
                                                 详细笔记 (Notes)
                                             </h3>
                                         </div>
-                                        <div 
-                                            className="prose prose-stone prose-p:leading-loose prose-h3:font-serif max-w-none text-stone-700"
-                                            dangerouslySetInnerHTML={{ __html: paper.notes }}
-                                        />
+                                        <button 
+                                            onClick={() => setEditingNotes(!editingNotes)}
+                                            className="opacity-0 group-hover/notes:opacity-100 text-[11px] font-mono flex items-center gap-1 text-stone-400 hover:text-stone-600 transition-all"
+                                        >
+                                            {editingNotes ? <RotateCcw size={10} /> : <Pencil size={10} />}
+                                            {editingNotes ? '返回预览' : '直接编辑'}
+                                        </button>
                                     </div>
-                                )}
+                                    
+                                    {editingNotes ? (
+                                        <div className="space-y-4">
+                                            <textarea 
+                                                value={tempNotes}
+                                                onChange={e => setTempNotes(e.target.value)}
+                                                className="w-full bg-white border border-stone-200 rounded-2xl p-6 text-sm font-mono leading-relaxed text-stone-700 focus:ring-1 focus:ring-stone-300 outline-hidden min-h-[400px]"
+                                                placeholder="写点什么... (支持 HTML/Markdown)"
+                                            />
+                                            <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => handleUpdate('notes', tempNotes)}
+                                                    disabled={isSaving}
+                                                    className="flex items-center gap-1.5 px-4 py-2 bg-stone-800 text-white rounded-xl text-xs font-bold hover:bg-stone-900 transition-colors shadow-sm disabled:opacity-50"
+                                                >
+                                                    {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                                    保存笔记内容
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        paper.notes ? (
+                                            <div 
+                                                className="prose prose-stone prose-p:leading-loose prose-h3:font-serif max-w-none text-stone-700"
+                                                dangerouslySetInnerHTML={{ __html: paper.notes }}
+                                            />
+                                        ) : (
+                                            <div className="py-12 border-2 border-dashed border-stone-200 rounded-3xl flex flex-col items-center justify-center text-stone-400 gap-3">
+                                                <Pencil size={24} className="opacity-20" />
+                                                <p className="text-sm font-mono tracking-tight">暂无笔记，点击右上角开始记录</p>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
 
                             </div>
                         </div>

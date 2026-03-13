@@ -175,7 +175,7 @@ function PaperCard({ paper, index, onClick }: { paper: Paper; index: number; onC
 
 export default function LibraryPapersPage() {
     // API Data Fetching
-    const { papers: allPapers, isLoading: papersLoading } = usePrismPapers();
+    const { papers: allPapers, isLoading: papersLoading, mutate } = usePrismPapers();
     const { projects: allProjects, isLoading: projectsLoading } = usePrismProjects();
 
     const isLoading = papersLoading || projectsLoading;
@@ -480,10 +480,11 @@ export default function LibraryPapersPage() {
                 paper={selectedPaper}
                 open={selectedPaperId !== null}
                 onClose={() => setSelectedPaperId(null)}
-                hasPrev={selectedIndex > 0}
-                hasNext={selectedIndex !== -1 && selectedIndex < sortedPapers.length - 1}
+                onUpdate={async () => { await mutate(); }}
                 onPrev={handlePrev}
                 onNext={handleNext}
+                hasPrev={selectedIndex > 0}
+                hasNext={selectedIndex !== -1 && selectedIndex < sortedPapers.length - 1}
             />
         </div>
     );
