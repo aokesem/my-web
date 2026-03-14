@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -13,7 +13,10 @@ import {
     Pencil,
     Save,
     RotateCcw,
-    Loader2
+    Loader2,
+    List,
+    FileText,
+    Hash,
 } from 'lucide-react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -68,6 +71,7 @@ export default function PaperDetailModal({
     hasNext
 }: PaperDetailModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     // Editing State
     const [editingSummary, setEditingSummary] = useState(false);
@@ -79,6 +83,53 @@ export default function PaperDetailModal({
     const [editingFigures, setEditingFigures] = useState(false);
     const [tempFigures, setTempFigures] = useState<{ url: string; description: string }[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [leftPanel, setLeftPanel] = useState<'info' | 'toc'>('info');
+
+    // Parse headings from notes for TOC
+    const noteHeadings = useMemo(() => {
+        if (!paper?.notes) return [];
+        const lines = paper.notes.split('\n');
+        const headings: { level: number; text: string; id: string }[] = [];
+        for (const line of lines) {
+            const match = line.match(/^(#{1,6})\s+(.+)$/);
+            if (match) {
+                const level = match[1].length;
+                const text = match[2].trim();
+                const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
+                headings.push({ level, text, id });
+            }
+        }
+        return headings;
+    }, [paper?.notes]);
+
+    const scrollToElement = useCallback((elementId: string) => {
+        const el = contentRef.current?.querySelector(`#${CSS.escape(elementId)}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, []);
+
+    // Custom heading components for ReactMarkdown to add anchor IDs
+    const markdownHeadingComponents = useMemo(() => {
+        const createHeading = (Tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
+            const HeadingComponent = ({ children, ...props }: any) => {
+                const text = typeof children === 'string' ? children : 
+                    Array.isArray(children) ? children.map((c: any) => typeof c === 'string' ? c : '').join('') : '';
+                const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
+                return <Tag id={id} {...props}>{children}</Tag>;
+            };
+            HeadingComponent.displayName = `Heading_${Tag}`;
+            return HeadingComponent;
+        };
+        return {
+            h1: createHeading('h1'),
+            h2: createHeading('h2'),
+            h3: createHeading('h3'),
+            h4: createHeading('h4'),
+            h5: createHeading('h5'),
+            h6: createHeading('h6'),
+        };
+    }, []);
 
     const handleKeyDown = (e: React.KeyboardEvent, type: 'summary' | 'notes', value: string) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -242,9 +293,41 @@ export default function PaperDetailModal({
                             <X size={18} strokeWidth={2.5} />
                         </button>
 
-                        {/* ===== LEFT SIDEBAR: Structured Data ===== */}
-                        <div className="w-full md:w-1/3 min-w-[320px] max-w-[400px] bg-white border-r border-stone-200/70 p-8 flex flex-col overflow-y-auto shrink-0 z-10 custom-scrollbar">
+                        {/* ===== LEFT SIDEBAR ===== */}
+                        <div className="w-full md:w-1/3 min-w-[320px] max-w-[400px] bg-white border-r border-stone-200/70 flex flex-col shrink-0 z-10">
 
+                            {/* Panel Switcher Tabs */}
+                            <div className="shrink-0 flex border-b border-stone-200/70 bg-stone-50/50">
+                                <button
+                                    onClick={() => setLeftPanel('info')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[12px] font-mono font-bold uppercase tracking-wider transition-all border-b-2 ${
+                                        leftPanel === 'info'
+                                        ? 'border-stone-800 text-stone-800 bg-white'
+                                        : 'border-transparent text-stone-400 hover:text-stone-600'
+                                    }`}
+                                >
+                                    <FileText size={13} />
+                                    论文信息
+                                </button>
+                                <button
+                                    onClick={() => setLeftPanel('toc')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[12px] font-mono font-bold uppercase tracking-wider transition-all border-b-2 ${
+                                        leftPanel === 'toc'
+                                        ? 'border-stone-800 text-stone-800 bg-white'
+                                        : 'border-transparent text-stone-400 hover:text-stone-600'
+                                    }`}
+                                >
+                                    <List size={13} />
+                                    目录
+                                </button>
+                            </div>
+
+                            {/* Panel Content */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+
+                            {leftPanel === 'info' ? (
+                            /* ===== INFO PANEL ===== */
+                            <div className="flex flex-col h-full">
                             {/* Meta top bar */}
                             <div className="flex items-center justify-between gap-3 mb-6">
                                 <div className="flex items-center gap-2">
@@ -400,10 +483,80 @@ export default function PaperDetailModal({
                                     </span>
                                 </div>
                             </div>
+                            </div>
+                            ) : (
+                            /* ===== TOC PANEL ===== */
+                            <div className="space-y-6">
+                                {/* Figures TOC */}
+                                {paper.figures && paper.figures.length > 0 && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <ImageIcon size={14} className="text-stone-400" />
+                                            <h4 className="text-[12px] font-mono font-bold uppercase tracking-widest text-stone-500">
+                                                图表 ({paper.figures.length})
+                                            </h4>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {paper.figures.map((fig, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => scrollToElement(`figure-${idx}`)}
+                                                    className="w-full text-left px-3 py-2 rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors flex items-start gap-2 group"
+                                                >
+                                                    <span className="text-[11px] font-mono font-bold text-stone-400 shrink-0 mt-0.5 group-hover:text-stone-600">Fig {idx + 1}</span>
+                                                    <span className="line-clamp-2 leading-snug">{fig.description || '(无描述)'}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Notes Headings TOC */}
+                                {noteHeadings.length > 0 && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Hash size={14} className="text-stone-400" />
+                                            <h4 className="text-[12px] font-mono font-bold uppercase tracking-widest text-stone-500">
+                                                笔记大纲
+                                            </h4>
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            {noteHeadings.map((h, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => scrollToElement(h.id)}
+                                                    className="w-full text-left rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-3 leading-snug"
+                                                    style={{ paddingLeft: `${(h.level - 1) * 16 + 12}px` }}
+                                                >
+                                                    <span className={`${
+                                                        h.level === 1 ? 'font-bold text-stone-700' :
+                                                        h.level === 2 ? 'font-medium text-stone-600' :
+                                                        'text-stone-500'
+                                                    }`}>
+                                                        {h.text}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Empty state */}
+                                {(!paper.figures || paper.figures.length === 0) && noteHeadings.length === 0 && (
+                                    <div className="py-12 flex flex-col items-center justify-center text-stone-400 gap-3">
+                                        <List size={24} className="opacity-20" />
+                                        <p className="text-sm font-mono tracking-tight">暂无目录内容</p>
+                                        <p className="text-xs text-stone-300">添加图表或在笔记中使用 # 标题</p>
+                                    </div>
+                                )}
+                            </div>
+                            )}
+
+                            </div>
                         </div>
 
                         {/* ===== RIGHT CONTENT: Unstructured Notes & Figures ===== */}
-                        <div className="flex-1 bg-[#faf9f7] overflow-y-auto p-10 md:p-14 custom-scrollbar">
+                        <div ref={contentRef} className="flex-1 bg-[#faf9f7] overflow-y-auto p-10 md:p-14 custom-scrollbar">
                             <div className="max-w-3xl mx-auto pb-20">
 
                                 {/* Summary */}
@@ -521,7 +674,7 @@ export default function PaperDetailModal({
                                         (paper.figures && paper.figures.length > 0) && (
                                             <div className="grid gap-8">
                                                 {paper.figures.map((fig, idx) => (
-                                                    <div key={idx} className="flex flex-col gap-3">
+                                    <div key={idx} id={`figure-${idx}`} className="flex flex-col gap-3">
                                                         <div className="w-full bg-white rounded-2xl border border-stone-200/70 p-2 shadow-sm overflow-hidden flex items-center justify-center min-h-[200px]">
                                                             {fig.url ? (
                                                                 <img 
@@ -603,6 +756,7 @@ export default function PaperDetailModal({
                                                 <ReactMarkdown 
                                                     remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]} 
                                                     rehypePlugins={[rehypeKatex]}
+                                                    components={markdownHeadingComponents}
                                                 >
                                                     {paper.notes}
                                                 </ReactMarkdown>
