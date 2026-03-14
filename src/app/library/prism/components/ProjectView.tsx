@@ -47,6 +47,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     const [tempContent, setTempContent] = useState('');
     const [tempPaperIds, setTempPaperIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [selectedDirection, setSelectedDirection] = useState<string | null>(null);
 
     const handleSave = async (table: 'prism_project_insights' | 'prism_project_outcomes', junctionTable: 'prism_insight_papers' | 'prism_outcome_papers', idField: 'insight_id' | 'outcome_id') => {
         if (!editingId) return;
@@ -90,6 +91,17 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
         if (!activeProjectName) return [];
         return allPapers.filter(p => p.projects.includes(activeProjectName));
     }, [allPapers, activeProjectName]);
+
+    const availableDirections = useMemo(() => {
+        const dirs = new Set<string>();
+        relatedPapers.forEach(p => p.directions?.forEach((d: string) => dirs.add(d)));
+        return Array.from(dirs).sort();
+    }, [relatedPapers]);
+
+    const filteredPapersForEdit = useMemo(() => {
+        if (!selectedDirection) return relatedPapers;
+        return relatedPapers.filter(p => p.directions?.includes(selectedDirection));
+    }, [relatedPapers, selectedDirection]);
 
     const papersGrouped = useMemo(() => {
         const groups: Record<string, PaperDetail[]> = {};
@@ -281,8 +293,29 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                 />
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">关联论文 (多选)</label>
+                                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                                        <button
+                                                            onClick={() => setSelectedDirection(null)}
+                                                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
+                                                                !selectedDirection
+                                                                ? 'bg-stone-700 border-stone-700 text-white'
+                                                                : 'bg-white border-stone-200 text-stone-400 hover:border-stone-300'
+                                                            }`}
+                                                        >全部</button>
+                                                        {availableDirections.map(dir => (
+                                                            <button
+                                                                key={dir}
+                                                                onClick={() => setSelectedDirection(dir)}
+                                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
+                                                                    selectedDirection === dir
+                                                                    ? 'bg-amber-600 border-amber-600 text-white'
+                                                                    : 'bg-white border-stone-200 text-stone-400 hover:border-amber-300'
+                                                                }`}
+                                                            >{dir}</button>
+                                                        ))}
+                                                    </div>
                                                     <div className="flex flex-wrap gap-1.5">
-                                                        {relatedPapers.map(p => {
+                                                        {filteredPapersForEdit.map(p => {
                                                             const isSelected = tempPaperIds.includes(p.id);
                                                             return (
                                                                 <button
@@ -321,6 +354,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                         setEditingId(insight.id);
                                                         setTempContent(insight.content);
                                                         setTempPaperIds(insight.paper_ids || []);
+                                                        setSelectedDirection(null);
                                                     }}
                                                     className="absolute top-2 right-2 opacity-0 group-hover/item:opacity-100 p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all z-10"
                                                 >
@@ -363,7 +397,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                         {activeProject.outcomes.map(group => (
                             <AccordionGroup key={group.category} title={group.category} count={group.items.length} defaultOpen={true}>
                                 {group.items.map(outcome => (
-                                    <div key={outcome.id} className="group/item rounded-xl border border-transparent hover:border-emerald-200 hover:bg-white transition-all relative">
+                                    <div key={outcome.id} className="p-3 rounded-xl border border-stone-200/60 bg-emerald-50/30 hover:bg-white transition-colors relative group/item">
                                         {editingId === outcome.id ? (
                                             <div className="p-3 space-y-3">
                                                 <textarea 
@@ -373,8 +407,29 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                 />
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">关联论文 (多选)</label>
+                                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                                        <button
+                                                            onClick={() => setSelectedDirection(null)}
+                                                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
+                                                                !selectedDirection
+                                                                ? 'bg-stone-700 border-stone-700 text-white'
+                                                                : 'bg-white border-stone-200 text-stone-400 hover:border-stone-300'
+                                                            }`}
+                                                        >全部</button>
+                                                        {availableDirections.map(dir => (
+                                                            <button
+                                                                key={dir}
+                                                                onClick={() => setSelectedDirection(dir)}
+                                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
+                                                                    selectedDirection === dir
+                                                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                                                    : 'bg-white border-stone-200 text-stone-400 hover:border-emerald-300'
+                                                                }`}
+                                                            >{dir}</button>
+                                                        ))}
+                                                    </div>
                                                     <div className="flex flex-wrap gap-1.5">
-                                                        {relatedPapers.map(p => {
+                                                        {filteredPapersForEdit.map(p => {
                                                             const isSelected = tempPaperIds.includes(p.id);
                                                             return (
                                                                 <button
@@ -413,6 +468,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                         setEditingId(outcome.id);
                                                         setTempContent(outcome.content);
                                                         setTempPaperIds(outcome.paper_ids || []);
+                                                        setSelectedDirection(null);
                                                     }}
                                                     className="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 p-1 text-stone-300 hover:text-emerald-500 transition-all z-10"
                                                 >

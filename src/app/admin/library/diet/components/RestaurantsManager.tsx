@@ -530,13 +530,45 @@ function DishManager({ restaurant, onBack }: { restaurant: Restaurant; onBack: (
                             <Input id="dish_name" value={dishFormData.name} onChange={e => setDishFormData({ ...dishFormData, name: e.target.value })} className="bg-zinc-950 border-zinc-800" required />
                         </div>
                         <div className="space-y-2">
-                            <Label>菜品图片</Label>
+                            <Label>菜品图片 (可上传新图，或从餐厅相册快捷选用)</Label>
                             <ImageUpload
                                 value={dishFormData.image_url}
                                 onChange={url => setDishFormData({ ...dishFormData, image_url: url })}
                                 bucket="food_images"
                                 folder="dishes"
                             />
+                            
+                            {/* 快捷选用区 */}
+                            {restaurant.images && restaurant.images.length > 0 && (
+                                <div className="mt-3">
+                                    <Label className="text-[11px] text-zinc-500 mb-2 block">选用餐厅图库：</Label>
+                                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                                        {restaurant.images.map((imgUrl, idx) => {
+                                            const isSelected = dishFormData.image_url === imgUrl;
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={() => setDishFormData({ ...dishFormData, image_url: imgUrl })}
+                                                    className={`
+                                                        relative w-14 h-14 rounded-md overflow-hidden shrink-0 border-2 transition-all
+                                                        ${isSelected ? 'border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'border-transparent hover:border-zinc-500'}
+                                                    `}
+                                                >
+                                                    <Image src={imgUrl} alt={`Restaurant image ${idx}`} fill sizes="56px" className="object-cover" />
+                                                    {isSelected && (
+                                                        <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center backdrop-blur-[1px]">
+                                                            <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
+                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="linked_recipe_name">关联馆内食谱名称 (严格匹配/选填)</Label>
