@@ -28,6 +28,7 @@ import 'katex/dist/katex.min.css';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { BlockEditor } from '@/components/ui/block-editor';
 
 // ============================================================
 // TYPES
@@ -88,15 +89,49 @@ export default function PaperDetailModal({
     // Parse headings from notes for TOC
     const noteHeadings = useMemo(() => {
         if (!paper?.notes) return [];
-        const lines = paper.notes.split('\n');
         const headings: { level: number; text: string; id: string }[] = [];
-        for (const line of lines) {
-            const match = line.match(/^(#{1,6})\s+(.+)$/);
-            if (match) {
-                const level = match[1].length;
-                const text = match[2].trim();
-                const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
-                headings.push({ level, text, id });
+        
+        let isJson = false;
+        let parsedJson: any = null;
+        if (typeof paper.notes === 'string' && paper.notes.trim().startsWith('{')) {
+            try {
+                parsedJson = JSON.parse(paper.notes);
+                isJson = true;
+            } catch (e) {}
+        }
+
+        if (isJson && parsedJson?.content) {
+            // Recursive function to extract headings from Tiptap JSON AST
+            const extract = (nodes: any[]) => {
+                for (const node of nodes) {
+                    if (node.type === 'heading') {
+                        const level = node.attrs?.level || 1;
+                        // get text content
+                        let text = '';
+                        if (node.content) {
+                            text = node.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('');
+                        }
+                        if (text) {
+                            const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
+                            headings.push({ level, text, id });
+                        }
+                    } else if (node.content) {
+                        extract(node.content);
+                    }
+                }
+            };
+            extract(parsedJson.content);
+        } else {
+            // Fallback to markdown regex
+            const lines = paper.notes.split('\n');
+            for (const line of lines) {
+                const match = line.match(/^(#{1,6})\s+(.+)$/);
+                if (match) {
+                    const level = match[1].length;
+                    const text = match[2].trim();
+                    const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
+                    headings.push({ level, text, id });
+                }
             }
         }
         return headings;
@@ -732,13 +767,14 @@ export default function PaperDetailModal({
                                     
                                     {editingNotes ? (
                                         <div className="space-y-4">
-                                            <textarea 
-                                                value={tempNotes}
-                                                onChange={e => setTempNotes(e.target.value)}
-                                                onKeyDown={e => handleKeyDown(e, 'notes', tempNotes)}
-                                                className="w-full bg-white border border-stone-200 rounded-2xl p-8 text-[15px] font-mono leading-relaxed text-stone-700 focus:ring-1 focus:ring-stone-300 outline-none min-h-[500px]"
-                                                placeholder="在此输入笔记... (支持 Markdown 和 LaTeX 公式 $E=mc^2$。Enter 保存, Shift+Enter 换行)"
-                                            />
+                                            <div className="bg-white border border-stone-200 rounded-2xl p-8 min-h-[500px] shadow-sm">
+                                                <BlockEditor 
+                                                    value={tempNotes}
+                                                    onChange={(json) => setTempNotes(JSON.stringify(json))}
+                                                    onSave={() => handleUpdate('notes', tempNotes)}
+                                                    editable={true}
+                                                />
+                                            </div>
                                             <div className="flex justify-end gap-2">
                                                 <button 
                                                     onClick={() => handleUpdate('notes', tempNotes)}
@@ -752,14 +788,11 @@ export default function PaperDetailModal({
                                         </div>
                                     ) : (
                                         paper.notes ? (
-                                            <div className="prose prose-stone prose-p:leading-relaxed prose-pre:bg-stone-100 prose-pre:text-stone-800 max-w-none text-stone-700 selection:bg-amber-100">
-                                                <ReactMarkdown 
-                                                    remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]} 
-                                                    rehypePlugins={[rehypeKatex]}
-                                                    components={markdownHeadingComponents}
-                                                >
-                                                    {paper.notes}
-                                                </ReactMarkdown>
+                                            <div className="bg-white/50 border border-transparent rounded-2xl p-4 min-h-[200px]">
+                                                <BlockEditor 
+                                                    value={paper.notes}
+                                                    editable={false}
+                                                />
                                             </div>
                                         ) : (
                                             <div className="py-12 border-2 border-dashed border-stone-200 rounded-3xl flex flex-col items-center justify-center text-stone-400 gap-3">
