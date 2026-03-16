@@ -250,16 +250,24 @@ export default function PaperDetailModal({
     // Keyboard navigation
     useEffect(() => {
         if (!open) return;
-        const handleKeyDown = (e: KeyboardEvent) => {
+        const handleKeyDownNav = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
+            
+            // Ignore arrow keys if user is typing in an input, textarea, or contenteditable (like Tiptap)
+            const activeTag = document.activeElement?.tagName.toLowerCase();
+            const isContentEditable = (document.activeElement as HTMLElement)?.isContentEditable;
+            if (activeTag === 'input' || activeTag === 'textarea' || isContentEditable) {
+                return;
+            }
+
             if (e.key === 'ArrowLeft' && hasPrev && onPrev) onPrev();
             if (e.key === 'ArrowRight' && hasNext && onNext) onNext();
         };
-        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', handleKeyDownNav);
         // Prevent body scroll when modal is open
         document.body.style.overflow = 'hidden';
         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keydown', handleKeyDownNav);
             document.body.style.overflow = '';
         };
     }, [open, onClose, onPrev, onNext, hasPrev, hasNext]);
@@ -769,6 +777,7 @@ export default function PaperDetailModal({
                                         <div className="space-y-4">
                                             <div className="bg-white border border-stone-200 rounded-2xl p-8 min-h-[500px] shadow-sm">
                                                 <BlockEditor 
+                                                    key={`edit-${paper.id}`}
                                                     value={tempNotes}
                                                     onChange={(json) => setTempNotes(JSON.stringify(json))}
                                                     onSave={() => handleUpdate('notes', tempNotes)}
@@ -790,6 +799,7 @@ export default function PaperDetailModal({
                                         paper.notes ? (
                                             <div className="bg-white/50 border border-transparent rounded-2xl p-4 min-h-[200px]">
                                                 <BlockEditor 
+                                                    key={`view-${paper.id}`}
                                                     value={paper.notes}
                                                     editable={false}
                                                 />

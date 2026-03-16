@@ -92,10 +92,21 @@ export default function GardenCard({ module }: ModuleProps) {
                 </div>
 
                 <div className="flex-1 flex items-center justify-center relative">
-                    {/* Centerpiece: Glowing Seed in Petri Dish */}
-                    <div className="relative w-32 h-32 flex items-center justify-center">
+                    {/* Centerpiece: Glowing Seed in Petri Dish with Drop-down Entrance */}
+                    <motion.div 
+                        initial={{ y: -60, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ 
+                            type: "spring", 
+                            stiffness: 40,   // 降低张力，使其起始不那么突兀
+                            damping: 25,     // 显著增加阻尼，消除震荡感，使其缓缓归位
+                            mass: 2,         // 增加质量，模拟物理抗性和重量感
+                            restDelta: 0.001 
+                        }}
+                        className="relative w-32 h-32 flex items-center justify-center"
+                    >
                         {/* Outer Glow */}
-                        <div className="absolute inset-0 bg-teal-400/20 blur-3xl rounded-full group-hover:bg-teal-400/30 transition-all duration-700" />
+                        <div className="absolute inset-0 bg-teal-400/20 blur-3xl rounded-full group-hover:bg-teal-400/30 transition-[background-color,filter] duration-700" />
 
                         {/* Subtle Breathing Ripple */}
                         <motion.div
@@ -104,20 +115,32 @@ export default function GardenCard({ module }: ModuleProps) {
                             transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                         />
 
-                        {/* Glass/Petri Dish Circle */}
-                        <div className="absolute inset-2 rounded-full bg-linear-to-b from-white/40 to-white/10 border border-white/50 backdrop-blur-sm shadow-[0_8px_32px_rgba(20,184,166,0.15)] group-hover:border-teal-200/50 transition-all duration-500 flex items-center justify-center">
+                        {/* Glass/Petri Dish Circle - INCREASED OPACITY to prevent greenish bleed and snap */}
+                        <div className="absolute inset-2 rounded-full bg-linear-to-b from-white/90 to-white/60 border border-white/50 backdrop-blur-md shadow-[0_8px_32px_rgba(20,184,166,0.15)] group-hover:border-teal-200/60 transition-[border-color,shadow] duration-500 flex items-center justify-center">
                             {/* Inner Ring */}
                             <div className="absolute inset-1 rounded-full border border-teal-100/30" />
                         </div>
 
+                        {/* Sprout with Growth Animation */}
                         <motion.div
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ 
+                                delay: 1.1, // 略微提前，在归位稳定前一点点开始爆发，衔接更自然
+                                type: "spring", 
+                                stiffness: 200, 
+                                damping: 15 
+                            }}
                             className="relative z-10"
                         >
-                            <Sprout size={48} className="text-teal-600/80 fill-teal-50 group-hover:text-teal-600 group-hover:fill-teal-100 transition-colors duration-500 drop-shadow-sm" strokeWidth={1.5} />
+                            <motion.div
+                                animate={{ y: [0, -4, 0] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                            >
+                                <Sprout size={48} className="text-teal-600/80 fill-teal-50 group-hover:text-teal-600 group-hover:fill-teal-100 transition-colors duration-500 drop-shadow-sm" strokeWidth={1.5} />
+                            </motion.div>
                         </motion.div>
-                    </div>
+                    </motion.div>
                 </div>
 
                 <div className="pt-4 border-t border-teal-100/50">
