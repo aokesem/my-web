@@ -1,12 +1,23 @@
 import React, { useEffect, useRef } from 'react';
 import { useEditor, EditorContent, EditorContext } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Heading from '@tiptap/extension-heading';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
 import { SlashCommand, suggestionOptions } from './slash-command';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import 'tippy.js/dist/tippy.css';
 import 'katex/dist/katex.min.css';
+
+// Custom Heading extension that generates id attributes from text content
+const HeadingWithId = Heading.extend({
+    renderHTML({ node, HTMLAttributes }) {
+        const level = node.attrs.level as number;
+        const text = node.textContent || '';
+        const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
+        return [`h${level}`, { ...HTMLAttributes, id }, 0];
+    },
+});
 
 export interface BlockEditorProps {
     value?: string | Record<string, any>;
@@ -44,7 +55,12 @@ export function BlockEditor({
     const editor = useEditor({
         immediatelyRender: false,
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                heading: false, // Disabled: using HeadingWithId instead
+            }),
+            HeadingWithId.configure({
+                levels: [1, 2, 3, 4, 5, 6],
+            }),
             Markdown,
             Placeholder.configure({
                 placeholder: placeholder,
