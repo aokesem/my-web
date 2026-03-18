@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PlaybookModal from './PlaybookModal';
 import EnglishModuleModal from './EnglishModuleModal';
 import VocabularyListModal from './VocabularyListModal';
+import ReflectionModal from './ReflectionModal';
 
 import { supabase } from '@/lib/supabaseClient';
 
@@ -25,6 +26,8 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
     const [isEnglishOpen, setIsEnglishOpen] = useState(false);
     // [新增] VocabularyList展开状态
     const [isListOpen, setIsListOpen] = useState(false);
+    // [新增] Reflection展开状态
+    const [isReflectionOpen, setIsReflectionOpen] = useState(false);
 
     // [新增] 静止态滚动词：从数据库第1批的未掌握词中随机抽 30 个
     const [idleWords, setIdleWords] = useState<string[]>([]);
@@ -326,6 +329,34 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                             <div className="absolute -bottom-1 right-2 w-3 h-2 bg-[#1e2028] border border-t-0 border-[#475569]/30 rounded-b-sm shadow-[0_2px_4px_rgba(0,0,0,0.5)] -skew-x-6 z-[-1]"></div>
                         </div>
                     </div>
+
+                    {/* --- 5. Reflection Module 入口 (Angel Statue SVG) --- */}
+                    <div
+                        className="absolute -bottom-[13px] left-[342px] flex items-end group/reflection cursor-pointer transition-transform duration-500 hover:scale-[1.03] z-50"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isBlurred) {
+                                setIsReflectionOpen(true);
+                            }
+                        }}
+                    >
+                        {/* Tooltip */}
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover/reflection:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
+                            <div className="bg-slate-800 text-white text-[16px] py-1.5 px-3 rounded-md font-mono tracking-widest whitespace-nowrap shadow-xl border border-white/10">
+                                反思与远见
+                            </div>
+                            <div className="w-2 h-2 bg-slate-800 rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2 border-b border-r border-white/10"></div>
+                        </div>
+
+                        {/* Statue Container */}
+                        <div className="relative w-32 h-[220px] origin-bottom transition-all duration-300 group-hover/reflection:-translate-y-1 drop-shadow-[0_6px_10px_rgba(0,0,0,0.4)]">
+                            <img
+                                src="/angel_status.svg"
+                                alt="Reflection Statue"
+                                className="w-full h-full object-contain pointer-events-none"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -355,6 +386,13 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                         setIsListOpen(false);
                         setIsEnglishOpen(true);
                     }}
+                />
+            )}
+
+            {mounted && (
+                <ReflectionModal
+                    isOpen={isReflectionOpen}
+                    onClose={() => setIsReflectionOpen(false)}
                 />
             )}
         </>
