@@ -2,8 +2,19 @@
 
 import React, { useState, useMemo } from 'react';
 import { Pencil, Save, X, Loader2, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { CourseFormula } from '../../types';
+
+// Strip common LaTeX delimiters: $$...$$, $...$, \[...\], \(...\)
+function stripLatexDelimiters(raw: string): string {
+    let s = raw.trim();
+    if (s.startsWith('$$') && s.endsWith('$$')) return s.slice(2, -2).trim();
+    if (s.startsWith('$') && s.endsWith('$')) return s.slice(1, -1).trim();
+    if (s.startsWith('\\[') && s.endsWith('\\]')) return s.slice(2, -2).trim();
+    if (s.startsWith('\\(') && s.endsWith('\\)')) return s.slice(2, -2).trim();
+    return s;
+}
 
 interface FormulaGalleryProps {
     formulas: CourseFormula[];
@@ -26,11 +37,10 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
     const [tempDesc, setTempDesc] = useState(formula.description || '');
     const [saving, setSaving] = useState(false);
 
-    // Dynamically import KaTeX for rendering
     const renderedLatex = useMemo(() => {
         try {
-            const katex = require('katex');
-            return katex.renderToString(formula.latex, { throwOnError: false, displayMode: true });
+            const cleaned = stripLatexDelimiters(formula.latex);
+            return katex.renderToString(cleaned, { throwOnError: false, displayMode: true });
         } catch {
             return `<span style="color:#ef4444;">${formula.latex}</span>`;
         }
@@ -86,7 +96,7 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
     }
 
     return (
-        <div className="group bg-white/80 rounded-xl border border-stone-200/60 p-4 hover:border-stone-300 hover:shadow-sm transition-all cursor-default relative">
+        <div id={`formula-${formula.id}`} className="group bg-white/80 rounded-xl border border-stone-200/60 p-4 hover:border-stone-300 hover:shadow-sm transition-all cursor-default relative">
             {/* Edit button */}
             <button
                 onClick={() => {

@@ -150,6 +150,29 @@ export default function CoursesPage() {
         }
     }, [mutateChapters]);
 
+    const handleRenameChapter = useCallback(async (chapterId: string, currentTitle: string) => {
+        const newTitle = prompt('请输入新的章节标题：', currentTitle);
+        if (!newTitle?.trim() || newTitle.trim() === currentTitle) return;
+        try {
+            const { error } = await supabase
+                .from('prism_course_chapters')
+                .update({ title: newTitle.trim() })
+                .eq('id', chapterId);
+            if (error) throw error;
+            toast.success('章节已重命名');
+            mutateChapters();
+            mutateChapter();
+        } catch (e) {
+            toast.error('重命名失败');
+            console.error(e);
+        }
+    }, [mutateChapters, mutateChapter]);
+
+    const handleDeleteChapterFromSidebar = useCallback(async (chapterId: string) => {
+        if (!confirm('确定删除此章节？')) return;
+        await handleDeleteChapter(chapterId);
+    }, [handleDeleteChapter]);
+
     // Formula handlers
     const handleSaveFormula = useCallback(async (formula: Partial<CourseFormula>) => {
         try {
@@ -198,6 +221,7 @@ export default function CoursesPage() {
             <CourseSidebar
                 courses={courses}
                 chapters={chapters}
+                formulas={formulas}
                 selectedCourseId={selectedCourseId}
                 selectedChapterId={selectedChapterId}
                 noteHeadings={noteHeadings}
@@ -207,6 +231,8 @@ export default function CoursesPage() {
                 onSelectChapter={handleSelectChapter}
                 onCreateChapter={handleCreateChapter}
                 onDeselectCourse={handleDeselectCourse}
+                onRenameChapter={handleRenameChapter}
+                onDeleteChapter={handleDeleteChapterFromSidebar}
             />
 
             {/* Right side container */}

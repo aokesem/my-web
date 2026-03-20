@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronDown, Plus, GripVertical, BookOpen, FileText, Hash, List, Loader2, BookText } from 'lucide-react';
-import type { Course, CourseChapter } from '../../types';
+import { ChevronLeft, ChevronDown, ChevronRight, Plus, GripVertical, BookOpen, FileText, Hash, List, Loader2, BookText, Pencil, Trash2, Sigma } from 'lucide-react';
+import type { Course, CourseChapter, CourseFormula } from '../../types';
 
 // ============================================================
 // TYPES
@@ -13,6 +13,7 @@ type SidebarLevel = 'courses' | 'chapters' | 'outline';
 interface CourseSidebarProps {
     courses: Course[];
     chapters: CourseChapter[];
+    formulas: CourseFormula[];
     selectedCourseId: string | null;
     selectedChapterId: string | null;
     noteHeadings: { level: number; text: string; id: string }[];
@@ -22,6 +23,8 @@ interface CourseSidebarProps {
     onSelectChapter: (chapterId: string) => void;
     onCreateChapter: () => void;
     onDeselectCourse: () => void;
+    onRenameChapter: (chapterId: string, currentTitle: string) => void;
+    onDeleteChapter: (chapterId: string) => void;
 }
 
 // ============================================================
@@ -45,6 +48,7 @@ const COLOR_MAP: Record<string, { bg: string; text: string; dot: string; border:
 export function CourseSidebar({
     courses,
     chapters,
+    formulas,
     selectedCourseId,
     selectedChapterId,
     noteHeadings,
@@ -54,7 +58,12 @@ export function CourseSidebar({
     onSelectChapter,
     onCreateChapter,
     onDeselectCourse,
+    onRenameChapter,
+    onDeleteChapter,
 }: CourseSidebarProps) {
+
+    const [headingsCollapsed, setHeadingsCollapsed] = useState(false);
+    const [formulasCollapsed, setFormulasCollapsed] = useState(false);
 
     // Determine which level to show
     const level: SidebarLevel = !selectedCourseId ? 'courses'
@@ -185,7 +194,6 @@ export function CourseSidebar({
                     )
                 )}
 
-                {/* LEVEL 2: Chapter List */}
                 {level === 'chapters' && (
                     isLoadingChapters ? (
                         <div className="flex items-center justify-center py-12">
@@ -194,21 +202,41 @@ export function CourseSidebar({
                     ) : (
                         <div className="space-y-1">
                             {chapters.map((ch, idx) => (
-                                <button
+                                <div
                                     key={ch.id}
-                                    onClick={() => onSelectChapter(ch.id)}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-all flex items-center gap-2.5 group ${selectedChapterId === ch.id
+                                    className={`w-full rounded-lg transition-all flex items-center group ${selectedChapterId === ch.id
                                         ? 'bg-stone-100 text-stone-800'
                                         : 'text-stone-600 hover:bg-stone-50 hover:text-stone-800'
                                         }`}
                                 >
-                                    <span className="text-[11px] font-mono font-bold text-stone-400 shrink-0 w-6">
-                                        {String(idx + 1).padStart(2, '0')}
-                                    </span>
-                                    <span className="text-[13px] font-medium truncate">
-                                        {ch.title}
-                                    </span>
-                                </button>
+                                    <button
+                                        onClick={() => onSelectChapter(ch.id)}
+                                        className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0"
+                                    >
+                                        <span className="text-[11px] font-mono font-bold text-stone-400 shrink-0 w-6">
+                                            {String(idx + 1).padStart(2, '0')}
+                                        </span>
+                                        <span className="text-[13px] font-medium truncate">
+                                            {ch.title}
+                                        </span>
+                                    </button>
+                                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pr-2 shrink-0">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onRenameChapter(ch.id, ch.title); }}
+                                            className="p-1 text-stone-300 hover:text-stone-600 rounded"
+                                            title="重命名"
+                                        >
+                                            <Pencil size={11} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onDeleteChapter(ch.id); }}
+                                            className="p-1 text-stone-300 hover:text-red-500 rounded"
+                                            title="删除"
+                                        >
+                                            <Trash2 size={11} />
+                                        </button>
+                                    </div>
+                                </div>
                             ))}
 
                             {/* Add Chapter Button */}
@@ -223,41 +251,75 @@ export function CourseSidebar({
                     )
                 )}
 
-                {/* LEVEL 3: Outline */}
                 {level === 'outline' && (
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Hash size={13} className="text-stone-400" />
-                            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-stone-500">
-                                标题大纲
-                            </span>
+                    <div className="space-y-2">
+                        {/* Collapsible: 核心公式 */}
+                        <div>
+                            <button
+                                onClick={() => setFormulasCollapsed(!formulasCollapsed)}
+                                className="w-full flex items-center gap-2 py-2 px-1 group"
+                            >
+                                <ChevronRight size={12} className={`text-stone-400 transition-transform ${formulasCollapsed ? '' : 'rotate-90'}`} />
+                                <Sigma size={13} className="text-stone-400" />
+                                <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-stone-500">
+                                    核心公式 ({formulas.length})
+                                </span>
+                            </button>
+                            {!formulasCollapsed && (
+                                formulas.length > 0 ? (
+                                    <div className="space-y-0.5 ml-1">
+                                        {formulas.map(f => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => scrollToElement(`formula-${f.id}`)}
+                                                className="w-full text-left rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-3 leading-snug truncate"
+                                            >
+                                                {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] text-stone-300 px-3 py-2">暂无公式</p>
+                                )
+                            )}
                         </div>
 
-                        {noteHeadings.length > 0 ? (
-                            <div className="space-y-0.5">
-                                {noteHeadings.map((h, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => scrollToElement(h.id)}
-                                        className="w-full text-left rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-3 leading-snug"
-                                        style={{ paddingLeft: `${(h.level - 1) * 16 + 12}px` }}
-                                    >
-                                        <span className={`${h.level === 1 ? 'font-bold text-stone-700' :
-                                            h.level === 2 ? 'font-medium text-stone-600' :
-                                                'text-stone-500'
-                                            }`}>
-                                            {h.text}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="py-8 flex flex-col items-center text-stone-400 gap-2">
-                                <List size={20} className="opacity-20" />
-                                <p className="text-xs font-mono">暂无标题大纲</p>
-                                <p className="text-[10px] text-stone-300">在笔记中使用 # 标题</p>
-                            </div>
-                        )}
+                        {/* Collapsible: 标题大纲 */}
+                        <div>
+                            <button
+                                onClick={() => setHeadingsCollapsed(!headingsCollapsed)}
+                                className="w-full flex items-center gap-2 py-2 px-1 group"
+                            >
+                                <ChevronRight size={12} className={`text-stone-400 transition-transform ${headingsCollapsed ? '' : 'rotate-90'}`} />
+                                <Hash size={13} className="text-stone-400" />
+                                <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-stone-500">
+                                    标题大纲 ({noteHeadings.length})
+                                </span>
+                            </button>
+                            {!headingsCollapsed && (
+                                noteHeadings.length > 0 ? (
+                                    <div className="space-y-0.5 ml-1">
+                                        {noteHeadings.map((h, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => scrollToElement(h.id)}
+                                                className="w-full text-left rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-3 leading-snug"
+                                                style={{ paddingLeft: `${(h.level - 1) * 16 + 12}px` }}
+                                            >
+                                                <span className={`${h.level === 1 ? 'font-bold text-stone-700' :
+                                                    h.level === 2 ? 'font-medium text-stone-600' :
+                                                        'text-stone-500'
+                                                    }`}>
+                                                    {h.text}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] text-stone-300 px-3 py-2">暂无标题</p>
+                                )
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

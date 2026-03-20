@@ -3,7 +3,7 @@ import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Minus } from 'lucide-react';
+import { Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Minus, ImageIcon } from 'lucide-react';
 
 export interface CommandItemProps {
     title: string;
@@ -78,7 +78,40 @@ const getSuggestionItems = ({ query }: { query: string }): CommandItemProps[] =>
                 editor.chain().focus().deleteRange(range).setHorizontalRule().run();
             },
         },
-    ].filter(item => item.title.toLowerCase().includes(query.toLowerCase()));
+        {
+            title: '插入图片',
+            description: '上传或粘贴一张图片',
+            icon: <ImageIcon size={18} />,
+            command: ({ editor, range }: { editor: any, range: any }) => {
+                editor.chain().focus().deleteRange(range).run();
+                // Trigger file input
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (!file) return;
+                    // Use the uploadImage method from BlockEditor via paste handler pattern
+                    // For simplicity, directly import and call
+                    const { compressImage } = await import('@/lib/imageUtils');
+                    const { supabase } = await import('@/lib/supabaseClient');
+                    try {
+                        const processedFile = await compressImage(file);
+                        const fileExt = processedFile.name.split('.').pop() || 'webp';
+                        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                        const filePath = `notes/${fileName}`;
+                        const { error } = await supabase.storage.from('course_images').upload(filePath, processedFile);
+                        if (error) throw error;
+                        const { data } = supabase.storage.from('course_images').getPublicUrl(filePath);
+                        editor.chain().focus().setImage({ src: data.publicUrl }).run();
+                    } catch (err) {
+                        console.error('Image upload failed:', err);
+                    }
+                };
+                input.click();
+            },
+        },
+    ].filter(item => item.title.toLowerCase().includes(query.toLowerCase()) || item.description.includes(query));
 };
 
 export const CommandList = forwardRef((props: any, ref) => {
