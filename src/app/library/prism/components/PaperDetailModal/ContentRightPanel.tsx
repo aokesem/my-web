@@ -135,7 +135,7 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
                                     {/* Upload Component */}
                                     <div className="pt-2">
                                         <ImageUpload
-                                            bucket="prism"
+                                            bucket="paper_images"
                                             folder={`figures/${paper.id}`}
                                             onChange={(url) => {
                                                 const newArr = [...tempFigures];
@@ -236,7 +236,7 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
                                     onChange={(json) => setTempNotes(JSON.stringify(json))}
                                     onSave={() => handleUpdateField('notes', tempNotes, () => setEditingNotes(false))}
                                     editable={true}
-                                    imageBucket="prism"
+                                    imageBucket="paper_images"
                                     imageFolder={`notes/${paper.id}`}
                                 />
                             </div>
@@ -265,7 +265,7 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
                                     key={`view-${paper.id}`}
                                     value={paper.notes}
                                     editable={false}
-                                    imageBucket="prism"
+                                    imageBucket="paper_images"
                                     imageFolder={`notes/${paper.id}`}
                                 />
                             </div>

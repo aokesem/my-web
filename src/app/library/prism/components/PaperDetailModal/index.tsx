@@ -60,12 +60,30 @@ export default function PaperDetailModal({
     const handleUpdateField = async (field: keyof PaperDetail, value: any) => {
         if (!paper) return;
         try {
-            const { error } = await supabase
-                .from('prism_papers')
-                .update({ [field]: value })
-                .eq('id', paper.id);
+            if (field === 'figures') {
+                // Figures are stored in a separate table, not in the main prism_papers table
+                const { error: delErr } = await supabase.from('prism_paper_figures').delete().eq('paper_id', paper.id);
+                if (delErr) throw delErr;
 
-            if (error) throw error;
+                const figInserts = (value as any[]).map((f, i) => ({
+                    paper_id: paper.id,
+                    url: f.url,
+                    description: f.description,
+                    sort_order: i
+                }));
+
+                if (figInserts.length > 0) {
+                    const { error: insErr } = await supabase.from('prism_paper_figures').insert(figInserts);
+                    if (insErr) throw insErr;
+                }
+            } else {
+                const { error } = await supabase
+                    .from('prism_papers')
+                    .update({ [field]: value })
+                    .eq('id', paper.id);
+
+                if (error) throw error;
+            }
 
             toast.success('更新成功');
             if (onUpdate) await onUpdate();
