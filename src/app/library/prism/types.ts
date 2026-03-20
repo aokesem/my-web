@@ -46,3 +46,37 @@ export interface ProjectData {
     insights: ProjectCategory<ProjectInsight>[];
     outcomes: ProjectCategory<ProjectOutcome>[];
 }
+
+// ============================================================
+// COURSE NOTES MODULE
+// ============================================================
+
+export interface Course {
+    id: string;
+    name: string;
+    name_en?: string;
+    icon?: string;
+    color?: string;
+    description?: string;
+    sort_order: number;
+    created_at: string;
+}
+
+export interface CourseChapter {
+    id: string;
+    course_id: string;
+    title: string;
+    notes?: string; // Tiptap JSON string
+    sort_order: number;
+    created_at: string;
+}
+
+export interface CourseFormula {
+    id: string;
+    course_id: string;
+    name: string;
+    latex: string;
+    description?: string;
+    sort_order: number;
+    created_at: string;
+}

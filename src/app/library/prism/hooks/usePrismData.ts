@@ -186,3 +186,82 @@ export function usePrismProjects() {
         mutate 
     };
 }
+
+// ==========================================
+// COURSE NOTES - API FETCHERS
+// ==========================================
+
+import { Course, CourseChapter, CourseFormula } from '../types';
+
+const fetchCourses = async (): Promise<Course[]> => {
+    const { data, error } = await supabase
+        .from('prism_courses')
+        .select('*')
+        .order('sort_order');
+    if (error) throw error;
+    return data as Course[];
+};
+
+const fetchCourseChapters = async (courseId: string): Promise<CourseChapter[]> => {
+    // Only fetch id, title, sort_order, created_at — NOT the heavy notes field
+    const { data, error } = await supabase
+        .from('prism_course_chapters')
+        .select('id, course_id, title, sort_order, created_at')
+        .eq('course_id', courseId)
+        .order('sort_order');
+    if (error) throw error;
+    return data as CourseChapter[];
+};
+
+const fetchChapterContent = async (chapterId: string): Promise<CourseChapter> => {
+    const { data, error } = await supabase
+        .from('prism_course_chapters')
+        .select('*')
+        .eq('id', chapterId)
+        .single();
+    if (error) throw error;
+    return data as CourseChapter;
+};
+
+const fetchCourseFormulas = async (courseId: string): Promise<CourseFormula[]> => {
+    const { data, error } = await supabase
+        .from('prism_course_formulas')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('sort_order');
+    if (error) throw error;
+    return data as CourseFormula[];
+};
+
+// ==========================================
+// COURSE NOTES - CUSTOM HOOKS
+// ==========================================
+
+export function useCourses() {
+    const { data, error, isLoading, mutate } = useSWR('prism_courses_all', fetchCourses);
+    return { courses: data || [], isLoading, isError: error, mutate };
+}
+
+export function useCourseChapters(courseId: string | null) {
+    const { data, error, isLoading, mutate } = useSWR(
+        courseId ? `prism_chapters_${courseId}` : null,
+        () => fetchCourseChapters(courseId!)
+    );
+    return { chapters: data || [], isLoading, isError: error, mutate };
+}
+
+export function useChapterContent(chapterId: string | null) {
+    const { data, error, isLoading, mutate } = useSWR(
+        chapterId ? `prism_chapter_content_${chapterId}` : null,
+        () => fetchChapterContent(chapterId!)
+    );
+    return { chapter: data || null, isLoading, isError: error, mutate };
+}
+
+export function useCourseFormulas(courseId: string | null) {
+    const { data, error, isLoading, mutate } = useSWR(
+        courseId ? `prism_formulas_${courseId}` : null,
+        () => fetchCourseFormulas(courseId!)
+    );
+    return { formulas: data || [], isLoading, isError: error, mutate };
+}
