@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import type { PaperDetail } from './PaperDetailModal';
+import type { PaperDetail } from '../types';
 
 // ============================================================
 // TYPES
