@@ -236,6 +236,8 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
                                     onChange={(json) => setTempNotes(JSON.stringify(json))}
                                     onSave={() => handleUpdateField('notes', tempNotes, () => setEditingNotes(false))}
                                     editable={true}
+                                    imageBucket="prism"
+                                    imageFolder={`notes/${paper.id}`}
                                 />
                             </div>
                             <div className="flex justify-end gap-2 print:hidden">
@@ -263,6 +265,8 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
                                     key={`view-${paper.id}`}
                                     value={paper.notes}
                                     editable={false}
+                                    imageBucket="prism"
+                                    imageFolder={`notes/${paper.id}`}
                                 />
                             </div>
                         ) : (

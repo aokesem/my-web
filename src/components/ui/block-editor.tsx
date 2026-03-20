@@ -134,6 +134,8 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
             }),
             SlashCommand.configure({
                 suggestion: suggestionOptions,
+                imageBucket,
+                imageFolder,
             }),
             MathExtension.configure({ 
                 evaluation: false, 

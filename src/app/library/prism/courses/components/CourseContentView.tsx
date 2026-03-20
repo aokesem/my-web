@@ -208,6 +208,8 @@ export function CourseContentView({
                                     onChange={(json) => setTempNotes(JSON.stringify(json))}
                                     onSave={handleSaveNotes}
                                     editable={true}
+                                    imageBucket="course_images"
+                                    imageFolder={`notes/${courseId}/${chapter!.id}`}
                                 />
                             </div>
                             <div className="flex justify-end gap-2">
@@ -232,6 +234,8 @@ export function CourseContentView({
                                     key={`view-${chapter!.id}`}
                                     value={chapter!.notes!}
                                     editable={false}
+                                    imageBucket="course_images"
+                                    imageFolder={`notes/${courseId}/${chapter!.id}`}
                                 />
                             </div>
                         ) : (

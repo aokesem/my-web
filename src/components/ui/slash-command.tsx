@@ -12,7 +12,13 @@ export interface CommandItemProps {
     command: ({ editor, range }: { editor: any, range: any }) => void;
 }
 
-const getSuggestionItems = ({ query }: { query: string }): CommandItemProps[] => {
+export interface SuggestionProps {
+    query: string;
+    imageBucket?: string;
+    imageFolder?: string;
+}
+
+const getSuggestionItems = ({ query, imageBucket, imageFolder }: SuggestionProps): CommandItemProps[] => {
     return [
         {
             title: '一级标题',
@@ -96,13 +102,15 @@ const getSuggestionItems = ({ query }: { query: string }): CommandItemProps[] =>
                     const { compressImage } = await import('@/lib/imageUtils');
                     const { supabase } = await import('@/lib/supabaseClient');
                     try {
+                        const bucket = imageBucket || 'course_images'; // default fallback
+                        const folder = imageFolder || 'notes';
                         const processedFile = await compressImage(file);
                         const fileExt = processedFile.name.split('.').pop() || 'webp';
                         const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-                        const filePath = `notes/${fileName}`;
-                        const { error } = await supabase.storage.from('course_images').upload(filePath, processedFile);
+                        const filePath = `${folder}/${fileName}`;
+                        const { error } = await supabase.storage.from(bucket).upload(filePath, processedFile);
                         if (error) throw error;
-                        const { data } = supabase.storage.from('course_images').getPublicUrl(filePath);
+                        const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
                         editor.chain().focus().setImage({ src: data.publicUrl }).run();
                     } catch (err) {
                         console.error('Image upload failed:', err);
@@ -185,6 +193,8 @@ export const SlashCommand = Extension.create({
                     props.command({ editor, range });
                 },
             } as Omit<SuggestionOptions, 'editor'>,
+            imageBucket: 'course_images',
+            imageFolder: 'notes',
         };
     },
 
@@ -199,7 +209,13 @@ export const SlashCommand = Extension.create({
 });
 
 export const suggestionOptions = {
-    items: getSuggestionItems,
+    items: ({ query, editor }: any) => {
+        // extract options from the extension
+        const ext = editor.extensionManager.extensions.find((e: any) => e.name === 'slashCommand');
+        const imageBucket = ext?.options?.imageBucket;
+        const imageFolder = ext?.options?.imageFolder;
+        return getSuggestionItems({ query, imageBucket, imageFolder });
+    },
     render: () => {
         let component: ReactRenderer;
         let popup: TippyInstance | TippyInstance[];
