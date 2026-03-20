@@ -360,7 +360,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                 >
                                                     <Pencil size={12} />
                                                 </button>
-                                                <div className="text-base text-stone-700 leading-relaxed mb-2 pr-6">
+                                                <div className="text-base text-stone-700 leading-relaxed mb-2 pr-6 whitespace-pre-wrap">
                                                     {insight.content}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 mt-2">
@@ -477,7 +477,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                 <div className="flex items-start gap-2.5 p-2 mb-1">
                                                     <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
                                                     <div className="flex-1 flex flex-col gap-1">
-                                                        <span className="text-[15px] text-stone-700 leading-relaxed font-medium pr-6">
+                                                        <span className="text-[15px] text-stone-700 leading-relaxed font-medium pr-6 whitespace-pre-wrap">
                                                             {outcome.content}
                                                         </span>
                                                         <div className="flex flex-wrap gap-x-3 gap-y-1">

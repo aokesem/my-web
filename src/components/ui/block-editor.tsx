@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { useEditor, EditorContent, EditorContext } from '@tiptap/react';
+import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useEditor, EditorContent, EditorContext, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -28,14 +28,18 @@ export interface BlockEditorProps {
     className?: string;
 }
 
-export function BlockEditor({
+export interface BlockEditorRef {
+    editor: Editor | null;
+}
+
+export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
     value = '',
     onChange,
     onSave,
     editable = true,
     placeholder = '按下 / 调出菜单...',
     className = ''
-}: BlockEditorProps) {
+}, ref) => {
 
     // Helper to safely parse JSON or treat as Markdown
     const parseInitialContent = (val: string | Record<string, any>) => {
@@ -87,6 +91,13 @@ export function BlockEditor({
                         return true;
                     }
                 }
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                    if (onSave) {
+                        event.preventDefault();
+                        onSave();
+                        return true;
+                    }
+                }
                 return false;
             }
         },
@@ -97,6 +108,10 @@ export function BlockEditor({
             }
         },
     });
+
+    useImperativeHandle(ref, () => ({
+        editor: editor
+    }), [editor]);
 
     // Update editable state dynamically if needed
     useEffect(() => {
@@ -138,4 +153,5 @@ export function BlockEditor({
             <EditorContent editor={editor} />
         </div>
     );
-}
+});
+BlockEditor.displayName = 'BlockEditor';
