@@ -176,21 +176,24 @@ export default function CinemaArchive() {
                         className="w-full h-full rounded-[2.5rem] overflow-hidden border border-white/5 relative group bg-black cursor-pointer"
                     >
                         <AnimatePresence mode="wait">
-                            <motion.div
-                                key={current.stills[stillIdx]}
-                                initial={{ opacity: 0, scale: 1.05 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.6 }}
-                                className="absolute inset-0"
-                            >
-                                <Image
-                                    src={current.stills[stillIdx]}
-                                    className="object-cover opacity-70 group-hover:opacity-80 transition-opacity duration-700"
-                                    alt="Cinema Still"
-                                    fill sizes="100vw" priority unoptimized
-                                />
-                            </motion.div>
+                            {current.stills && current.stills[stillIdx] && (
+                                <motion.div
+                                    key={current.stills[stillIdx].split('|')[0]}
+                                    initial={{ opacity: 0, scale: 1.05 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.6 }}
+                                    className="absolute inset-0"
+                                >
+                                    <Image
+                                        src={current.stills[stillIdx].split('|')[0]}
+                                        className="object-cover opacity-70 group-hover:opacity-80 transition-opacity duration-700"
+                                        style={{ objectPosition: current.stills[stillIdx].split('|')[1] || 'center' }}
+                                        alt="Cinema Still"
+                                        fill sizes="100vw" priority unoptimized
+                                    />
+                                </motion.div>
+                            )}
                         </AnimatePresence>
 
                         {/* 渐变遮罩 */}
@@ -199,7 +202,7 @@ export default function CinemaArchive() {
                         {/* 剧照切换指示器 */}
                         <div className="absolute bottom-10 right-12 flex flex-col items-end gap-2">
                             <div className="flex gap-1.5 mb-2">
-                                {current.stills.map((_, i) => (
+                                {current.stills.map((s, i) => (
                                     <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === stillIdx ? 'w-6 bg-blue-500' : 'w-1.5 bg-white/20'}`} />
                                 ))}
                             </div>

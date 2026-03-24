@@ -12,6 +12,8 @@ import { Plus, Pencil, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { deleteImageFromStorage } from '@/lib/imageUtils';
+import StillEditor from '@/components/movies/StillEditor';
+import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface Movie {
     id: number;
@@ -33,6 +35,10 @@ export default function MoviesAdmin() {
     const [isOpen, setIsOpen] = useState(false);
     const [currentMovie, setCurrentMovie] = useState<Partial<Movie> & { tagsString?: string }>({});
 
+    // 剧照焦点编辑状态
+    const [editingStillIdx, setEditingStillIdx] = useState<number | null>(null);
+    const [isStillEditorOpen, setIsStillEditorOpen] = useState(false);
+
     useEffect(() => {
         fetchMovies();
     }, []);
@@ -52,29 +58,7 @@ export default function MoviesAdmin() {
         setLoading(false);
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm('确定要删除这部电影吗？')) return;
-
-        const target = movies.find(m => m.id === id);
-
-        const { error } = await supabase.from('movies').delete().eq('id', id);
-        if (error) {
-            toast.error('删除失败');
-        } else {
-            if (target) {
-                if (target.cover_url) {
-                    await deleteImageFromStorage(target.cover_url);
-                }
-                if (target.stills && target.stills.length > 0) {
-                    for (const still of target.stills) {
-                        if (still) await deleteImageFromStorage(still);
-                    }
-                }
-            }
-            toast.success('电影已删除');
-            fetchMovies();
-        }
-    };
+    // handleDelete 已由于采用 SafeDeleteDialog 被移除，逻辑现由组件接管
 
     const handleSave = async () => {
         if (!currentMovie.title) {
@@ -129,6 +113,21 @@ export default function MoviesAdmin() {
     const openCreate = () => {
         setCurrentMovie({ status: 'Watched', tagsString: '' });
         setIsOpen(true);
+    };
+
+    const handleOpenStillEditor = (idx: number) => {
+        setEditingStillIdx(idx);
+        setIsStillEditorOpen(true);
+    };
+
+    const handleSaveStillFocus = (position: string) => {
+        if (editingStillIdx === null) return;
+        const newStills = [...(currentMovie.stills || [])];
+        const currentUrl = newStills[editingStillIdx].split('|')[0];
+        newStills[editingStillIdx] = `${currentUrl}|${position}`;
+        setCurrentMovie({ ...currentMovie, stills: newStills });
+        setIsStillEditorOpen(false);
+        setEditingStillIdx(null);
     };
 
     return (
@@ -204,6 +203,16 @@ export default function MoviesAdmin() {
                                                     }}
                                                 />
                                             </div>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={!still}
+                                                onClick={() => handleOpenStillEditor(idx)}
+                                                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-colors"
+                                            >
+                                                调整焦点
+                                            </Button>
                                             <Button
                                                 type="button"
                                                 variant="destructive"
@@ -291,6 +300,17 @@ export default function MoviesAdmin() {
                         </div>
                     </DialogContent>
                 </Dialog>
+
+                {/* 剧照焦点编辑器对话框 */}
+                {editingStillIdx !== null && (
+                    <StillEditor
+                        isOpen={isStillEditorOpen}
+                        url={(currentMovie.stills || [])[editingStillIdx]?.split('|')[0] || ''}
+                        initialPos={(currentMovie.stills || [])[editingStillIdx]?.split('|')[1] || 'center 50%'}
+                        onClose={() => setIsStillEditorOpen(false)}
+                        onSave={handleSaveStillFocus}
+                    />
+                )}
             </div>
 
             <div className="rounded-md border border-zinc-800 bg-zinc-950/50">
@@ -342,9 +362,17 @@ export default function MoviesAdmin() {
                                             <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-800">
                                                 <Pencil size={14} />
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
-                                                <Trash size={14} />
-                                            </Button>
+                                            <SafeDeleteDialog
+                                                table="movies"
+                                                recordId={item.id}
+                                                imageFields={['cover_url', 'stills']}
+                                                title={`确定要删除《${item.title}》吗？`}
+                                                onSuccess={fetchMovies}
+                                            >
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
+                                                    <Trash size={14} />
+                                                </Button>
+                                            </SafeDeleteDialog>
                                         </div>
                                     </TableCell>
                                 </TableRow>

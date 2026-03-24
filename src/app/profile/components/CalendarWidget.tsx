@@ -253,7 +253,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         mutate(); // refetch
     };
 
-    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string }) => {
+    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string, duration?: number | null }) => {
         await supabase.from('calendar_activities').update(updates).eq('id', actId);
         mutate();
     };
@@ -352,6 +352,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         onClearStatus={handleClearStatus}
                                         onAddActivity={handleAddActivity}
                                         onRemoveActivity={handleRemoveActivity}
+                                        onUpdateActivity={handleUpdateActivity}
                                         onCommentChange={handleCommentChange}
                                         onCommentBlur={handleCommentBlur}
                                     />

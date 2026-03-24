@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
 import { DayStatus, DayData, Deadline, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
 
 interface MonthViewPanelProps {
@@ -20,6 +20,7 @@ interface MonthViewPanelProps {
     onClearStatus: () => void;
     onAddActivity: (content: string, duration: string) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
+    onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null }) => Promise<void>;
     onCommentChange: (comment: string) => void;
     onCommentBlur: () => void;
 }
@@ -40,6 +41,7 @@ export default function MonthViewPanel({
     onClearStatus,
     onAddActivity,
     onRemoveActivity,
+    onUpdateActivity,
     onCommentChange,
     onCommentBlur
 }: MonthViewPanelProps) {
@@ -48,6 +50,9 @@ export default function MonthViewPanel({
 
     const [newActivity, setNewActivity] = useState('');
     const [newDuration, setNewDuration] = useState('');
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState('');
+    const [editDuration, setEditDuration] = useState('');
 
     const gridCells: Array<{ day: number | null }> = [];
     for (let i = 0; i < startOffset; i++) gridCells.push({ day: null });
@@ -71,6 +76,21 @@ export default function MonthViewPanel({
         await onAddActivity(newActivity, newDuration);
         setNewActivity('');
         setNewDuration('');
+    };
+
+    const handleEditStart = (act: any) => {
+        setEditingId(act.id);
+        setEditContent(act.content);
+        setEditDuration(act.duration?.toString() || '');
+    };
+
+    const handleEditSave = async () => {
+        if (!editingId || !editContent.trim()) return;
+        await onUpdateActivity(editingId, {
+            content: editContent.trim(),
+            duration: editDuration ? parseFloat(editDuration) : null
+        });
+        setEditingId(null);
     };
 
     return (
@@ -206,21 +226,58 @@ export default function MonthViewPanel({
                         {monthActivities.length > 0 ? (
                             <div className="space-y-2">
                                 {monthActivities.map(act => (
-                                    <div key={act.id} className="flex items-center gap-3 bg-slate-50/80 rounded-lg px-4 py-2.5 group">
+                                    <div key={act.id} className="flex items-center gap-3 bg-slate-50/80 rounded-lg px-4 py-2.5 group animate-in fade-in slide-in-from-left-2 duration-300">
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
-                                        <span className="flex-1 text-[15px] text-slate-700 font-medium">{act.content}</span>
-                                        {act.duration !== null && (
-                                            <span className="text-[16px] font-mono text-black-400">
-                                                {act.duration}h
-                                            </span>
-                                        )}
-                                        {isAdmin && (
-                                            <button
-                                                onClick={() => onRemoveActivity(act.id)}
-                                                className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-400 transition-all p-1"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                        {editingId === act.id ? (
+                                            <div className="flex-1 flex items-center gap-2">
+                                                <input
+                                                    value={editContent}
+                                                    onChange={e => setEditContent(e.target.value)}
+                                                    className="flex-1 bg-white border border-blue-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    value={editDuration}
+                                                    onChange={e => setEditDuration(e.target.value)}
+                                                    placeholder="h"
+                                                    className="w-12 bg-white border border-blue-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                                />
+                                                <div className="flex items-center gap-1 ml-1">
+                                                    <button onClick={handleEditSave} className="p-1 text-emerald-500 hover:bg-emerald-50 rounded transition-colors">
+                                                        <Check size={14} />
+                                                    </button>
+                                                    <button onClick={() => setEditingId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded transition-colors">
+                                                        <RotateCcw size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <span className="flex-1 text-[15px] text-slate-700 font-medium">{act.content}</span>
+                                                {act.duration !== null && (
+                                                    <span className="text-[16px] font-mono text-black-400">
+                                                        {act.duration}h
+                                                    </span>
+                                                )}
+                                                {isAdmin && (
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button
+                                                            onClick={() => handleEditStart(act)}
+                                                            className="text-slate-300 hover:text-blue-400 transition-all p-1"
+                                                            title="编辑"
+                                                        >
+                                                            <Edit2 size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onRemoveActivity(act.id)}
+                                                            className="text-slate-300 hover:text-rose-400 transition-all p-1"
+                                                            title="删除"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 ))}
