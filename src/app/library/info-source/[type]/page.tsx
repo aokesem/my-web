@@ -3,10 +3,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Library, Target, ListTodo, SlidersHorizontal, Star, Search, Clock, Plus, ExternalLink, Bookmark, Edit, Trash2, X, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Library, Target, ListTodo, SlidersHorizontal, Star, Search, Clock, Plus, ExternalLink, Bookmark, Edit, Trash2, X, Loader2, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { toast } from 'sonner';
 
 // === 类型定义 ===
 export type CategoryType = 'study' | 'life';
@@ -15,6 +16,7 @@ export interface InfoSource {
     id: number;
     name: string;
     image_url?: string;
+    sort_order: number;
 }
 
 export interface InfoCategory {
@@ -112,7 +114,7 @@ export default function InfoSourceListPage() {
             try {
                 // 并行请求基础数据
                 const [sourceRes, catRes, itemsRes] = await Promise.all([
-                    supabase.from('info_sources').select('*'),
+                    supabase.from('info_sources').select('*').order('sort_order', { ascending: true }),
                     supabase.from('info_categories').select('*'),
                     // 获取当前类别的 items，并级联查询多对多关联
                     supabase.from('info_items')
@@ -232,6 +234,27 @@ export default function InfoSourceListPage() {
             console.error(`Failed to update ${field}`, error);
             // 回滚更新
             setItems(prev => prev.map(i => i.id === id ? { ...i, [field]: !newValue } : i));
+        }
+    };
+
+    // 重新排序来源并持久化
+    const handleReorderSources = async (newOrder: InfoSource[]) => {
+        setSources(newOrder);
+        
+        // 批量更新数据库 (这里简化处理，在大规模生产中应使用 SQL 函数加速)
+        const updates = newOrder.map((source, index) => ({
+            id: source.id,
+            name: source.name,
+            image_url: source.image_url,
+            sort_order: index
+        }));
+
+        try {
+            const { error } = await supabase.from('info_sources').upsert(updates);
+            if (error) throw error;
+        } catch (error) {
+            console.error("Failed to update sources order:", error);
+            toast.error("排序保存失败");
         }
     };
 
@@ -448,41 +471,57 @@ export default function InfoSourceListPage() {
                                     transition={{ duration: 0.2 }}
                                     className="space-y-1 mt-2"
                                 >
-                                    <button
-                                        onClick={() => setSelectedSourceId(null)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-                                            selectedSourceId === null ? theme.primaryBg + ' ' + theme.primary : `transparent hover:${theme.cardBg}`
-                                        }`}
+                                    <Reorder.Group 
+                                        axis="y" 
+                                        values={mockSources} 
+                                        onReorder={handleReorderSources}
+                                        className="space-y-1 mt-2"
                                     >
-                                        <span className="text-sm font-bold">全部来源</span>
-                                    </button>
-                                    {mockSources.map(source => {
-                                        const count = mockItems.filter(i => i.source_id === source.id).length;
-                                        const isActive = selectedSourceId === source.id;
-                                        return (
-                                            <button
-                                                key={source.id}
-                                                onClick={() => setSelectedSourceId(source.id)}
-                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
-                                                    isActive ? theme.primaryBg + ' ' + theme.primary : `transparent hover:${theme.cardBg}`
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    {source.image_url ? (
-                                                        <img src={source.image_url} alt="" className={`w-5 h-5 rounded object-cover ${!isActive && 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100'}`} />
-                                                    ) : (
-                                                        <div className={`w-5 h-5 rounded bg-gray-500/20`} />
-                                                    )}
-                                                    <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium group-hover:font-semibold'}`}>{source.name}</span>
-                                                </div>
-                                                {count > 0 && (
-                                                    <span className={`text-xs font-mono px-2 py-0.5 rounded-md transition-colors ${isActive ? (isStudy?'bg-blue-500/20':'bg-amber-500/20') : (isStudy?'bg-slate-800':'bg-stone-200 group-hover:bg-stone-300')}`}>
-                                                        {count}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        )
-                                    })}
+                                        <button
+                                            onClick={() => setSelectedSourceId(null)}
+                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all mb-1 ${
+                                                selectedSourceId === null ? theme.primaryBg + ' ' + theme.primary : `transparent hover:${theme.cardBg}`
+                                            }`}
+                                        >
+                                            <span className="text-sm font-bold">全部来源</span>
+                                        </button>
+                                        {mockSources.map(source => {
+                                            const count = mockItems.filter(i => i.source_id === source.id).length;
+                                            const isActive = selectedSourceId === source.id;
+                                            return (
+                                                <Reorder.Item
+                                                    key={source.id}
+                                                    value={source}
+                                                    className="relative cursor-grab active:cursor-grabbing"
+                                                >
+                                                    <button
+                                                        onClick={() => setSelectedSourceId(source.id)}
+                                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
+                                                            isActive ? theme.primaryBg + ' ' + theme.primary : `transparent hover:${theme.cardBg}`
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            {source.image_url ? (
+                                                                <img src={source.image_url} alt="" className={`w-5 h-5 rounded object-cover ${!isActive && 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100'}`} />
+                                                            ) : (
+                                                                <div className={`w-5 h-5 rounded bg-gray-500/20`} />
+                                                            )}
+                                                            <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium group-hover:font-semibold'}`}>{source.name}</span>
+                                                        </div>
+                                                        {count > 0 ? (
+                                                            <span className={`text-xs font-mono px-2 py-0.5 rounded-md transition-colors ${isActive ? (isStudy?'bg-blue-500/20':'bg-amber-500/20') : (isStudy?'bg-slate-800':'bg-stone-200 group-hover:bg-stone-300')}`}>
+                                                                {count}
+                                                            </span>
+                                                        ) : (
+                                                            <div className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <SlidersHorizontal size={10} className="text-zinc-600 rotate-90" />
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                </Reorder.Item>
+                                            )
+                                        })}
+                                    </Reorder.Group>
                                 </motion.div>
                             ) : (
                                 <motion.div 

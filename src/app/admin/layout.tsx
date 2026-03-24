@@ -10,7 +10,7 @@ import {
     BookOpen,
     ArrowLeft,
     LogOut,
-    // [新增] 引入 Room 管理相关的图标
+    Library,
     Quote,
     GitCommitHorizontal,
     ListTodo,
@@ -18,12 +18,12 @@ import {
     Wrench,
     Activity,
     CalendarDays,
-    SearchCode, // [New] for Prompts
-    Layers, // [New] for MindMap
-    Sprout, // [New] for Garden
+    SearchCode,
+    Layers,
+    Sprout,
     BookMarked,
-    Utensils, // [New] for Diet
-    Box, // [New] for Prism
+    Utensils,
+    Box,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -55,6 +55,7 @@ const LIBRARY_NAV_ITEMS = [
     { title: "数字花园", href: "/admin/library/garden", icon: Sprout },
     { title: "饮食手记", href: "/admin/library/diet", icon: Utensils },
     { title: "论文体系", href: "/admin/library/prism", icon: Box },
+    { title: "信息溯源", href: "/admin/library/info-source", icon: Library },
 ];
 
 export default function AdminLayout({
