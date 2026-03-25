@@ -185,6 +185,19 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
     const [loading, setLoading] = useState(true);
     const [editingItem, setEditingItem] = useState<any | null>(null);
     const [form, setForm] = useState<any>({});
+    const [selectedCategory, setSelectedCategory] = useState<string>("All");
+
+    const hasCategory = fields.includes("category");
+    const categories = React.useMemo(() => {
+        if (!hasCategory) return [];
+        const cats = Array.from(new Set(data.map(item => item.category).filter(Boolean))) as string[];
+        return ["All", ...cats.sort()];
+    }, [data, hasCategory]);
+
+    const filteredData = React.useMemo(() => {
+        if (!hasCategory || selectedCategory === "All") return data;
+        return data.filter(item => item.category === selectedCategory);
+    }, [data, selectedCategory, hasCategory]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -250,7 +263,25 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800/50 pb-4">
+                {hasCategory ? (
+                    <div className="flex flex-wrap gap-2">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                                    selectedCategory === cat 
+                                    ? 'bg-zinc-100 text-zinc-900 border-zinc-100' 
+                                    : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
+                                } border`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                ) : <div />}
+                
                 <Button onClick={handleCreate} disabled={!!editingItem} size="sm" className="bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700">
                     <Plus size={14} className="mr-1" /> 添加记录
                 </Button>
@@ -278,7 +309,7 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
             )}
 
             <div className="grid grid-cols-1 gap-3">
-                {data.map(item => (
+                {filteredData.map(item => (
                     <div key={item.id} className="group bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:border-zinc-700 transition-colors flex gap-4">
                         <div className="flex flex-col items-center justify-center bg-zinc-950 rounded px-2 text-xs text-zinc-500 font-mono w-10 shrink-0">
                             {item.sort_order}
