@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { DayStatus, DayData, Deadline, formatDateKey, MONTH_ABBR } from './calendar/types';
+import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, formatDateKey, MONTH_ABBR } from './calendar/types';
 import DeadlinePanel from './calendar/DeadlinePanel';
 import MonthViewPanel from './calendar/MonthViewPanel';
 import WeekViewPanel from './calendar/WeekViewPanel';
@@ -53,29 +53,52 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     const [isWeeklyFullscreen, setIsWeeklyFullscreen] = useState(false);
 
     const { data: swrData, mutate } = useSWR('calendar_data', async () => {
-        const { data: days } = await supabase.from('calendar_days').select('*');
-        const { data: acts } = await supabase.from('calendar_activities').select('*').order('created_at', { ascending: true });
-        const { data: dls } = await supabase.from('calendar_deadlines').select('*').order('date', { ascending: true });
+        const [daysRes, actsRes, catsRes, itemsRes, tpsRes] = await Promise.all([
+            supabase.from('calendar_days').select('*'),
+            supabase.from('calendar_activities').select('*').order('created_at', { ascending: true }),
+            supabase.from('deadline_categories').select('*').order('sort_order', { ascending: true }),
+            supabase.from('deadline_items').select('*').order('sort_order', { ascending: true }),
+            supabase.from('deadline_timepoints').select('*').order('date', { ascending: true }),
+        ]);
 
         const map: Record<string, DayData> = {};
-        if (days) {
-            for (const d of days) {
+        if (daysRes.data) {
+            for (const d of daysRes.data) {
                 map[d.date] = { status: d.status as DayStatus, comment: d.comment || '', activities: [] };
             }
         }
         const allActs: any[] = [];
-        if (acts) {
-            for (const a of acts) {
-                const act = { id: a.id, content: a.content, duration: a.duration, start_time: a.start_time, end_time: a.end_time, color: a.color, day_of_week: a.day_of_week, recur_until: a.recur_until, date: a.date };
+        if (actsRes.data) {
+            for (const a of actsRes.data) {
+                const act = { id: a.id, content: a.content, duration: a.duration, start_time: a.start_time, end_time: a.end_time, color: a.color, day_of_week: a.day_of_week, recur_until: a.recur_until, date: a.date, deadline_item_id: a.deadline_item_id };
                 allActs.push(act);
                 if (!map[a.date]) map[a.date] = { status: null, comment: '', activities: [] };
                 map[a.date].activities.push(act);
             }
         }
-        return { calendarData: map, deadlines: dls || [], allActivities: allActs } as { calendarData: Record<string, DayData>, deadlines: Deadline[], allActivities: any[] };
-    }, { fallbackData: { calendarData: {}, deadlines: [], allActivities: [] } });
+        return {
+            calendarData: map,
+            deadlineCategories: (catsRes.data || []) as DeadlineCategory[],
+            deadlineItems: (itemsRes.data || []) as DeadlineItem[],
+            deadlineTimepoints: (tpsRes.data || []) as DeadlineTimepoint[],
+            allActivities: allActs,
+        };
+    }, { fallbackData: { calendarData: {}, deadlineCategories: [], deadlineItems: [], deadlineTimepoints: [], allActivities: [] } });
 
-    const { calendarData, deadlines, allActivities } = swrData;
+    const { calendarData, deadlineCategories, deadlineItems, deadlineTimepoints, allActivities } = swrData;
+
+    // 将 timepoints 转为旧 Deadline 格式，供月历/周历红点标注等使用（过渡兼容）
+    const deadlines: Deadline[] = useMemo(() => {
+        return deadlineTimepoints.map(tp => {
+            const item = deadlineItems.find(i => i.id === tp.item_id);
+            return {
+                id: tp.id,
+                title: item ? `${item.title} - ${tp.label || tp.date}` : tp.label || tp.date,
+                date: tp.date,
+                done: tp.done,
+            };
+        });
+    }, [deadlineTimepoints, deadlineItems]);
     const selectedKey = formatDateKey(viewYear, viewMonth, selectedDay);
     const selectedData: DayData = calendarData[selectedKey] || { status: null, comment: '', activities: [] };
 
@@ -107,24 +130,16 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
 
     const handleClearStatus = () => upsertDayField(selectedKey, 'status', null);
 
-    const handleAddActivity = async (content: string, duration: string) => {
-        const payload = {
+    const handleAddActivity = async (content: string, duration: string, deadlineItemId?: number | null) => {
+        const payload: any = {
             date: selectedKey,
             content: content.trim(),
             duration: duration ? parseFloat(duration) : null,
+            deadline_item_id: deadlineItemId || null,
         };
         const { data, error } = await supabase.from('calendar_activities').insert(payload).select().single();
         if (!error && data) {
-            mutate((prev: any) => {
-                const day = prev.calendarData[selectedKey] || { status: null, comment: '', activities: [] };
-                return {
-                    ...prev,
-                    calendarData: {
-                        ...prev.calendarData,
-                        [selectedKey]: { ...day, activities: [...day.activities, { id: data.id, content: data.content, duration: data.duration, start_time: data.start_time, end_time: data.end_time }] }
-                    }
-                };
-            }, false);
+            mutate(); // refetch to rebuild allActivities with deadline_item_id
         }
     };
 
@@ -155,38 +170,75 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
 
     const handleCommentBlur = () => upsertDayField(selectedKey, 'comment', selectedData.comment);
 
-    // Deadline 操作
-    const handleAddDeadline = async (title: string, date: string) => {
-        const fallbackDate = '2099-12-31';
-        const { data, error } = await supabase.from('calendar_deadlines')
-            .insert({ title, date: date || fallbackDate, done: false })
-            .select().single();
-        if (!error && data) {
-            mutate((prev: any) => ({ ...prev, deadlines: [...prev.deadlines, data] }), false);
-        }
+    // === 新 Deadline 三级操作 ===
+    // -- 分类操作 --
+    const handleAddCategory = async (name: string) => {
+        const maxOrder = deadlineCategories.length > 0 ? Math.max(...deadlineCategories.map(c => c.sort_order)) + 1 : 0;
+        const { data, error } = await supabase.from('deadline_categories').insert({ name, sort_order: maxOrder }).select().single();
+        if (!error && data) mutate();
     };
 
-    const handleToggleDeadline = async (id: number) => {
-        const dl = deadlines.find(d => d.id === id);
-        if (!dl) return;
-        const newDone = !dl.done;
-        await supabase.from('calendar_deadlines').update({ done: newDone }).eq('id', id);
-        mutate((prev: any) => ({ ...prev, deadlines: prev.deadlines.map((d: any) => d.id === id ? { ...d, done: newDone } : d) }), false);
+    const handleUpdateCategory = async (id: number, name: string) => {
+        await supabase.from('deadline_categories').update({ name }).eq('id', id);
+        mutate();
     };
 
-    const handleRemoveDeadline = async (id: number) => {
-        await supabase.from('calendar_deadlines').delete().eq('id', id);
-        mutate((prev: any) => ({ ...prev, deadlines: prev.deadlines.filter((d: any) => d.id !== id) }), false);
+    const handleRemoveCategory = async (id: number) => {
+        await supabase.from('deadline_categories').delete().eq('id', id);
+        mutate();
     };
 
-    const handleUpdateDeadline = async (id: number, title: string, date: string) => {
-        const fallbackDate = '2099-12-31';
-        const finalDate = date || fallbackDate;
-        await supabase.from('calendar_deadlines').update({ title, date: finalDate }).eq('id', id);
+    const handleReorderCategories = async (newOrder: DeadlineCategory[]) => {
+        // 乐观更新
+        mutate((prev: any) => ({ ...prev, deadlineCategories: newOrder }), false);
+        const updates = newOrder.map((cat, i) => ({ id: cat.id, name: cat.name, sort_order: i }));
+        await supabase.from('deadline_categories').upsert(updates);
+    };
+
+    // -- 条目操作 --
+    const handleAddItem = async (categoryId: number, title: string) => {
+        const siblings = deadlineItems.filter(i => i.category_id === categoryId);
+        const maxOrder = siblings.length > 0 ? Math.max(...siblings.map(i => i.sort_order)) + 1 : 0;
+        const { data, error } = await supabase.from('deadline_items').insert({ category_id: categoryId, title, sort_order: maxOrder }).select().single();
+        if (!error && data) mutate();
+    };
+
+    const handleUpdateItem = async (id: number, updates: { title?: string; done?: boolean }) => {
+        await supabase.from('deadline_items').update(updates).eq('id', id);
+        mutate();
+    };
+
+    const handleRemoveItem = async (id: number) => {
+        await supabase.from('deadline_items').delete().eq('id', id);
+        mutate();
+    };
+
+    const handleReorderItems = async (categoryId: number, newOrder: DeadlineItem[]) => {
         mutate((prev: any) => ({
             ...prev,
-            deadlines: prev.deadlines.map((d: any) => d.id === id ? { ...d, title, date: finalDate } : d)
+            deadlineItems: prev.deadlineItems.map((item: DeadlineItem) => {
+                const idx = newOrder.findIndex(n => n.id === item.id);
+                return idx !== -1 ? { ...item, sort_order: idx } : item;
+            })
         }), false);
+        const updates = newOrder.map((item, i) => ({ id: item.id, category_id: categoryId, title: item.title, sort_order: i }));
+        await supabase.from('deadline_items').upsert(updates);
+    };
+
+    // -- 时间点操作 --
+    const handleAddTimepoint = async (itemId: number, label: string, date: string) => {
+        const { data, error } = await supabase.from('deadline_timepoints').insert({ item_id: itemId, label, date }).select().single();
+        if (!error && data) mutate();
+    };
+
+    const handleUpdateTimepoint = async (id: number, updates: { label?: string; date?: string; done?: boolean }) => {
+        await supabase.from('deadline_timepoints').update(updates).eq('id', id);
+        mutate();
+    };
+
+    const handleRemoveTimepoint = async (id: number) => {
+        await supabase.from('deadline_timepoints').delete().eq('id', id);
+        mutate();
     };
 
     const handlePrevMonth = () => {
@@ -326,12 +378,22 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                     <div className="flex items-center justify-center w-full h-full p-4 md:p-12 pointer-events-auto">
                         <div className="flex items-stretch shadow-2xl rounded-2xl max-h-[88vh] w-fit" style={{ marginLeft: '-50px' }}>
                             <DeadlinePanel
-                                deadlines={deadlines}
+                                categories={deadlineCategories}
+                                items={deadlineItems}
+                                timepoints={deadlineTimepoints}
+                                allActivities={allActivities}
                                 isAdmin={isAdmin}
-                                onAddDeadline={handleAddDeadline}
-                                onToggleDeadline={handleToggleDeadline}
-                                onRemoveDeadline={handleRemoveDeadline}
-                                onUpdateDeadline={handleUpdateDeadline}
+                                onAddCategory={handleAddCategory}
+                                onUpdateCategory={handleUpdateCategory}
+                                onRemoveCategory={handleRemoveCategory}
+                                onReorderCategories={handleReorderCategories}
+                                onAddItem={handleAddItem}
+                                onUpdateItem={handleUpdateItem}
+                                onRemoveItem={handleRemoveItem}
+                                onReorderItems={handleReorderItems}
+                                onAddTimepoint={handleAddTimepoint}
+                                onUpdateTimepoint={handleUpdateTimepoint}
+                                onRemoveTimepoint={handleRemoveTimepoint}
                             />
 
                             {viewMode === 'month' ? (
@@ -342,6 +404,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         selectedDay={selectedDay}
                                         calendarData={calendarData}
                                         deadlines={deadlines}
+                                        deadlineItems={deadlineItems}
                                         isAdmin={isAdmin}
                                         onClose={onToggle}
                                         onToggleMode={() => setViewMode('week')}
@@ -358,7 +421,9 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                     />
                                     <DashboardPanel
                                         calendarData={calendarData}
-                                        deadlines={deadlines}
+                                        deadlineTimepoints={deadlineTimepoints}
+                                        deadlineItems={deadlineItems}
+                                        allActivities={allActivities}
                                     />
                                 </>
                             ) : (
@@ -382,6 +447,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                     />
                                     <WeekActivityListPanel
                                         allActivities={allActivities}
+                                        deadlineItems={deadlineItems}
                                         isAdmin={isAdmin}
                                         onRemoveActivity={handleRemoveActivityById}
                                         onUpdateActivity={handleUpdateActivity}

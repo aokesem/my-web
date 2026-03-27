@@ -10,6 +10,7 @@ export interface Activity {
     day_of_week?: number | null;   // 0=周一 ... 6=周日
     recur_until?: string | null;   // 'YYYY-MM-DD' 重复截止日期
     date?: string;
+    deadline_item_id?: number | null; // 关联的 deadline 条目
 }
 
 export interface DayData {
@@ -18,6 +19,33 @@ export interface DayData {
     activities: Activity[];
 }
 
+// === 新 Deadline 三级层次 ===
+export interface DeadlineCategory {
+    id: number;
+    name: string;
+    sort_order: number;
+    created_at?: string;
+}
+
+export interface DeadlineItem {
+    id: number;
+    category_id: number;
+    title: string;
+    done: boolean;
+    sort_order: number;
+    created_at?: string;
+}
+
+export interface DeadlineTimepoint {
+    id: number;
+    item_id: number;
+    label: string;
+    date: string; // 'YYYY-MM-DD'
+    done: boolean;
+    created_at?: string;
+}
+
+// 旧接口保留，过渡期兼容
 export interface Deadline {
     id: number;
     title: string;

@@ -2,10 +2,11 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ListTodo, Trash2, Pencil, Check } from 'lucide-react';
-import { Activity, WEEKDAYS, formatDateKey } from './types';
+import { Activity, DeadlineItem, WEEKDAYS, formatDateKey } from './types';
 
 interface WeekActivityListPanelProps {
     allActivities: Activity[];
+    deadlineItems: DeadlineItem[];
     isAdmin: boolean;
     onRemoveActivity: (id: number) => Promise<void>;
     onUpdateActivity: (id: number, updates: { content?: string, color?: string }) => Promise<void>;
@@ -24,7 +25,7 @@ const COLORS = [
 const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export default function WeekActivityListPanel({
-    allActivities, isAdmin, onRemoveActivity, onUpdateActivity, onJumpToDate
+    allActivities, deadlineItems, isAdmin, onRemoveActivity, onUpdateActivity, onJumpToDate
 }: WeekActivityListPanelProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -166,12 +167,22 @@ export default function WeekActivityListPanel({
                                             </div>
                                         </div>
                                     ) : (
+                                        <>
                                         <div
                                             className={`text-[20px] font-semibold leading-tight text-slate-800 whitespace-pre-wrap wrap-break-word ${!isEditing ? 'group-hover:text-blue-600' : ''}`}
                                             title="点击跳转至该事项所在周"
                                         >
                                             {act.content}
                                         </div>
+                                        {act.deadline_item_id && (() => {
+                                            const linked = deadlineItems.find(i => i.id === act.deadline_item_id);
+                                            return linked ? (
+                                                <div className="text-[10px] font-medium text-rose-400 bg-rose-50 px-1.5 py-0.5 rounded-full mt-0.5 w-fit">
+                                                    {linked.title}
+                                                </div>
+                                            ) : null;
+                                        })()}
+                                        </>
                                     )}
                                     <div className="text-[12px] font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
                                         {dayLabel && <span className="text-slate-400">{dayLabel}</span>}

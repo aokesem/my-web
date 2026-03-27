@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
-import { DayStatus, DayData, Deadline, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
+import { DayStatus, DayData, Deadline, DeadlineItem, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
 
 interface MonthViewPanelProps {
     viewYear: number;
@@ -10,6 +10,7 @@ interface MonthViewPanelProps {
     selectedDay: number;
     calendarData: Record<string, DayData>;
     deadlines: Deadline[];
+    deadlineItems: DeadlineItem[];
     isAdmin: boolean;
     onClose: () => void;
     onToggleMode: () => void;
@@ -18,7 +19,7 @@ interface MonthViewPanelProps {
     onSelectDay: (day: number) => void;
     onStatusChange: (status: DayStatus) => void;
     onClearStatus: () => void;
-    onAddActivity: (content: string, duration: string) => Promise<void>;
+    onAddActivity: (content: string, duration: string, deadlineItemId?: number | null) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
     onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null }) => Promise<void>;
     onCommentChange: (comment: string) => void;
@@ -31,6 +32,7 @@ export default function MonthViewPanel({
     selectedDay,
     calendarData,
     deadlines,
+    deadlineItems,
     isAdmin,
     onClose,
     onToggleMode,
@@ -50,6 +52,7 @@ export default function MonthViewPanel({
 
     const [newActivity, setNewActivity] = useState('');
     const [newDuration, setNewDuration] = useState('');
+    const [newLinkedItemId, setNewLinkedItemId] = useState<number | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editDuration, setEditDuration] = useState('');
@@ -73,9 +76,10 @@ export default function MonthViewPanel({
 
     const handleAdd = async () => {
         if (!newActivity.trim()) return;
-        await onAddActivity(newActivity, newDuration);
+        await onAddActivity(newActivity, newDuration, newLinkedItemId);
         setNewActivity('');
         setNewDuration('');
+        setNewLinkedItemId(null);
     };
 
     const handleEditStart = (act: any) => {
@@ -254,6 +258,14 @@ export default function MonthViewPanel({
                                         ) : (
                                             <>
                                                 <span className="flex-1 text-[15px] text-slate-700 font-medium">{act.content}</span>
+                                                {act.deadline_item_id && (() => {
+                                                    const linkedItem = deadlineItems.find(i => i.id === act.deadline_item_id);
+                                                    return linkedItem ? (
+                                                        <span className="text-[10px] font-medium text-rose-400 bg-rose-50 px-1.5 py-0.5 rounded-full shrink-0">
+                                                            {linkedItem.title}
+                                                        </span>
+                                                    ) : null;
+                                                })()}
                                                 {act.duration !== null && (
                                                     <span className="text-[16px] font-mono text-black-400">
                                                         {act.duration}h
@@ -287,28 +299,41 @@ export default function MonthViewPanel({
                         )}
 
                         {isAdmin && (
-                            <div className="flex items-center gap-2 mt-3">
-                                <input
-                                    value={newActivity}
-                                    onChange={e => setNewActivity(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                                    placeholder="做了什么..."
-                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
-                                />
-                                <input
-                                    value={newDuration}
-                                    onChange={e => setNewDuration(e.target.value)}
-                                    placeholder="时长h"
-                                    type="number"
-                                    step="0.5"
-                                    className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
-                                />
-                                <button
-                                    onClick={handleAdd}
-                                    className="p-2 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-colors border border-blue-200/50"
+                            <div className="space-y-2 mt-3">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        value={newActivity}
+                                        onChange={e => setNewActivity(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                                        placeholder="做了什么..."
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
+                                    />
+                                    <input
+                                        value={newDuration}
+                                        onChange={e => setNewDuration(e.target.value)}
+                                        placeholder="时长h"
+                                        type="number"
+                                        step="0.5"
+                                        className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
+                                    />
+                                    <button
+                                        onClick={handleAdd}
+                                        className="p-2 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-colors border border-blue-200/50"
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                                {/* 关联条目选择器 */}
+                                <select
+                                    value={newLinkedItemId ?? ''}
+                                    onChange={e => setNewLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors"
                                 >
-                                    <Plus size={16} />
-                                </button>
+                                    <option value="">关联条目 (可选)</option>
+                                    {deadlineItems.map(item => (
+                                        <option key={item.id} value={item.id}>{item.title}</option>
+                                    ))}
+                                </select>
                             </div>
                         )}
                     </div>
