@@ -203,7 +203,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         if (!error && data) mutate();
     };
 
-    const handleUpdateItem = async (id: number, updates: { title?: string; done?: boolean }) => {
+    const handleUpdateItem = async (id: number, updates: { title?: string; done?: boolean; is_archived?: boolean }) => {
         await supabase.from('deadline_items').update(updates).eq('id', id);
         mutate();
     };
@@ -383,6 +383,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                 timepoints={deadlineTimepoints}
                                 allActivities={allActivities}
                                 isAdmin={isAdmin}
+                                onRefresh={mutate}
                                 onAddCategory={handleAddCategory}
                                 onUpdateCategory={handleUpdateCategory}
                                 onRemoveCategory={handleRemoveCategory}
@@ -415,6 +416,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         onClearStatus={handleClearStatus}
                                         onAddActivity={handleAddActivity}
                                         onRemoveActivity={handleRemoveActivity}
+                                        onRefresh={mutate}
                                         onUpdateActivity={handleUpdateActivity}
                                         onCommentChange={handleCommentChange}
                                         onCommentBlur={handleCommentBlur}
@@ -450,6 +452,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         deadlineItems={deadlineItems}
                                         isAdmin={isAdmin}
                                         onRemoveActivity={handleRemoveActivityById}
+                                        onRefresh={mutate}
                                         onUpdateActivity={handleUpdateActivity}
                                         onJumpToDate={handleJumpToDate}
                                     />

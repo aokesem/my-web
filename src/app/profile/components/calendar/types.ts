@@ -32,6 +32,7 @@ export interface DeadlineItem {
     category_id: number;
     title: string;
     done: boolean;
+    is_archived: boolean;
     sort_order: number;
     created_at?: string;
 }

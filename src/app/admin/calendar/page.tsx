@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash, Check, X } from 'lucide-react';
+import { Plus, Trash, Check, X, RotateCcw, Box, Archive, ListTree } from 'lucide-react';
 import { toast } from 'sonner';
+import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 // === 类型 ===
 interface CalendarDay {
@@ -21,16 +22,32 @@ interface CalendarActivity {
     date: string;
     content: string;
     duration: number | null;
+    deadline_item_id?: number | null;
 }
 
-interface CalendarDeadline {
+interface DeadlineCategory {
     id: number;
+    name: string;
+    sort_order: number;
+}
+
+interface DeadlineItem {
+    id: number;
+    category_id: number;
     title: string;
+    sort_order: number;
+    is_archived: boolean;
+}
+
+interface DeadlineTimepoint {
+    id: number;
+    item_id: number;
     date: string;
+    label: string;
     done: boolean;
 }
 
-type TabKey = 'days' | 'activities' | 'deadlines';
+type TabKey = 'days' | 'activities' | 'deadlines' | 'archives';
 
 const STATUS_BADGE: Record<string, string> = {
     good: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
@@ -55,11 +72,11 @@ export default function CalendarAdmin() {
     const [newActContent, setNewActContent] = useState('');
     const [newActDuration, setNewActDuration] = useState('');
 
-    // === Deadlines ===
-    const [deadlines, setDeadlines] = useState<CalendarDeadline[]>([]);
+    // === Deadlines (New) ===
+    const [categories, setCategories] = useState<DeadlineCategory[]>([]);
+    const [items, setItems] = useState<DeadlineItem[]>([]);
+    const [timepoints, setTimepoints] = useState<DeadlineTimepoint[]>([]);
     const [dlLoading, setDlLoading] = useState(true);
-    const [newDlTitle, setNewDlTitle] = useState('');
-    const [newDlDate, setNewDlDate] = useState('');
 
     // === Fetch ===
     const fetchDays = async () => {
@@ -80,9 +97,19 @@ export default function CalendarAdmin() {
 
     const fetchDeadlines = async () => {
         setDlLoading(true);
-        const { data, error } = await supabase.from('calendar_deadlines').select('*').order('date', { ascending: true });
-        if (error) toast.error('加载 Deadline 数据失败');
-        else setDeadlines(data || []);
+        const [catsRes, itemsRes, tpsRes] = await Promise.all([
+            supabase.from('deadline_categories').select('*').order('sort_order', { ascending: true }),
+            supabase.from('deadline_items').select('*').order('sort_order', { ascending: true }),
+            supabase.from('deadline_timepoints').select('*').order('date', { ascending: true })
+        ]);
+
+        if (catsRes.error || itemsRes.error || tpsRes.error) {
+            toast.error('加载 Deadline 数据失败');
+        } else {
+            setCategories(catsRes.data || []);
+            setItems(itemsRes.data || []);
+            setTimepoints(tpsRes.data || []);
+        }
         setDlLoading(false);
     };
 
@@ -102,13 +129,6 @@ export default function CalendarAdmin() {
         else { toast.success('已添加'); setNewDayDate(''); setNewDayComment(''); fetchDays(); }
     };
 
-    const handleDeleteDay = async (id: number) => {
-        if (!confirm('确定删除该日期记录？')) return;
-        const { error } = await supabase.from('calendar_days').delete().eq('id', id);
-        if (error) toast.error('删除失败');
-        else { toast.success('已删除'); fetchDays(); }
-    };
-
     const handleUpdateDayStatus = async (id: number, status: string | null) => {
         const { error } = await supabase.from('calendar_days').update({ status }).eq('id', id);
         if (error) toast.error('更新失败');
@@ -125,42 +145,22 @@ export default function CalendarAdmin() {
         else { toast.success('已添加'); setNewActContent(''); setNewActDuration(''); fetchActivities(); }
     };
 
-    const handleDeleteActivity = async (id: number) => {
-        if (!confirm('确定删除？')) return;
-        const { error } = await supabase.from('calendar_activities').delete().eq('id', id);
-        if (error) toast.error('删除失败');
-        else { toast.success('已删除'); fetchActivities(); }
-    };
-
-    // === Deadlines CRUD ===
-    const handleAddDeadline = async () => {
-        if (!newDlTitle.trim() || !newDlDate) { toast.error('标题和日期必填'); return; }
-        const { error } = await supabase.from('calendar_deadlines').insert({
-            title: newDlTitle.trim(), date: newDlDate, done: false
-        });
-        if (error) toast.error('添加失败: ' + error.message);
-        else { toast.success('已添加'); setNewDlTitle(''); setNewDlDate(''); fetchDeadlines(); }
-    };
-
-    const handleDeleteDeadline = async (id: number) => {
-        if (!confirm('确定删除？')) return;
-        const { error } = await supabase.from('calendar_deadlines').delete().eq('id', id);
-        if (error) toast.error('删除失败');
-        else { toast.success('已删除'); fetchDeadlines(); }
-    };
-
-    const handleToggleDeadline = async (id: number, done: boolean) => {
-        const { error } = await supabase.from('calendar_deadlines').update({ done: !done }).eq('id', id);
-        if (error) toast.error('更新失败');
-        else { setDeadlines(prev => prev.map(d => d.id === id ? { ...d, done: !done } : d)); }
+    // === Archives Actions ===
+    const handleRestoreItem = async (id: number) => {
+        const { error } = await supabase.from('deadline_items').update({ is_archived: false }).eq('id', id);
+        if (error) toast.error('还原失败');
+        else { toast.success('条目已还原至日历'); fetchDeadlines(); }
     };
 
     // === Tab 样式 ===
     const tabClass = (t: TabKey) =>
-        `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t
+        `px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${tab === t
             ? 'bg-white/10 text-white'
             : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
         }`;
+
+    const activeItems = items.filter(i => !i.is_archived);
+    const archivedItems = items.filter(i => i.is_archived);
 
     return (
         <div className="space-y-6">
@@ -170,7 +170,13 @@ export default function CalendarAdmin() {
             <div className="flex gap-2 border-b border-zinc-800 pb-3">
                 <button className={tabClass('days')} onClick={() => setTab('days')}>日期状态</button>
                 <button className={tabClass('activities')} onClick={() => setTab('activities')}>事项记录</button>
-                <button className={tabClass('deadlines')} onClick={() => setTab('deadlines')}>Deadlines</button>
+                <button className={tabClass('deadlines')} onClick={() => setTab('deadlines')}>
+                    <ListTree size={14} /> 结构
+                </button>
+                <button className={tabClass('archives')} onClick={() => setTab('archives')}>
+                    <Archive size={14} /> 归档仓库
+                    {archivedItems.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-[10px] text-white font-bold">{archivedItems.length}</span>}
+                </button>
             </div>
 
             {/* ===== 日期状态 Tab ===== */}
@@ -242,10 +248,11 @@ export default function CalendarAdmin() {
                                         </TableCell>
                                         <TableCell className="text-zinc-400 text-sm max-w-[300px] truncate">{d.comment || '—'}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteDay(d.id)}
-                                                className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
-                                                <Trash size={14} />
-                                            </Button>
+                                            <SafeDeleteDialog table="calendar_days" recordId={d.id} title={`删除 ${d.date} 的记录？`} onSuccess={fetchDays}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
+                                                    <Trash size={14} />
+                                                </Button>
+                                            </SafeDeleteDialog>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -300,10 +307,11 @@ export default function CalendarAdmin() {
                                         <TableCell className="text-gray-200 font-medium">{a.content}</TableCell>
                                         <TableCell className="text-zinc-400 font-mono text-sm">{a.duration !== null ? `${a.duration}h` : '—'}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteActivity(a.id)}
-                                                className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
-                                                <Trash size={14} />
-                                            </Button>
+                                            <SafeDeleteDialog table="calendar_activities" recordId={a.id} title={`彻底删除该记录？`} onSuccess={fetchActivities}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
+                                                    <Trash size={14} />
+                                                </Button>
+                                            </SafeDeleteDialog>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -313,64 +321,127 @@ export default function CalendarAdmin() {
                 </div>
             )}
 
-            {/* ===== Deadlines Tab ===== */}
+            {/* ===== Deadline 结构 Tab ===== */}
             {tab === 'deadlines' && (
                 <div className="space-y-4">
-                    <div className="flex items-end gap-3 p-4 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                        <div className="space-y-1 flex-1">
-                            <label className="text-xs text-zinc-500">标题</label>
-                            <Input value={newDlTitle} onChange={e => setNewDlTitle(e.target.value)}
-                                placeholder="Deadline 事项名称..." className="bg-black border-zinc-800" />
+                    <div className="rounded-md border border-zinc-800 bg-zinc-950/50 p-6 overflow-x-auto">
+                        <div className="flex flex-wrap gap-8 items-start">
+                            {categories.map(cat => {
+                                const catItems = activeItems.filter(i => i.category_id === cat.id);
+                                return (
+                                    <div key={cat.id} className="w-64 shrink-0 bg-black/40 border border-zinc-800 rounded-xl p-4 self-start">
+                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-zinc-800">
+                                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{cat.name}</span>
+                                            <span className="text-[10px] font-mono text-zinc-600">{catItems.length} ITEMS</span>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {catItems.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between text-sm group">
+                                                    <span className="text-zinc-300 truncate pr-2">{item.title}</span>
+                                                    <SafeDeleteDialog table="deadline_items" recordId={item.id} title={`删除条目 "${item.title}"？`} description="此操作不可恢复。" onSuccess={fetchDeadlines}>
+                                                        <button className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-rose-400 transition-opacity">
+                                                            <Trash size={12} />
+                                                        </button>
+                                                    </SafeDeleteDialog>
+                                                </div>
+                                            ))}
+                                            {catItems.length === 0 && <div className="text-[10px] text-zinc-700 italic border border-dashed border-zinc-800/50 rounded p-2 text-center">空空如也</div>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs text-zinc-500">截止日期</label>
-                            <Input type="date" value={newDlDate} onChange={e => setNewDlDate(e.target.value)}
-                                className="bg-black border-zinc-800 w-40" />
-                        </div>
-                        <Button onClick={handleAddDeadline} className="bg-blue-600 hover:bg-blue-700 text-white gap-1 shrink-0">
-                            <Plus size={14} /> 添加
-                        </Button>
+                        {categories.length === 0 && <div className="py-20 text-center text-zinc-600 italic">尚未创建任何分类</div>}
                     </div>
+                    <p className="text-[11px] text-zinc-500 italic">* 三级结构管理请至前台日历侧边栏进行可视化实时调整（支持拖拽与快速新增）。</p>
+                </div>
+            )}
 
+            {/* ===== 归档管理 Tab ===== */}
+            {tab === 'archives' && (
+                <div className="space-y-4">
                     <div className="rounded-md border border-zinc-800 bg-zinc-950/50">
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
-                                    <TableHead className="text-zinc-400 w-[50px]">完成</TableHead>
-                                    <TableHead className="text-zinc-400">标题</TableHead>
-                                    <TableHead className="text-zinc-400 w-[120px]">截止日期</TableHead>
-                                    <TableHead className="text-zinc-400 text-right w-[80px]">操作</TableHead>
+                                    <TableHead className="text-zinc-400">所属分类</TableHead>
+                                    <TableHead className="text-zinc-400">条目名称</TableHead>
+                                    <TableHead className="text-zinc-400">累计时长</TableHead>
+                                    <TableHead className="text-zinc-400">截止日期集</TableHead>
+                                    <TableHead className="text-zinc-400 text-right w-[150px]">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {dlLoading ? (
-                                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-zinc-500">加载中...</TableCell></TableRow>
-                                ) : deadlines.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-zinc-500">暂无 Deadline</TableCell></TableRow>
-                                ) : deadlines.map(dl => {
-                                    const isExpired = dl.date < new Date().toISOString().split('T')[0] && !dl.done;
+                                    <TableRow><TableCell colSpan={3} className="text-center py-10 text-zinc-500">加载中...</TableCell></TableRow>
+                                ) : archivedItems.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center py-20">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <Box size={40} className="text-zinc-800" />
+                                                <div className="text-zinc-600 text-sm">暂无已归档条目</div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : archivedItems.map(item => {
+                                    const cat = categories.find(c => c.id === item.category_id);
+                                    const itemTimepoints = timepoints.filter(tp => tp.item_id === item.id);
+                                    const itemDuration = activities
+                                        .filter(a => a.deadline_item_id === item.id)
+                                        .reduce((sum, a) => sum + (a.duration || 0), 0);
+
                                     return (
-                                        <TableRow key={dl.id} className={`border-zinc-800 hover:bg-zinc-900/50 ${dl.done ? 'opacity-40' : ''}`}>
+                                        <TableRow key={item.id} className="border-zinc-800 hover:bg-zinc-900/50">
+                                            <TableCell className="text-zinc-500 font-medium">
+                                                {cat?.name || '未分类'}
+                                            </TableCell>
+                                            <TableCell className="text-zinc-300 font-semibold tracking-wide">
+                                                <span className="line-through decoration-zinc-700 decoration-2 mr-2 opacity-60">
+                                                    {item.title}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-zinc-400 font-mono text-xs">
+                                                {itemDuration > 0 ? (
+                                                    <span className="text-amber-500/80 font-bold">{itemDuration.toFixed(1)}h</span>
+                                                ) : '—'}
+                                            </TableCell>
                                             <TableCell>
-                                                <button onClick={() => handleToggleDeadline(dl.id, dl.done)} className="transition-transform active:scale-90">
-                                                    {dl.done ? (
-                                                        <Check size={18} className="text-emerald-500" />
-                                                    ) : (
-                                                        <div className="w-4 h-4 rounded border border-zinc-600 hover:border-zinc-400 transition-colors" />
-                                                    )}
-                                                </button>
-                                            </TableCell>
-                                            <TableCell className={`font-medium ${dl.done ? 'line-through text-zinc-500' : isExpired ? 'text-rose-400' : 'text-gray-200'}`}>
-                                                {dl.title}
-                                            </TableCell>
-                                            <TableCell className={`font-mono text-sm ${isExpired ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                                {dl.date}
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {itemTimepoints.length > 0 ? itemTimepoints.map(tp => (
+                                                        <div key={tp.id} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono ${tp.done ? 'bg-emerald-500/10 text-emerald-500/70' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                            {tp.date}
+                                                            {tp.label && <span className="text-[8px] opacity-60">({tp.label})</span>}
+                                                            {tp.done && <Check size={8} />}
+                                                        </div>
+                                                    )) : <span className="text-zinc-700 text-[10px] italic">无日期</span>}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteDeadline(dl.id)}
-                                                    className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/50">
-                                                    <Trash size={14} />
-                                                </Button>
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleRestoreItem(item.id)}
+                                                        className="h-8 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-950/30 gap-1.5"
+                                                    >
+                                                        <RotateCcw size={14} /> 恢复
+                                                    </Button>
+                                                    <SafeDeleteDialog
+                                                        table="deadline_items"
+                                                        recordId={item.id}
+                                                        title={`永久删除归档项 "${item.title}"？`}
+                                                        description="删除后将无法恢复其数据统计与时间点。"
+                                                        onSuccess={fetchDeadlines}
+                                                    >
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 text-rose-500 hover:text-rose-400 hover:bg-rose-950/30 gap-1.5"
+                                                        >
+                                                            <Trash size={14} /> 彻底删除
+                                                        </Button>
+                                                    </SafeDeleteDialog>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     );

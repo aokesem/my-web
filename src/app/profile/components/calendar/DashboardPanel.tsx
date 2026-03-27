@@ -28,9 +28,11 @@ export default function DashboardPanel({ calendarData, deadlineTimepoints, deadl
 
     // 1. 最近的一个未完成时间点
     const nextTimepoint = useMemo(() => {
+        const archivedItemIds = new Set(deadlineItems.filter(i => i.is_archived).map(i => i.id));
         const active = deadlineTimepoints.filter(tp =>
             tp.date &&
-            tp.date >= todayStr
+            tp.date >= todayStr &&
+            !archivedItemIds.has(tp.item_id)
         ).sort((a, b) => a.date.localeCompare(b.date));
 
         return active[0] || null;

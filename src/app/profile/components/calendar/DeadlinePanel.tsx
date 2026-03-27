@@ -1,9 +1,8 @@
-"use client";
-
 import React, { useState, useMemo } from 'react';
-import { Clock, Check, Trash2, Plus, Pencil, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, Check, Trash2, Plus, Pencil, X, ChevronDown, ChevronRight, Archive } from 'lucide-react';
 import { DeadlineCategory, DeadlineItem, DeadlineTimepoint, Activity, formatDateKey } from './types';
 import { Reorder, AnimatePresence, motion } from 'framer-motion';
+import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface DeadlinePanelProps {
     categories: DeadlineCategory[];
@@ -11,12 +10,13 @@ interface DeadlinePanelProps {
     timepoints: DeadlineTimepoint[];
     allActivities: Activity[];
     isAdmin: boolean;
+    onRefresh: () => void;
     onAddCategory: (name: string) => Promise<void>;
     onUpdateCategory: (id: number, name: string) => Promise<void>;
     onRemoveCategory: (id: number) => Promise<void>;
     onReorderCategories: (newOrder: DeadlineCategory[]) => Promise<void>;
     onAddItem: (categoryId: number, title: string) => Promise<void>;
-    onUpdateItem: (id: number, updates: { title?: string; done?: boolean }) => Promise<void>;
+    onUpdateItem: (id: number, updates: { title?: string; done?: boolean; is_archived?: boolean }) => Promise<void>;
     onRemoveItem: (id: number) => Promise<void>;
     onReorderItems: (categoryId: number, newOrder: DeadlineItem[]) => Promise<void>;
     onAddTimepoint: (itemId: number, label: string, date: string) => Promise<void>;
@@ -25,7 +25,7 @@ interface DeadlinePanelProps {
 }
 
 export default function DeadlinePanel({
-    categories, items, timepoints, allActivities, isAdmin,
+    categories, items, timepoints, allActivities, isAdmin, onRefresh,
     onAddCategory, onUpdateCategory, onRemoveCategory, onReorderCategories,
     onAddItem, onUpdateItem, onRemoveItem, onReorderItems,
     onAddTimepoint, onUpdateTimepoint, onRemoveTimepoint,
@@ -77,8 +77,6 @@ export default function DeadlinePanel({
             .reduce((sum, a) => sum + (a.duration || 0), 0);
     };
 
-
-
     // 分类新增
     const handleAddCat = async () => {
         if (!newCatName.trim()) return;
@@ -103,6 +101,9 @@ export default function DeadlinePanel({
         setAddingTpForItem(null);
     };
 
+    const activeItems = useMemo(() => items.filter(i => !i.is_archived), [items]);
+    const archivedItems = useMemo(() => items.filter(i => i.is_archived), [items]);
+
     return (
         <div className="w-[320px] bg-white/95 backdrop-blur-xl rounded-l-2xl border border-r-0 border-slate-200/80 flex flex-col overflow-hidden">
             {/* 标题栏 */}
@@ -120,7 +121,7 @@ export default function DeadlinePanel({
                 ) : (
                     <Reorder.Group axis="y" values={categories} onReorder={onReorderCategories} className="space-y-1">
                         {categories.map(cat => {
-                            const catItems = items.filter(i => i.category_id === cat.id).sort((a, b) => a.sort_order - b.sort_order);
+                            const catItems = activeItems.filter(i => i.category_id === cat.id).sort((a, b) => a.sort_order - b.sort_order);
                             const isCollapsed = collapsedCats.has(cat.id);
                             const isEditingCat = editingCatId === cat.id;
 
@@ -153,9 +154,11 @@ export default function DeadlinePanel({
                                                 <span className="text-[11px] text-slate-300 font-mono">{catItems.length}</span>
                                                 {isAdmin && (
                                                     <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                                                        <button onClick={(e) => { e.stopPropagation(); setEditingCatId(cat.id); setEditCatName(cat.name); }} className="p-1 text-slate-300 hover:text-blue-500"><Pencil size={12} /></button>
-                                                        <button onClick={(e) => { e.stopPropagation(); onRemoveCategory(cat.id); }} className="p-1 text-slate-300 hover:text-rose-400"><Trash2 size={12} /></button>
-                                                        <button onClick={(e) => { e.stopPropagation(); setAddingItemForCat(cat.id); setNewItemTitle(''); }} className="p-1 text-slate-300 hover:text-emerald-500"><Plus size={12} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); setEditingCatId(cat.id); setEditCatName(cat.name); }} className="p-1 text-slate-300 hover:text-blue-500" title="编辑分类"><Pencil size={12} /></button>
+                                                        <SafeDeleteDialog table="deadline_categories" recordId={cat.id} title={`确定要删除分类 "${cat.name}" 吗？`} description="其下的所有条目和时间点都将被永久移除。" onSuccess={onRefresh}>
+                                                            <button onClick={(e) => e.stopPropagation()} className="p-1 text-slate-300 hover:text-rose-400" title="删除分类"><Trash2 size={12} /></button>
+                                                        </SafeDeleteDialog>
+                                                        <button onClick={(e) => { e.stopPropagation(); setAddingItemForCat(cat.id); setNewItemTitle(''); }} className="p-1 text-slate-300 hover:text-emerald-500" title="新增条目"><Plus size={12} /></button>
                                                     </div>
                                                 )}
                                             </>
@@ -233,9 +236,12 @@ export default function DeadlinePanel({
                                                                         )}
                                                                         {isAdmin && (
                                                                             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity shrink-0">
-                                                                                <button onClick={(e) => { e.stopPropagation(); setEditingItemId(item.id); setEditItemTitle(item.title); }} className="p-1 text-slate-300 hover:text-blue-500"><Pencil size={12} /></button>
-                                                                                <button onClick={(e) => { e.stopPropagation(); onRemoveItem(item.id); }} className="p-1 text-slate-300 hover:text-rose-400"><Trash2 size={12} /></button>
-                                                                                <button onClick={(e) => { e.stopPropagation(); setAddingTpForItem(item.id); setNewTpLabel(''); setNewTpDate(''); }} className="p-1 text-slate-300 hover:text-emerald-500"><Plus size={12} /></button>
+                                                                                <button onClick={(e) => { e.stopPropagation(); setEditingItemId(item.id); setEditItemTitle(item.title); }} className="p-1 text-slate-300 hover:text-blue-500" title="编辑条目"><Pencil size={12} /></button>
+                                                                                <button onClick={(e) => { e.stopPropagation(); onUpdateItem(item.id, { is_archived: true }); }} className="p-1 text-slate-300 hover:text-amber-500" title="归档条目"><Archive size={12} /></button>
+                                                                                <SafeDeleteDialog table="deadline_items" recordId={item.id} title={`确定要永久删除条目 "${item.title}" 吗？`} onSuccess={onRefresh}>
+                                                                                    <button onClick={(e) => e.stopPropagation()} className="p-1 text-slate-300 hover:text-rose-400" title="永久删除"><Trash2 size={12} /></button>
+                                                                                </SafeDeleteDialog>
+                                                                                <button onClick={(e) => { e.stopPropagation(); setAddingTpForItem(item.id); setNewTpLabel(''); setNewTpDate(''); }} className="p-1 text-slate-300 hover:text-emerald-500" title="新增时间点"><Plus size={12} /></button>
                                                                             </div>
                                                                         )}
                                                                     </>
@@ -306,8 +312,10 @@ export default function DeadlinePanel({
                                                                                             {tp.label && <span className="flex-1" />}
                                                                                             {isAdmin && (
                                                                                                 <div className="opacity-0 group-hover/tp:opacity-100 flex items-center gap-0.5 transition-opacity shrink-0">
-                                                                                                    <button onClick={() => { setEditingTpId(tp.id); setEditTpLabel(tp.label); setEditTpDate(tp.date); }} className="p-1 text-slate-300 hover:text-blue-500"><Pencil size={11} /></button>
-                                                                                                    <button onClick={() => onRemoveTimepoint(tp.id)} className="p-1 text-slate-300 hover:text-rose-400"><Trash2 size={11} /></button>
+                                                                                                    <button onClick={() => { setEditingTpId(tp.id); setEditTpLabel(tp.label); setEditTpDate(tp.date); }} className="p-1 text-slate-300 hover:text-blue-500" title="编辑时间点"><Pencil size={11} /></button>
+                                                                                                    <SafeDeleteDialog table="deadline_timepoints" recordId={tp.id} title="确定要永久删除该时间点吗？" onSuccess={onRefresh}>
+                                                                                                        <button onClick={(e) => e.stopPropagation()} className="p-1 text-slate-300 hover:text-rose-400" title="删除时间点"><Trash2 size={11} /></button>
+                                                                                                    </SafeDeleteDialog>
                                                                                                 </div>
                                                                                             )}
                                                                                         </>

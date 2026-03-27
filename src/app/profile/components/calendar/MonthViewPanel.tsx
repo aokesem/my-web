@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
 import { DayStatus, DayData, Deadline, DeadlineItem, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
+import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface MonthViewPanelProps {
     viewYear: number;
@@ -21,6 +22,7 @@ interface MonthViewPanelProps {
     onClearStatus: () => void;
     onAddActivity: (content: string, duration: string, deadlineItemId?: number | null) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
+    onRefresh: () => void;
     onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null }) => Promise<void>;
     onCommentChange: (comment: string) => void;
     onCommentBlur: () => void;
@@ -43,6 +45,7 @@ export default function MonthViewPanel({
     onClearStatus,
     onAddActivity,
     onRemoveActivity,
+    onRefresh,
     onUpdateActivity,
     onCommentChange,
     onCommentBlur
@@ -280,13 +283,19 @@ export default function MonthViewPanel({
                                                         >
                                                             <Edit2 size={14} />
                                                         </button>
-                                                        <button
-                                                            onClick={() => onRemoveActivity(act.id)}
-                                                            className="text-slate-300 hover:text-rose-400 transition-all p-1"
-                                                            title="删除"
+                                                        <SafeDeleteDialog
+                                                            table="calendar_activities"
+                                                            recordId={act.id}
+                                                            title="确定要删除此项记录吗？"
+                                                            onSuccess={onRefresh}
                                                         >
-                                                            <Trash2 size={14} />
-                                                        </button>
+                                                            <button
+                                                                className="text-slate-300 hover:text-rose-400 transition-all p-1"
+                                                                title="删除"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </SafeDeleteDialog>
                                                     </div>
                                                 )}
                                             </>

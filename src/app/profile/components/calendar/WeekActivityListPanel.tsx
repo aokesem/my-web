@@ -3,12 +3,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ListTodo, Trash2, Pencil, Check } from 'lucide-react';
 import { Activity, DeadlineItem, WEEKDAYS, formatDateKey } from './types';
+import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface WeekActivityListPanelProps {
     allActivities: Activity[];
     deadlineItems: DeadlineItem[];
     isAdmin: boolean;
     onRemoveActivity: (id: number) => Promise<void>;
+    onRefresh: () => void;
     onUpdateActivity: (id: number, updates: { content?: string, color?: string }) => Promise<void>;
     onJumpToDate?: (dateStr: string) => void;
 }
@@ -25,7 +27,7 @@ const COLORS = [
 const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export default function WeekActivityListPanel({
-    allActivities, deadlineItems, isAdmin, onRemoveActivity, onUpdateActivity, onJumpToDate
+    allActivities, deadlineItems, isAdmin, onRemoveActivity, onRefresh, onUpdateActivity, onJumpToDate
 }: WeekActivityListPanelProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -203,13 +205,20 @@ export default function WeekActivityListPanel({
                                         >
                                             <Pencil size={12} />
                                         </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onRemoveActivity(act.id); }}
-                                            className="p-0.5 text-slate-300 hover:text-rose-400 transition-colors"
-                                            title="删除"
+                                        <SafeDeleteDialog
+                                            table="calendar_activities"
+                                            recordId={act.id}
+                                            title="确定要彻底删除该事项吗？"
+                                            onSuccess={onRefresh}
                                         >
-                                            <Trash2 size={12} />
-                                        </button>
+                                            <button
+                                                className="p-0.5 text-slate-300 hover:text-rose-400 transition-colors"
+                                                title="删除"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </SafeDeleteDialog>
                                     </div>
                                 )}
                             </div>
