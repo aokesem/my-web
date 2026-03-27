@@ -32,6 +32,7 @@ export interface InfoItem {
     description?: string;
     url?: string;
     source_id?: number;
+    group_id?: number;
     image_url?: string;
     info_date?: string;
     sort_order: number;

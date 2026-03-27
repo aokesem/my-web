@@ -122,7 +122,10 @@ export function InfoSidebar({
                                             const groupSources = mockSources.filter(s => s.group_id === group.id).sort((a,b)=>a.sort_order - b.sort_order);
                                             const isGroupActive = selectedGroupId === group.id && selectedSourceId === null;
                                             const isExpanded = expandedGroups.includes(group.id);
-                                            const totalCount = mockItems.filter(item => item.source_id && groupSources.some(s=>s.id === item.source_id)).length;
+                                            const totalCount = mockItems.filter(item => 
+                                                (item.source_id && groupSources.some(s=>s.id === item.source_id)) || 
+                                                (item.group_id === group.id)
+                                            ).length;
 
                                             return (
                                                 <Reorder.Item key={group.id} value={group} className="relative">

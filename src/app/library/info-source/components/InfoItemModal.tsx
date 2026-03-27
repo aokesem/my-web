@@ -14,13 +14,14 @@ interface InfoItemModalProps {
     handleSave: () => void;
     theme: any;
     mockSources: InfoSource[];
+    mockGroups: any[];
     currentCategories: InfoCategory[];
     type: string;
 }
 
 export function InfoItemModal({
     isOpen, onClose, formMode, formData, setFormData,
-    isSaving, handleSave, theme, mockSources, currentCategories, type
+    isSaving, handleSave, theme, mockSources, mockGroups, currentCategories, type
 }: InfoItemModalProps) {
     return (
         <AnimatePresence>
@@ -65,11 +66,14 @@ export function InfoItemModal({
                                     <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>SOURCE / 溯源基站</label>
                                     <select 
                                         value={formData.source_id}
-                                        onChange={e => setFormData({...formData, source_id: e.target.value})}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setFormData({...formData, source_id: val, group_id: val ? '' : formData.group_id});
+                                        }}
                                         className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
                                         disabled={isSaving}
                                     >
-                                        <option value="">未分类来源</option>
+                                        <option value="">未分类来源 (或直连大标签)</option>
                                         {mockSources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
@@ -86,6 +90,28 @@ export function InfoItemModal({
                                     </select>
                                 </div>
                             </div>
+
+                            <AnimatePresence>
+                                {!formData.source_id && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                        animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>GROUP / 所属聚合大标签*</label>
+                                        <select 
+                                            value={formData.group_id}
+                                            onChange={e => setFormData({...formData, group_id: e.target.value})}
+                                            className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
+                                            disabled={isSaving}
+                                        >
+                                            <option value="">请选择挂靠大类</option>
+                                            {mockGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                        </select>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                             
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

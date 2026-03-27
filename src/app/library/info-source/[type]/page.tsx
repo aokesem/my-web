@@ -72,6 +72,7 @@ export default function InfoSourceListPage() {
     const [formData, setFormData] = useState({
         name: '',
         source_id: '',
+        group_id: '',
         category_id: '',
         url: '',
         description: '',
@@ -132,7 +133,10 @@ export default function InfoSourceListPage() {
             sorted = sorted.filter(item => item.source_id === selectedSourceId);
         } else if (selectedGroupId !== null) {
             const groupSourceIds = mockSources.filter(s => s.group_id === selectedGroupId).map(s => s.id);
-            sorted = sorted.filter(item => item.source_id && groupSourceIds.includes(item.source_id));
+            sorted = sorted.filter(item => 
+                (item.source_id && groupSourceIds.includes(item.source_id)) || 
+                (item.group_id === selectedGroupId)
+            );
         }
         
         if (selectedCategoryId !== null) {
@@ -157,7 +161,7 @@ export default function InfoSourceListPage() {
         });
 
         return sorted;
-    }, [mockItems, selectedSourceId, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
+    }, [mockItems, selectedSourceId, selectedGroupId, mockSources, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
 
     const queuedItems = useMemo(() => mockItems.filter(i => i.is_queued), [mockItems]);
 
@@ -196,8 +200,8 @@ export default function InfoSourceListPage() {
     };
 
     // 快速状态切换 (Favorite and Queue)
-    const toggleStatus = async (e: React.MouseEvent, id: number, field: 'is_favorited' | 'is_queued') => {
-        e.stopPropagation();
+    const toggleStatus = async (e: React.MouseEvent | null, id: number, field: 'is_favorited' | 'is_queued') => {
+        e?.stopPropagation();
         const item = mockItems.find(i => i.id === id);
         if (!item) return;
         
@@ -220,12 +224,17 @@ export default function InfoSourceListPage() {
 
     // 重新排序大分类并持久化
     const handleReorderGroups = async (newOrder: InfoSourceGroup[]) => {
-        setGroups(newOrder);
-        const updates = newOrder.map((group, index) => ({
+        const updatedOrder = newOrder.map((group, index) => ({
+            ...group,
+            sort_order: index
+        }));
+        setGroups(updatedOrder);
+
+        const updates = updatedOrder.map((group) => ({
             id: group.id,
             category_type: group.category_type,
             name: group.name,
-            sort_order: index
+            sort_order: group.sort_order
         }));
         try {
             const { error } = await supabase.from('info_source_groups').upsert(updates);
@@ -238,18 +247,23 @@ export default function InfoSourceListPage() {
 
     // 重新排序子源并持久化
     const handleReorderSources = async (groupId: number | null, newOrder: InfoSource[]) => {
+        const updatedOrder = newOrder.map((source, index) => ({
+            ...source,
+            sort_order: index
+        }));
+
         // 更新本地状态：替换对应 groupId 的 sources，保留其他的
         setSources(prev => {
             const others = prev.filter(s => s.group_id !== groupId);
-            return [...others, ...newOrder];
+            return [...others, ...updatedOrder];
         });
         
-        const updates = newOrder.map((source, index) => ({
+        const updates = updatedOrder.map((source) => ({
             id: source.id,
             group_id: source.group_id,
             name: source.name,
             image_url: source.image_url,
-            sort_order: index
+            sort_order: source.sort_order
         }));
 
         try {
@@ -273,6 +287,7 @@ export default function InfoSourceListPage() {
         setFormData({
             name: '',
             source_id: '',
+            group_id: '',
             category_id: '',
             url: '',
             description: '',
@@ -282,21 +297,7 @@ export default function InfoSourceListPage() {
         setIsFormModalOpen(true);
     };
 
-    const handleEdit = (e: React.MouseEvent, item: InfoItem) => {
-        e.stopPropagation();
-        setFormMode('edit');
-        setEditingItem(item);
-        setFormData({
-            name: item.name,
-            source_id: item.source_id?.toString() || '',
-            category_id: item.category_ids[0]?.toString() || '',
-            url: item.url || '',
-            description: item.description || '',
-            image_url: item.image_url || '',
-            info_date: item.info_date || ''
-        });
-        setIsFormModalOpen(true);
-    };
+
 
     const handleSave = async () => {
         if (!formData.name.trim()) return alert("请填写标题");
@@ -307,6 +308,7 @@ export default function InfoSourceListPage() {
                 category_type: type,
                 name: formData.name,
                 source_id: formData.source_id ? parseInt(formData.source_id) : null,
+                group_id: (!formData.source_id && formData.group_id) ? parseInt(formData.group_id) : null,
                 url: formData.url,
                 description: formData.description,
                 image_url: formData.image_url,
@@ -382,6 +384,7 @@ export default function InfoSourceListPage() {
             description: item.description || '',
             url: item.url || '',
             source_id: item.source_id ? item.source_id.toString() : '',
+            group_id: item.group_id ? item.group_id.toString() : '',
             category_id: item.category_ids.length > 0 ? item.category_ids[0].toString() : '',
             image_url: item.image_url || '',
             info_date: item.info_date || ''
@@ -507,6 +510,8 @@ export default function InfoSourceListPage() {
                                                 theme={theme}
                                                 isStudy={isStudy}
                                                 displayImage={displayImage}
+                                                sourceName={sourceName}
+                                                sourceImg={sourceImg || undefined}
                                                 isHighlighted={isHighlighted}
                                                 onToggleFav={(i: InfoItem) => toggleStatus(null as any, i.id, 'is_favorited')}
                                                 onToggleQueue={(i: InfoItem) => toggleStatus(null as any, i.id, 'is_queued')}
@@ -537,7 +542,8 @@ export default function InfoSourceListPage() {
                 handleSave={handleSave}
                 theme={theme}
                 mockSources={mockSources}
-                currentCategories={mockCategories}
+                mockGroups={mockGroups}
+                currentCategories={currentCategories}
                 type={type}
             />
         </div>

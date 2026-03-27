@@ -9,6 +9,8 @@ interface InfoCardProps {
     theme: any;
     isStudy: boolean;
     displayImage?: string;
+    sourceName?: string;
+    sourceImg?: string;
     isHighlighted: boolean;
     onToggleFav: (item: InfoItem) => void;
     onToggleQueue: (item: InfoItem) => void;
@@ -17,7 +19,7 @@ interface InfoCardProps {
 }
 
 export function InfoCard({
-    item, theme, isStudy, displayImage, isHighlighted, 
+    item, theme, isStudy, displayImage, sourceName, sourceImg, isHighlighted, 
     onToggleFav, onToggleQueue, onEdit, onDeleteSuccess
 }: InfoCardProps) {
     return (
@@ -64,6 +66,14 @@ export function InfoCard({
                         <Bookmark size={14} className={item.is_queued ? "text-blue-400 fill-blue-400" : "text-white group-hover/btn:text-blue-400"} />
                     </button>
                 </div>
+
+                {/* 来源标识 (仅当存在具体来源时显示) */}
+                {sourceName && (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-md bg-black/50 text-white border border-white/10">
+                        {sourceImg && <img src={sourceImg} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />}
+                        <span className="text-[10px] font-bold tracking-tight leading-none">{sourceName}</span>
+                    </div>
+                )}
             </div>
 
             <div className="p-5 flex flex-col flex-1 relative">
