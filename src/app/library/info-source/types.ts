@@ -41,3 +41,20 @@ export interface InfoItem {
     created_at: string;
     category_ids: number[];
 }
+
+export interface InfoBookmark {
+    id: number;
+    created_at: string;
+    title: string;
+    url?: string;
+    description?: string;
+    info_date?: string;
+    category_type: string;
+    is_favorited: boolean;
+    is_queued: boolean;
+    is_read: boolean;
+    group_id?: number | null;
+    source_id?: number | null;
+    parent_item_id?: number | null;
+    category_id?: number | null;
+}

@@ -8,10 +8,12 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
-import { CategoryType, InfoSourceGroup, InfoSource, InfoCategory, InfoItem } from '../types';
+import { CategoryType, InfoSourceGroup, InfoSource, InfoCategory, InfoItem, InfoBookmark } from '../types';
 import { InfoSidebar } from '../components/InfoSidebar';
 import { InfoCard } from '../components/InfoCard';
 import { InfoItemModal } from '../components/InfoItemModal';
+import { BookmarkCard } from '../components/BookmarkCard';
+import { BookmarkModal } from '../components/BookmarkModal';
 
 export default function InfoSourceListPage() {
     const params = useParams();
@@ -48,9 +50,12 @@ export default function InfoSourceListPage() {
     const [mockSources, setSources] = useState<InfoSource[]>([]);
     const [mockCategories, setCategories] = useState<InfoCategory[]>([]);
     const [mockItems, setItems] = useState<InfoItem[]>([]);
+    const [mockBookmarks, setBookmarks] = useState<InfoBookmark[]>([]);
 
     // === UI状态管理 ===
+    const [viewMode, setViewMode] = useState<'hub' | 'bookmarks'>('hub');
     const [sidebarMode, setSidebarMode] = useState<'source' | 'queue'>('source');
+    const [selectedParentItemId, setSelectedParentItemId] = useState<number | null>(null);
     const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
     const [selectedSourceId, setSelectedSourceId] = useState<number | null>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
@@ -70,14 +75,15 @@ export default function InfoSourceListPage() {
 
     // 表单状态绑定
     const [formData, setFormData] = useState({
-        name: '',
-        source_id: '',
-        group_id: '',
-        category_id: '',
-        url: '',
-        description: '',
-        image_url: '',
-        info_date: ''
+        name: '', source_id: '', group_id: '', category_id: '', url: '', description: '', image_url: '', info_date: ''
+    });
+
+    // Bookmark Modal 状态
+    const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
+    const [bookmarkFormMode, setBookmarkFormMode] = useState<'create' | 'edit'>('create');
+    const [editingBookmark, setEditingBookmark] = useState<InfoBookmark | null>(null);
+    const [bookmarkFormData, setBookmarkFormData] = useState({
+        title: '', url: '', description: '', category_id: '', group_id: '', source_id: '', parent_item_id: ''
     });
 
     // === Fetch Data ===
@@ -85,14 +91,15 @@ export default function InfoSourceListPage() {
         setIsLoading(true);
         try {
             // 并行请求基础数据
-            const [groupRes, sourceRes, catRes, itemsRes] = await Promise.all([
+            const [groupRes, sourceRes, catRes, itemsRes, bookmarksRes] = await Promise.all([
                 supabase.from('info_source_groups').select('*').eq('category_type', type).order('sort_order', { ascending: true }),
                 supabase.from('info_sources').select('*').order('sort_order', { ascending: true }),
                 supabase.from('info_categories').select('*'),
                 // 获取当前类别的 items，并级联查询多对多关联
                 supabase.from('info_items')
                     .select('*, info_item_categories(category_id)')
-                    .eq('category_type', type)
+                    .eq('category_type', type),
+                supabase.from('info_bookmarks').select('*').eq('category_type', type).order('created_at', { ascending: false })
             ]);
 
             if (groupRes.data) {
@@ -111,6 +118,9 @@ export default function InfoSourceListPage() {
                         : []
                 }));
                 setItems(parsedItems);
+            }
+            if (bookmarksRes.data) {
+                setBookmarks(bookmarksRes.data);
             }
         } catch (error) {
             console.error("Failed to fetch data", error);
@@ -163,7 +173,56 @@ export default function InfoSourceListPage() {
         return sorted;
     }, [mockItems, selectedSourceId, selectedGroupId, mockSources, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
 
+    const allFilteredBookmarks = useMemo(() => {
+        let sorted = [...mockBookmarks];
+        
+        if (selectedParentItemId !== null) {
+            sorted = sorted.filter(b => b.parent_item_id === selectedParentItemId);
+        } else if (selectedSourceId !== null) {
+            sorted = sorted.filter(b => b.source_id === selectedSourceId);
+        } else if (selectedGroupId !== null) {
+            const groupSourceIds = mockSources.filter(s => s.group_id === selectedGroupId).map(s => s.id);
+            sorted = sorted.filter(b => 
+                (b.source_id && groupSourceIds.includes(b.source_id)) || 
+                (b.group_id === selectedGroupId) ||
+                (b.parent_item_id && mockItems.some(i => i.id === b.parent_item_id && ((i.source_id && groupSourceIds.includes(i.source_id)) || i.group_id === selectedGroupId)))
+            );
+        }
+        
+        if (selectedCategoryId !== null) {
+            sorted = sorted.filter(b => b.category_id === selectedCategoryId);
+        }
+
+        sorted.sort((a, b) => {
+            if (pinFavorites) {
+                if (a.is_favorited && !b.is_favorited) return -1;
+                if (!a.is_favorited && b.is_favorited) return 1;
+            }
+            const timeA = new Date(a[sortBy] || a.created_at).getTime();
+            const timeB = new Date(b[sortBy] || b.created_at).getTime();
+            return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+        });
+
+        return sorted;
+    }, [mockBookmarks, mockItems, selectedParentItemId, selectedSourceId, selectedGroupId, mockSources, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
+
     const queuedItems = useMemo(() => mockItems.filter(i => i.is_queued), [mockItems]);
+    const queuedBookmarks = useMemo(() => {
+        return mockBookmarks.filter(b => b.is_queued).map(bookmark => {
+            let thumb = '';
+            if (bookmark.parent_item_id) {
+                const pItem = mockItems.find(i => i.id === bookmark.parent_item_id);
+                thumb = pItem?.image_url || mockSources.find(s => s.id === pItem?.source_id)?.image_url || '';
+            } else if (bookmark.source_id) {
+                const sItem = mockSources.find(s => s.id === bookmark.source_id);
+                thumb = sItem?.image_url || '';
+            }
+            return {
+                ...bookmark,
+                image_url: thumb
+            };
+        });
+    }, [mockBookmarks, mockItems, mockSources]);
 
     // 监听等待滚动的 ID
     useEffect(() => {
@@ -184,18 +243,32 @@ export default function InfoSourceListPage() {
 
     // 动作处理函数
     const scrollToCard = (id: number) => {
-        const item = mockItems.find(i => i.id === id);
-        if (!item) return;
-
-        const el = document.getElementById(`info-card-${id}`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setHighlightedCardId(id);
-            setTimeout(() => setHighlightedCardId(null), 1500);
+        if (viewMode === 'bookmarks') {
+            const bookmark = mockBookmarks.find(b => b.id === id);
+            if (!bookmark) return;
+            const el = document.getElementById(`bookmark-card-${id}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                setSelectedParentItemId(bookmark.parent_item_id || null);
+                setSelectedSourceId(bookmark.source_id || null);
+                setSelectedGroupId(bookmark.group_id || null);
+                setSelectedCategoryId(bookmark.category_id || null);
+            }
         } else {
-            setSelectedSourceId(item.source_id || null);
-            setSelectedCategoryId(item.category_ids[0] || null);
-            setPendingScrollId(id);
+            const item = mockItems.find(i => i.id === id);
+            if (!item) return;
+
+            const el = document.getElementById(`info-card-${id}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setHighlightedCardId(id);
+                setTimeout(() => setHighlightedCardId(null), 1500);
+            } else {
+                setSelectedSourceId(item.source_id || null);
+                setSelectedCategoryId(item.category_ids[0] || null);
+                setPendingScrollId(id);
+            }
         }
     };
 
@@ -219,6 +292,19 @@ export default function InfoSourceListPage() {
             console.error(`Failed to update ${field}`, error);
             // 回滚更新
             setItems(prev => prev.map(i => i.id === id ? { ...i, [field]: !newValue } : i));
+        }
+    };
+
+    const toggleBookmarkStatus = async (e: React.MouseEvent | null, id: number, field: 'is_favorited' | 'is_queued' | 'is_read') => {
+        e?.stopPropagation();
+        const item = mockBookmarks.find(i => i.id === id);
+        if (!item) return;
+        const newValue = !item[field];
+        setBookmarks(prev => prev.map(i => i.id === id ? { ...i, [field]: newValue } : i));
+        const { error } = await supabase.from('info_bookmarks').update({ [field]: newValue }).eq('id', id);
+        if (error) {
+            console.error(`Failed to update ${field}`, error);
+            setBookmarks(prev => prev.map(i => i.id === id ? { ...i, [field]: !newValue } : i));
         }
     };
 
@@ -282,22 +368,51 @@ export default function InfoSourceListPage() {
 
     // Modal 表单动作
     const handleCreate = () => {
-        setFormMode('create');
-        setEditingItem(null);
-        setFormData({
-            name: '',
-            source_id: '',
-            group_id: '',
-            category_id: '',
-            url: '',
-            description: '',
-            image_url: '',
-            info_date: ''
-        });
-        setIsFormModalOpen(true);
+        if (viewMode === 'bookmarks') {
+            setBookmarkFormMode('create');
+            setEditingBookmark(null);
+            setBookmarkFormData({ title: '', url: '', description: '', category_id: '', group_id: selectedGroupId?.toString() || '', source_id: selectedSourceId?.toString() || '', parent_item_id: selectedParentItemId?.toString() || '' });
+            setIsBookmarkModalOpen(true);
+        } else {
+            setFormMode('create');
+            setEditingItem(null);
+            setFormData({ name: '', source_id: selectedSourceId?.toString() || '', group_id: selectedGroupId?.toString() || '', category_id: '', url: '', description: '', image_url: '', info_date: '' });
+            setIsFormModalOpen(true);
+        }
     };
 
+    const handleSaveBookmark = async () => {
+        if (!bookmarkFormData.title.trim()) return alert("请填写收藏标题");
+        setIsSaving(true);
+        try {
+            const payload = {
+                category_type: type,
+                title: bookmarkFormData.title,
+                url: bookmarkFormData.url,
+                description: bookmarkFormData.description,
+                category_id: bookmarkFormData.category_id ? parseInt(bookmarkFormData.category_id) : null,
+                group_id: bookmarkFormData.group_id ? parseInt(bookmarkFormData.group_id) : null,
+                source_id: bookmarkFormData.source_id ? parseInt(bookmarkFormData.source_id) : null,
+                parent_item_id: bookmarkFormData.parent_item_id ? parseInt(bookmarkFormData.parent_item_id) : null,
+            };
 
+            if (bookmarkFormMode === 'create') {
+                const { data, error } = await supabase.from('info_bookmarks').insert(payload).select().single();
+                if (error) throw error;
+                setBookmarks(prev => [data, ...prev]);
+            } else if (bookmarkFormMode === 'edit' && editingBookmark) {
+                const { data, error } = await supabase.from('info_bookmarks').update(payload).eq('id', editingBookmark.id).select().single();
+                if (error) throw error;
+                setBookmarks(prev => prev.map(b => b.id === editingBookmark.id ? data : b));
+            }
+            setIsBookmarkModalOpen(false);
+        } catch (error) {
+            console.error("Save bookmark error:", error);
+            alert("收藏保存失败");
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleSave = async () => {
         if (!formData.name.trim()) return alert("请填写标题");
@@ -392,6 +507,21 @@ export default function InfoSourceListPage() {
         setIsFormModalOpen(true);
     };
 
+    const handleEditBookmark = (bookmark: InfoBookmark) => {
+        setBookmarkFormMode('edit');
+        setEditingBookmark(bookmark);
+        setBookmarkFormData({
+            title: bookmark.title,
+            url: bookmark.url || '',
+            description: bookmark.description || '',
+            category_id: bookmark.category_id ? bookmark.category_id.toString() : '',
+            group_id: bookmark.group_id ? bookmark.group_id.toString() : '',
+            source_id: bookmark.source_id ? bookmark.source_id.toString() : '',
+            parent_item_id: bookmark.parent_item_id ? bookmark.parent_item_id.toString() : ''
+        });
+        setIsBookmarkModalOpen(true);
+    };
+
     return (
         <div className={`flex w-full h-screen overflow-hidden ${theme.bg} ${theme.textBase} transition-colors duration-500 font-sans`}>
             
@@ -412,7 +542,7 @@ export default function InfoSourceListPage() {
                 toggleGroup={toggleGroup}
                 handleReorderGroups={handleReorderGroups}
                 handleReorderSources={handleReorderSources}
-                queuedItems={queuedItems}
+                queuedItems={viewMode === 'hub' ? queuedItems : (queuedBookmarks as any)}
                 scrollToCard={scrollToCard}
             />
 
@@ -421,6 +551,22 @@ export default function InfoSourceListPage() {
                 {/* 顶部: 分类导航与控制栏 */}
                 <header className={`shrink-0 w-full px-10 py-6 border-b ${theme.border} flex items-center justify-between z-10 backdrop-blur-md bg-opacity-80`}>
                     
+                    {/* View Mode Switcher */}
+                    <div className="flex items-center bg-black/5 dark:bg-white/5 p-1 rounded-full mr-4 shrink-0">
+                        <button 
+                            onClick={() => { setViewMode('hub'); setSelectedParentItemId(null); }}
+                            className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'hub' ? theme.activePill + ' shadow-md' : 'text-stone-500 hover:bg-black/5 dark:hover:bg-white/5'}`}
+                        >
+                            源站导航
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('bookmarks')}
+                            className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'bookmarks' ? theme.activePill + ' shadow-md' : 'text-stone-500 hover:bg-black/5 dark:hover:bg-white/5'}`}
+                        >
+                            具体收藏
+                        </button>
+                    </div>
+
                     {/* 分类 Pilled Tabs */}
                     <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pr-4">
                         <button
@@ -495,37 +641,82 @@ export default function InfoSourceListPage() {
                         </div>
                     ) : (
                         <div className="max-w-7xl mx-auto pb-32">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {allFilteredItems.map((item) => {
-                                        const sourceName = mockSources.find(s => s.id === item.source_id)?.name;
-                                        const sourceImg = mockSources.find(s => s.id === item.source_id)?.image_url;
-                                        const isHighlighted = highlightedCardId === item.id;
-                                        
-                                        const displayImage = item.image_url || sourceImg || undefined;
+                            {viewMode === 'hub' ? (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {allFilteredItems.map((item) => {
+                                            const sourceName = mockSources.find(s => s.id === item.source_id)?.name;
+                                            const sourceImg = mockSources.find(s => s.id === item.source_id)?.image_url;
+                                            const isHighlighted = highlightedCardId === item.id;
+                                            const displayImage = item.image_url || sourceImg || undefined;
 
-                                        return (
-                                            <InfoCard
-                                                key={item.id}
-                                                item={item}
-                                                theme={theme}
-                                                isStudy={isStudy}
-                                                displayImage={displayImage}
-                                                sourceName={sourceName}
-                                                sourceImg={sourceImg || undefined}
-                                                isHighlighted={isHighlighted}
-                                                onToggleFav={(i: InfoItem) => toggleStatus(null as any, i.id, 'is_favorited')}
-                                                onToggleQueue={(i: InfoItem) => toggleStatus(null as any, i.id, 'is_queued')}
-                                                onEdit={handleEditItem}
-                                                onDeleteSuccess={fetchData}
-                                            />
-                                        );
-                                    })}
-                            </div>
-                            {allFilteredItems.length === 0 && (
-                                <div className="w-full py-20 flex flex-col items-center justify-center opacity-50">
-                                    <Search size={48} className={`mb-4 ${theme.textMuted}`} />
-                                    <p className={`text-sm ${theme.textMuted}`}>没有找到对应的存档信息</p>
-                                </div>
+                                            return (
+                                                <InfoCard
+                                                    key={item.id}
+                                                    item={item}
+                                                    theme={theme}
+                                                    isStudy={isStudy}
+                                                    displayImage={displayImage}
+                                                    sourceName={sourceName}
+                                                    sourceImg={sourceImg || undefined}
+                                                    isHighlighted={isHighlighted}
+                                                    onToggleFav={(i: InfoItem) => toggleStatus(null as any, i.id, 'is_favorited')}
+                                                    onToggleQueue={(i: InfoItem) => toggleStatus(null as any, i.id, 'is_queued')}
+                                                    onEdit={handleEditItem}
+                                                    onDeleteSuccess={fetchData}
+                                                    onClick={(item: InfoItem) => {
+                                                        setSelectedParentItemId(item.id);
+                                                        setViewMode('bookmarks');
+                                                    }}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    {allFilteredItems.length === 0 && (
+                                        <div className="w-full py-20 flex flex-col items-center justify-center opacity-50">
+                                            <Search size={48} className={`mb-4 ${theme.textMuted}`} />
+                                            <p className={`text-sm ${theme.textMuted}`}>没有找到对应的溯源卡片</p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex flex-col gap-3">
+                                        {allFilteredBookmarks.map((bookmark) => {
+                                            let thumb = '';
+                                            let label = '';
+                                            if (bookmark.parent_item_id) {
+                                                const pItem = mockItems.find(i => i.id === bookmark.parent_item_id);
+                                                thumb = pItem?.image_url || mockSources.find(s => s.id === pItem?.source_id)?.image_url || '';
+                                                label = pItem?.name || '';
+                                            } else if (bookmark.source_id) {
+                                                const sItem = mockSources.find(s => s.id === bookmark.source_id);
+                                                thumb = sItem?.image_url || '';
+                                                label = sItem?.name || '';
+                                            }
+                                            return (
+                                                <BookmarkCard
+                                                    key={bookmark.id}
+                                                    bookmark={bookmark}
+                                                    theme={theme}
+                                                    thumbnailUrl={thumb}
+                                                    thumbnailLabel={label}
+                                                    onToggleFav={(id) => toggleBookmarkStatus(null, id, 'is_favorited')}
+                                                    onToggleQueue={(id) => toggleBookmarkStatus(null, id, 'is_queued')}
+                                                    onToggleRead={(id) => toggleBookmarkStatus(null, id, 'is_read')}
+                                                    onEdit={handleEditBookmark}
+                                                    onDeleteSuccess={fetchData}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    {allFilteredBookmarks.length === 0 && (
+                                        <div className="w-full py-20 flex flex-col items-center justify-center opacity-50">
+                                            <Search size={48} className={`mb-4 ${theme.textMuted}`} />
+                                            <p className={`text-sm ${theme.textMuted}`}>该范围内暂无具体收藏文章</p>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
@@ -545,6 +736,21 @@ export default function InfoSourceListPage() {
                 mockGroups={mockGroups}
                 currentCategories={currentCategories}
                 type={type}
+            />
+
+            <BookmarkModal
+                isOpen={isBookmarkModalOpen}
+                onClose={() => setIsBookmarkModalOpen(false)}
+                formMode={bookmarkFormMode}
+                formData={bookmarkFormData}
+                setFormData={setBookmarkFormData}
+                isSaving={isSaving}
+                handleSave={handleSaveBookmark}
+                theme={theme}
+                mockGroups={mockGroups}
+                mockSources={mockSources}
+                mockItems={mockItems}
+                currentCategories={currentCategories}
             />
         </div>
     );

@@ -26,7 +26,7 @@ interface InfoSidebarProps {
     handleReorderGroups: (newOrder: InfoSourceGroup[]) => void;
     handleReorderSources: (groupId: number | null, newOrder: InfoSource[]) => void;
     
-    queuedItems: InfoItem[];
+    queuedItems: any[];
     scrollToCard: (id: number) => void;
 }
 
@@ -265,7 +265,7 @@ export function InfoSidebar({
                                                 )}
                                             </div>
                                             <div className="flex-1 overflow-hidden">
-                                                <h4 className={`text-[13px] font-bold truncate ${theme.textBase}`}>{item.name}</h4>
+                                                <h4 className={`text-[13px] font-bold truncate ${theme.textBase}`}>{item.name || item.title}</h4>
                                                 {item.info_date && <p className={`text-[10px] mt-0.5 uppercase tracking-wider ${theme.textMuted}`}>{item.info_date}</p>}
                                             </div>
                                         </div>
