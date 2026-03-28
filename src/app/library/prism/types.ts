@@ -27,12 +27,14 @@ export interface ProjectInsight {
     id: string;
     content: string;
     paper_ids: string[];
+    created_at?: string;
 }
 
 export interface ProjectOutcome {
     id: string;
     content: string;
     paper_ids: string[];
+    created_at?: string;
 }
 
 export interface ProjectCategory<T> {

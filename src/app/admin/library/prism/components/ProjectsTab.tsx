@@ -169,8 +169,8 @@ export default function ProjectsTab() {
                             )}
 
                             {activeSubTab === "timeline" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_timeline" fields={["date", "content"]} sortBy="sort_order" />}
-                            {activeSubTab === "insights" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_insights" fields={["category", "content"]} sortBy="sort_order" />}
-                            {activeSubTab === "outcomes" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_outcomes" fields={["category", "content"]} sortBy="sort_order" />}
+                            {activeSubTab === "insights" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_insights" fields={["category", "content"]} sortBy="sort_order" showCreatedAt={true} />}
+                            {activeSubTab === "outcomes" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_outcomes" fields={["category", "content"]} sortBy="sort_order" showCreatedAt={true} />}
                         </div>
                     </>
                 )}
@@ -180,7 +180,7 @@ export default function ProjectsTab() {
 }
 
 // 可复用的子模块管理器组件（用于 Timeline, Insights, Outcomes）
-function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: string; table: string; fields: string[]; sortBy: string }) {
+function SubModuleManager({ projectId, table, fields, sortBy, showCreatedAt = false }: { projectId: string; table: string; fields: string[]; sortBy: string; showCreatedAt?: boolean }) {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingItem, setEditingItem] = useState<any | null>(null);
@@ -215,6 +215,10 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
     const handleCreate = () => {
         const defaultForm: any = { sort_order: data.length + 1 };
         fields.forEach(f => defaultForm[f] = "");
+        if (showCreatedAt) {
+            const d = new Date();
+            defaultForm.created_at = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        }
         setForm(defaultForm);
         setEditingItem({ isNew: true });
     };
@@ -222,6 +226,14 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
     const handleEdit = (item: any) => {
         const editForm: any = { sort_order: item.sort_order };
         fields.forEach(f => editForm[f] = item[f] || "");
+        if (showCreatedAt) {
+            if (item.created_at) {
+                const d = new Date(item.created_at);
+                editForm.created_at = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            } else {
+                editForm.created_at = "";
+            }
+        }
         setForm(editForm);
         setEditingItem(item);
     };
@@ -229,9 +241,18 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
     const handleSave = async () => {
         if (!editingItem) return;
         const payload = { ...form, project_id: projectId };
+        
+        if (showCreatedAt) {
+            if (payload.created_at) {
+                payload.created_at = new Date(payload.created_at).toISOString();
+            } else {
+                delete payload.created_at;
+            }
+        }
+
         const promise = editingItem.isNew 
             ? supabase.from(table).insert([payload])
-            : supabase.from(table).update(form).eq("id", editingItem.id);
+            : supabase.from(table).update(payload).eq("id", editingItem.id);
 
         const { error } = await promise;
         if (error) toast.error(error.message);
@@ -296,6 +317,17 @@ function SubModuleManager({ projectId, table, fields, sortBy }: { projectId: str
                                 <div className="mt-1">{renderFieldInput(f)}</div>
                             </div>
                         ))}
+                        {showCreatedAt && (
+                            <div>
+                                <Label className="text-zinc-400 capitalize">Created At</Label>
+                                <Input 
+                                    type="datetime-local" 
+                                    value={form.created_at || ""} 
+                                    onChange={e => setForm({...form, created_at: e.target.value})} 
+                                    className="bg-zinc-950 border-zinc-800 mt-1 font-mono text-sm text-zinc-300" 
+                                />
+                            </div>
+                        )}
                         <div>
                             <Label className="text-zinc-400">Sort Order</Label>
                             <Input type="number" value={form.sort_order} onChange={e => setForm({...form, sort_order: parseInt(e.target.value)||0})} className="bg-zinc-950 border-zinc-800 mt-1" />

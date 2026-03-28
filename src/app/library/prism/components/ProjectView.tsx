@@ -40,6 +40,7 @@ interface ProjectViewProps {
 export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdateProjects }: ProjectViewProps) {
     const [activeProjectName, setActiveProjectName] = useState<string>(projects[0]?.name || '');
     const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+    const [selectedTimelineIndex, setSelectedTimelineIndex] = useState<number | null>(null);
     const [paperGroupMode, setPaperGroupMode] = useState<'direction' | 'type' | 'depth'>('direction');
 
     // Editing State
@@ -87,10 +88,67 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     // Group papers by direction for the active project
     const activeProject = projects.find(p => p.name === activeProjectName);
 
+    const activeTimeRange = useMemo(() => {
+        if (selectedTimelineIndex === null || !activeProject) return null;
+        const events = activeProject.timeline;
+        if (selectedTimelineIndex < 0 || selectedTimelineIndex >= events.length) return null;
+        
+        let startDateValue = new Date(events[selectedTimelineIndex].date.replace(/\//g, '-')).getTime();
+        if (isNaN(startDateValue)) {
+            startDateValue = Date.parse(events[selectedTimelineIndex].date.replace(/\//g, '-'));
+        }
+
+        let endDateValue = Infinity;
+        if (selectedTimelineIndex < events.length - 1) {
+            endDateValue = new Date(events[selectedTimelineIndex + 1].date.replace(/\//g, '-')).getTime();
+            if (isNaN(endDateValue)) {
+                endDateValue = Date.parse(events[selectedTimelineIndex + 1].date.replace(/\//g, '-'));
+            }
+        }
+
+        return { start: startDateValue || 0, end: endDateValue || Infinity };
+    }, [selectedTimelineIndex, activeProject]);
+
     const relatedPapers = useMemo(() => {
         if (!activeProjectName) return [];
-        return allPapers.filter(p => p.projects.includes(activeProjectName));
-    }, [allPapers, activeProjectName]);
+        let papers = allPapers.filter(p => p.projects.includes(activeProjectName));
+        if (activeTimeRange) {
+            papers = papers.filter(p => {
+                if (!p.created_at) return false;
+                const pt = new Date(p.created_at).getTime();
+                return pt >= activeTimeRange.start && pt < activeTimeRange.end;
+            });
+        }
+        return papers;
+    }, [allPapers, activeProjectName, activeTimeRange]);
+
+    const filteredInsights = useMemo(() => {
+        if (!activeProject) return [];
+        if (!activeTimeRange) return activeProject.insights;
+
+        return activeProject.insights.map(group => ({
+            ...group,
+            items: group.items.filter(item => {
+                if (!item.created_at) return false;
+                const it = new Date(item.created_at).getTime();
+                return it >= activeTimeRange.start && it < activeTimeRange.end;
+            })
+        })).filter(g => g.items.length > 0);
+    }, [activeProject, activeTimeRange]);
+
+    const filteredOutcomes = useMemo(() => {
+        if (!activeProject) return [];
+        if (!activeTimeRange) return activeProject.outcomes;
+
+        return activeProject.outcomes.map(group => ({
+            ...group,
+            items: group.items.filter(item => {
+                if (!item.created_at) return false;
+                const ot = new Date(item.created_at).getTime();
+                return ot >= activeTimeRange.start && ot < activeTimeRange.end;
+            })
+        })).filter(g => g.items.length > 0);
+    }, [activeProject, activeTimeRange]);
 
     const availableDirections = useMemo(() => {
         const dirs = new Set<string>();
@@ -164,6 +222,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                 onClick={() => {
                                     setActiveProjectName(proj.name);
                                     setIsTimelineOpen(false);
+                                    setSelectedTimelineIndex(null);
                                 }}
                                 className={`
                                     flex items-center gap-2 px-4 py-2 rounded-xl text-[14px] font-medium transition-all duration-200 whitespace-nowrap shrink-0
@@ -210,24 +269,48 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                         >
                             <div className="p-6 pt-4 max-h-[180px] overflow-y-auto custom-scrollbar">
                                 <div className="space-y-4 relative before:absolute before:inset-y-2 before:left-[4px] before:w-px before:bg-stone-200/70">
-                                    {activeProject.timeline.map((event, i) => (
-                                        <div key={event.id} className="relative pl-6">
-                                            <div className="absolute left-px top-1.5 w-1.5 h-1.5 rounded-full bg-violet-400 ring-4 ring-stone-50" />
+                                    {activeProject.timeline.map((event, i) => {
+                                        const isActive = selectedTimelineIndex === i;
+                                        return (
+                                        <div 
+                                            key={event.id} 
+                                            onClick={() => setSelectedTimelineIndex(isActive ? null : i)}
+                                            className={`relative pl-6 py-1 -ml-2 rounded-lg cursor-pointer group transition-all duration-200 ${isActive ? 'bg-violet-50' : 'hover:bg-stone-50'}`}
+                                        >
+                                            <div className={`absolute left-[9px] top-2.5 w-1.5 h-1.5 rounded-full ring-4 transition-all duration-300 ${isActive ? 'bg-violet-600 ring-violet-200' : 'bg-violet-400 ring-stone-50 group-hover:ring-stone-200/50'}`} />
                                             <div className="flex items-baseline gap-3">
-                                                <span className="text-[10px] font-mono font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded shrink-0">
+                                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 transition-colors ${isActive ? 'text-white bg-violet-600' : 'text-violet-500 bg-violet-100 group-hover:bg-violet-200'}`}>
                                                     {event.date}
                                                 </span>
-                                                <span className="text-sm text-stone-600 leading-snug">
+                                                <span className={`text-sm leading-snug transition-colors ${isActive ? 'text-violet-900 font-medium' : 'text-stone-600'}`}>
                                                     {event.content}
                                                 </span>
                                             </div>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Active Time Filter Bar */}
+                {activeTimeRange && selectedTimelineIndex !== null && (
+                    <div className="shrink-0 px-6 py-2 bg-violet-50 border-b border-violet-100/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="flex w-2 h-2 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)] animate-pulse" />
+                            <span className="text-xs font-mono text-violet-700 font-bold tracking-wider">
+                                时间切片 [ {activeProject.timeline[selectedTimelineIndex].date} - {selectedTimelineIndex < activeProject.timeline.length - 1 ? activeProject.timeline[selectedTimelineIndex + 1].date : 'Now'} ]
+                            </span>
+                        </div>
+                        <button 
+                            onClick={() => setSelectedTimelineIndex(null)}
+                            className="flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-1 rounded bg-white text-violet-600 hover:bg-violet-100 border border-violet-200 transition-colors shadow-sm"
+                        >
+                            <X size={10} /> 清除过滤 (Show All)
+                        </button>
+                    </div>
+                )}
 
                 {/* 3-Column Board */}
                 <div className="flex-1 flex overflow-hidden">
@@ -278,9 +361,9 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                         title="项目启示 (处理)"
                         icon={Lightbulb}
                         color="amber"
-                        count={activeProject.insights.reduce((acc, c) => acc + c.items.length, 0)}
+                        count={filteredInsights.reduce((acc, c) => acc + c.items.length, 0)}
                     >
-                        {activeProject.insights.map(group => (
+                        {filteredInsights.map(group => (
                             <AccordionGroup key={group.category} title={group.category} count={group.items.length} defaultOpen={true}>
                                 {group.items.map(insight => (
                                     <div key={insight.id} className="p-3 rounded-xl border border-stone-200/60 bg-amber-50/30 hover:bg-white transition-colors relative group/item">
@@ -392,9 +475,9 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                         title="现有成果 (输出)"
                         icon={Target}
                         color="emerald"
-                        count={activeProject.outcomes.reduce((acc, c) => acc + c.items.length, 0)}
+                        count={filteredOutcomes.reduce((acc, c) => acc + c.items.length, 0)}
                     >
-                        {activeProject.outcomes.map(group => (
+                        {filteredOutcomes.map(group => (
                             <AccordionGroup key={group.category} title={group.category} count={group.items.length} defaultOpen={true}>
                                 {group.items.map(outcome => (
                                     <div key={outcome.id} className="p-3 rounded-xl border border-stone-200/60 bg-emerald-50/30 hover:bg-white transition-colors relative group/item">

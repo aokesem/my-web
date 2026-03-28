@@ -139,7 +139,8 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             items: pInsightsData.filter((i: any) => i.category === cat).map((i: any) => ({
                 id: i.id,
                 content: i.content,
-                paper_ids: insightIdToPapers.get(i.id) || []
+                paper_ids: insightIdToPapers.get(i.id) || [],
+                created_at: i.created_at
             }))
         }));
 
@@ -150,7 +151,8 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             items: pOutcomesData.filter((o: any) => o.category === cat).map((o: any) => ({
                 id: o.id,
                 content: o.content,
-                paper_ids: outcomeIdToPapers.get(o.id) || []
+                paper_ids: outcomeIdToPapers.get(o.id) || [],
+                created_at: o.created_at
             }))
         }));
 

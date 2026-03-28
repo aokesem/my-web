@@ -62,10 +62,13 @@ export default function PapersTab() {
     // --- Actions ---
 
     const handleCreate = () => {
+        const d = new Date();
+        const localNow = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
         setForm({
             title: "", nickname: "", authors: "", year: new Date().getFullYear(),
             url: "", summary: "", notes: "", rating: 0,
-            read_depth: "粗读", key_contributions: []
+            read_depth: "粗读", key_contributions: [],
+            created_at: localNow
         });
         setSelectedProjects([]);
         setSelectedDirections([]);
@@ -94,7 +97,13 @@ export default function PapersTab() {
             supabase.from("prism_paper_figures").select("*").eq("paper_id", id).order("sort_order")
         ]);
 
-        if (pData) setForm(pData);
+        if (pData) {
+            if (pData.created_at) {
+                const d = new Date(pData.created_at);
+                pData.created_at = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            }
+            setForm(pData);
+        }
         if (relProj) setSelectedProjects(relProj.map((r: any) => r.project_id));
         if (relDir) setSelectedDirections(relDir.map((r: any) => r.direction_id));
         if (relType) setSelectedTypes(relType.map((r: any) => r.type_id));
@@ -114,7 +123,11 @@ export default function PapersTab() {
             // 1. Save main paper
             const payload = { ...form };
             delete payload.id; // ensure ID is not updated
-            delete payload.created_at;
+            if (payload.created_at) {
+                payload.created_at = new Date(payload.created_at).toISOString();
+            } else {
+                delete payload.created_at;
+            }
 
             if (isNew) {
                 const { data, error } = await supabase.from("prism_papers").insert([payload]).select().single();
@@ -295,9 +308,18 @@ export default function PapersTab() {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="col-span-2 space-y-1">
+                                    <div className="space-y-1">
                                         <Label className="text-zinc-400">URL链接</Label>
                                         <Input value={form.url || ""} onChange={e => setForm({...form, url: e.target.value})} className="bg-zinc-950 border-zinc-800 font-mono text-sm" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-zinc-400">录入时间 (Created At)</Label>
+                                        <Input 
+                                            type="datetime-local" 
+                                            value={form.created_at || ""} 
+                                            onChange={e => setForm({...form, created_at: e.target.value})} 
+                                            className="bg-zinc-950 border-zinc-800 font-mono text-sm" 
+                                        />
                                     </div>
                                 </div>
                             </section>
