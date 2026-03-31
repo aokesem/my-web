@@ -12,6 +12,8 @@ import type { BlockEditorRef } from '@/components/ui/block-editor';
 import { CourseSidebar } from './components/CourseSidebar';
 import { CourseContentView } from './components/CourseContentView';
 
+export const CHAPTER_ID_FORMULA_OVERVIEW = 'formula-overview';
+
 export default function CoursesPage() {
     // ============================================================
     // STATE
@@ -34,6 +36,19 @@ export default function CoursesPage() {
     // NOTE HEADINGS (for TOC - Level 3 sidebar)
     // ============================================================
     const noteHeadings = useMemo(() => {
+        // Mode 1: Formula Overview - TOC is chapters with formulas
+        if (selectedChapterId === CHAPTER_ID_FORMULA_OVERVIEW) {
+            const chapterIdsWithFormulas = new Set(formulas.map(f => f.chapter_id).filter(Boolean));
+            return chapters
+                .filter(ch => chapterIdsWithFormulas.has(ch.id))
+                .map(ch => ({
+                    level: 1,
+                    text: ch.title,
+                    id: `overview-chapter-${ch.id}`
+                }));
+        }
+
+        // Mode 2: Regular Chapter - TOC is note headings
         if (!chapter?.notes) return [];
         const headings: { level: number; text: string; id: string }[] = [];
         const notes = chapter.notes;
@@ -259,9 +274,11 @@ export default function CoursesPage() {
                     <CourseContentView
                         chapter={chapter}
                         formulas={formulas}
+                        chapters={chapters}
                         courseId={selectedCourseId || ''}
                         courseName={selectedCourse?.name || ''}
-                        isLoadingChapter={isLoadingChapter}
+                        selectedChapterId={selectedChapterId}
+                        isLoadingChapter={isLoadingChapter && selectedChapterId !== CHAPTER_ID_FORMULA_OVERVIEW}
                         onSaveNotes={handleSaveNotes}
                         onUpdateChapterTitle={handleUpdateChapterTitle}
                         onDeleteChapter={handleDeleteChapter}

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronDown, ChevronRight, Plus, GripVertical, BookOpen, FileText, Hash, List, Loader2, BookText, Pencil, Trash2, Sigma } from 'lucide-react';
 import type { Course, CourseChapter, CourseFormula } from '../../types';
+import { CHAPTER_ID_FORMULA_OVERVIEW } from '../page';
 
 // ============================================================
 // TYPES
@@ -65,6 +66,35 @@ export function CourseSidebar({
     const [headingsCollapsed, setHeadingsCollapsed] = useState(false);
     const [formulasCollapsed, setFormulasCollapsed] = useState(false);
 
+    // Compute formulas for the selected chapter
+    const currentChapterFormulas = useMemo(() => {
+        if (selectedChapterId === CHAPTER_ID_FORMULA_OVERVIEW) return [];
+        return formulas.filter(f => f.chapter_id === selectedChapterId);
+    }, [formulas, selectedChapterId]);
+
+    // Compute grouped formulas for Overview
+    const overviewGroups = useMemo(() => {
+        if (selectedChapterId !== CHAPTER_ID_FORMULA_OVERVIEW) return [];
+
+        const groups: { title: string; id: string; formulas: CourseFormula[] }[] = [];
+
+        // Global
+        const globalFormulas = formulas.filter(f => !f.chapter_id);
+        if (globalFormulas.length > 0) {
+            groups.push({ title: '全课通用公式', id: 'overview-chapter-undefined', formulas: globalFormulas });
+        }
+
+        // Chapters
+        chapters.forEach(ch => {
+            const chFormulas = formulas.filter(f => f.chapter_id === ch.id);
+            if (chFormulas.length > 0) {
+                groups.push({ title: ch.title, id: `overview-chapter-${ch.id}`, formulas: chFormulas });
+            }
+        });
+
+        return groups;
+    }, [selectedChapterId, formulas, chapters]);
+
     // Determine which level to show
     const level: SidebarLevel = !selectedCourseId ? 'courses'
         : !selectedChapterId ? 'chapters'
@@ -85,7 +115,7 @@ export function CourseSidebar({
             <div className="shrink-0 border-b border-stone-200/70 px-5 py-4">
                 {level === 'courses' ? (
                     <div className="flex items-center gap-2">
-                        <a 
+                        <a
                             href="/library/prism"
                             className="p-1.5 -ml-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-md transition-colors"
                             title="返回 Prism 主页"
@@ -112,7 +142,7 @@ export function CourseSidebar({
                             ) : (
                                 <BookText size={16} className="text-stone-400" />
                             )}
-                            <h2 className="text-sm font-bold text-stone-700 truncate">
+                            <h2 className="text-base font-bold text-stone-700 truncate">
                                 {selectedCourse?.name}
                             </h2>
                         </div>
@@ -133,9 +163,12 @@ export function CourseSidebar({
                                 onChange={(e) => onSelectChapter(e.target.value)}
                                 className="w-full text-sm font-bold text-stone-700 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-stone-300 cursor-pointer"
                             >
-                                {chapters.map(ch => (
-                                    <option key={ch.id} value={ch.id}>{ch.title}</option>
-                                ))}
+                                <option value={CHAPTER_ID_FORMULA_OVERVIEW}>公式总览</option>
+                                <optgroup label="章节列表">
+                                    {chapters.map(ch => (
+                                        <option key={ch.id} value={ch.id}>{ch.title}</option>
+                                    ))}
+                                </optgroup>
                             </select>
                             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
                         </div>
@@ -169,15 +202,15 @@ export function CourseSidebar({
                                         className={`w-full text-left px-3 py-3 rounded-xl hover:bg-stone-50 transition-all group flex items-start gap-3 ${selectedCourseId === course.id ? 'bg-stone-50 ring-1 ring-stone-200' : ''
                                             }`}
                                     >
-                                        <span className="text-lg mt-0.5 w-6 flex justify-center">
-                                            {course.icon ? course.icon : <BookText size={18} className="text-stone-400" />}
+                                        <span className="text-lg mt-3 w-6 flex justify-center">
+                                            {course.icon ? course.icon : <BookText size={24} className="text-stone-400" />}
                                         </span>
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-bold text-stone-700 group-hover:text-stone-900 truncate">
+                                            <div className="text-[20px] font-bold text-stone-700 group-hover:text-stone-900 truncate">
                                                 {course.name}
                                             </div>
                                             {course.name_en && (
-                                                <div className="text-[10px] font-mono text-stone-400 mt-0.5 truncate">
+                                                <div className="text-[12px] font-mono text-stone-400 mt-0.5 truncate">
                                                     {course.name_en}
                                                 </div>
                                             )}
@@ -201,6 +234,29 @@ export function CourseSidebar({
                         </div>
                     ) : (
                         <div className="space-y-1">
+                            {/* Special Item: Formula Overview */}
+                            <div
+                                className={`w-full rounded-lg transition-all flex items-center group mb-2 ${selectedChapterId === CHAPTER_ID_FORMULA_OVERVIEW
+                                    ? 'bg-violet-600 text-white shadow-md shadow-violet-200'
+                                    : 'bg-violet-50 text-violet-600 hover:bg-violet-100'
+                                    }`}
+                            >
+                                <button
+                                    onClick={() => onSelectChapter(CHAPTER_ID_FORMULA_OVERVIEW)}
+                                    className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0"
+                                >
+                                    <Sigma size={14} className={selectedChapterId === CHAPTER_ID_FORMULA_OVERVIEW ? 'text-violet-200' : 'text-violet-400'} />
+                                    <span className="text-[15px] font-bold">
+                                        公式总览
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Divider if chapters exist */}
+                            {chapters.length > 0 && (
+                                <div className="h-px bg-stone-100 mx-2 my-2" />
+                            )}
+
                             {chapters.map((ch, idx) => (
                                 <div
                                     key={ch.id}
@@ -213,10 +269,10 @@ export function CourseSidebar({
                                         onClick={() => onSelectChapter(ch.id)}
                                         className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0"
                                     >
-                                        <span className="text-[11px] font-mono font-bold text-stone-400 shrink-0 w-6">
+                                        <span className="text-[13px] font-mono font-bold text-stone-400 shrink-0 w-6">
                                             {String(idx + 1).padStart(2, '0')}
                                         </span>
-                                        <span className="text-[13px] font-medium truncate">
+                                        <span className="text-[15px] font-medium truncate">
                                             {ch.title}
                                         </span>
                                     </button>
@@ -259,20 +315,46 @@ export function CourseSidebar({
                                 onClick={() => setFormulasCollapsed(!formulasCollapsed)}
                                 className="w-full flex items-center gap-2 py-2 px-1 group"
                             >
-                                <ChevronRight size={12} className={`text-stone-400 transition-transform ${formulasCollapsed ? '' : 'rotate-90'}`} />
-                                <Sigma size={13} className="text-stone-400" />
-                                <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-stone-500">
-                                    核心公式 ({formulas.length})
+                                <ChevronRight size={14} className={`text-stone-400 transition-transform ${formulasCollapsed ? '' : 'rotate-90'}`} />
+                                <Sigma size={15} className="text-stone-600" />
+                                <span className="text-[15px] font-mono font-bold uppercase tracking-widest text-stone-700">
+                                    {selectedChapterId === CHAPTER_ID_FORMULA_OVERVIEW ? `公式索引 (${formulas.length})` : `本章公式 (${currentChapterFormulas.length})`}
                                 </span>
                             </button>
                             {!formulasCollapsed && (
-                                formulas.length > 0 ? (
-                                    <div className="space-y-0.5 ml-1">
-                                        {formulas.map(f => (
+                                selectedChapterId === CHAPTER_ID_FORMULA_OVERVIEW ? (
+                                    <div className="space-y-3 ml-1 mt-1">
+                                        {overviewGroups.length > 0 ? overviewGroups.map(group => (
+                                            <div key={group.id} className="space-y-1">
+                                                <button
+                                                    onClick={() => scrollToElement(group.id)}
+                                                    className="w-full text-left rounded-lg text-[12px] font-bold text-stone-700 hover:bg-stone-100 transition-colors py-1.5 px-3 leading-snug truncate"
+                                                >
+                                                    {group.title}
+                                                </button>
+                                                <div className="space-y-0.5 ml-2 border-l border-stone-100 pl-2">
+                                                    {group.formulas.map(f => (
+                                                        <button
+                                                            key={f.id}
+                                                            onClick={() => scrollToElement(`formula-${f.id}`)}
+                                                            className="w-full text-left rounded-lg text-[12px] text-stone-500 hover:bg-stone-50 hover:text-stone-800 transition-colors py-1 px-2 leading-snug truncate"
+                                                        >
+                                                            {f.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <p className="text-[11px] text-stone-300 px-3 py-2">暂无公式</p>
+                                        )}
+                                    </div>
+                                ) : currentChapterFormulas.length > 0 ? (
+                                    <div className="space-y-0.5 ml-1 mt-1">
+                                        {currentChapterFormulas.map(f => (
                                             <button
                                                 key={f.id}
                                                 onClick={() => scrollToElement(`formula-${f.id}`)}
-                                                className="w-full text-left rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-3 leading-snug truncate"
+                                                className="w-full text-left rounded-lg text-[17px] text-stone-800 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-6 leading-snug truncate"
                                             >
                                                 {f.name}
                                             </button>
@@ -285,41 +367,44 @@ export function CourseSidebar({
                         </div>
 
                         {/* Collapsible: 标题大纲 */}
-                        <div>
-                            <button
-                                onClick={() => setHeadingsCollapsed(!headingsCollapsed)}
-                                className="w-full flex items-center gap-2 py-2 px-1 group"
-                            >
-                                <ChevronRight size={12} className={`text-stone-400 transition-transform ${headingsCollapsed ? '' : 'rotate-90'}`} />
-                                <Hash size={13} className="text-stone-400" />
-                                <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-stone-500">
-                                    标题大纲 ({noteHeadings.length})
-                                </span>
-                            </button>
-                            {!headingsCollapsed && (
-                                noteHeadings.length > 0 ? (
-                                    <div className="space-y-0.5 ml-1">
-                                        {noteHeadings.map((h, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => scrollToElement(h.id)}
-                                                className="w-full text-left rounded-lg text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 px-3 leading-snug"
-                                                style={{ paddingLeft: `${(h.level - 1) * 16 + 12}px` }}
-                                            >
-                                                <span className={`${h.level === 1 ? 'font-bold text-stone-700' :
-                                                    h.level === 2 ? 'font-medium text-stone-600' :
-                                                        'text-stone-500'
-                                                    }`}>
-                                                    {h.text}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-[11px] text-stone-300 px-3 py-2">暂无标题</p>
-                                )
-                            )}
-                        </div>
+                        {/* Hide real TOC when in Formula Overview mode */}
+                        {selectedChapterId !== CHAPTER_ID_FORMULA_OVERVIEW && (
+                            <div>
+                                <button
+                                    onClick={() => setHeadingsCollapsed(!headingsCollapsed)}
+                                    className="w-full flex items-center gap-2 py-2 px-1 group"
+                                >
+                                    <ChevronRight size={15} className={`text-stone-400 transition-transform ${headingsCollapsed ? '' : 'rotate-90'}`} />
+                                    <Hash size={14} className="text-stone-600" />
+                                    <span className="text-[15px] font-mono font-bold uppercase tracking-widest text-stone-600">
+                                        标题大纲 ({noteHeadings.length})
+                                    </span>
+                                </button>
+                                {!headingsCollapsed && (
+                                    noteHeadings.length > 0 ? (
+                                        <div className="space-y-0.5 ml-1">
+                                            {noteHeadings.map((h, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => scrollToElement(h.id)}
+                                                    className="w-full text-left rounded-lg text-[15px] text-stone-800 hover:bg-stone-100 hover:text-stone-800 transition-colors py-1.5 pr-6 leading-snug"
+                                                    style={{ paddingLeft: `${(h.level - 1) * 16 + 24}px` }}
+                                                >
+                                                    <span className={`${h.level === 1 ? 'font-bold text-stone-700' :
+                                                        h.level === 2 ? 'font-medium text-stone-600' :
+                                                            'text-stone-500'
+                                                        }`}>
+                                                        {h.text}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-[11px] text-stone-300 px-3 py-2">暂无标题</p>
+                                    )
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

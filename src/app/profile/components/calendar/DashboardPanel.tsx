@@ -26,8 +26,8 @@ export default function DashboardPanel({ calendarData, deadlineTimepoints, deadl
         return keys;
     }, [today]);
 
-    // 1. 最近的一个未完成时间点
-    const nextTimepoint = useMemo(() => {
+    // 1. 最近的 Deadline 事项（含绝对最近及其后 2 天内的其他事项）
+    const upcomingDeadlines = useMemo(() => {
         const archivedItemIds = new Set(deadlineItems.filter(i => i.is_archived).map(i => i.id));
         const active = deadlineTimepoints.filter(tp =>
             tp.date &&
@@ -35,35 +35,54 @@ export default function DashboardPanel({ calendarData, deadlineTimepoints, deadl
             !archivedItemIds.has(tp.item_id)
         ).sort((a, b) => a.date.localeCompare(b.date));
 
-        return active[0] || null;
-    }, [deadlineTimepoints, todayStr]);
+        if (active.length === 0) return [];
 
-    const nextTimepointItem = useMemo(() => {
-        if (!nextTimepoint) return null;
-        return deadlineItems.find(i => i.id === nextTimepoint.item_id) || null;
-    }, [nextTimepoint, deadlineItems]);
+        // 定位绝对最近的那天
+        const firstDateStr = active[0].date;
+        const firstDateObj = new Date(firstDateStr + 'T00:00:00');
+        
+        // 阈值：绝对最近那天的 2 天之内
+        const thresholdDate = new Date(firstDateObj);
+        thresholdDate.setDate(thresholdDate.getDate() + 2);
+        const thresholdStr = formatDateKey(thresholdDate.getFullYear(), thresholdDate.getMonth(), thresholdDate.getDate());
 
-    const daysUntilNext = useMemo(() => {
-        if (!nextTimepoint) return null;
-        if (nextTimepoint.date === todayStr) return 0;
+        // 筛选出在 [firstDateStr, thresholdStr] 范围内的所有不同条目的截止点
+        // 如果同一条目有多个点在这个窗口，我们只取最近的一个，或者按需求全列
+        const seenItems = new Set<number>();
+        const results = [];
 
-        const targetDate = new Date(nextTimepoint.date + 'T00:00:00');
-        const todayDate = new Date(todayStr + 'T00:00:00');
-        const diffTime = targetDate.getTime() - todayDate.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }, [nextTimepoint, todayStr]);
+        for (const tp of active) {
+            if (tp.date > thresholdStr) break;
+            if (!seenItems.has(tp.item_id)) {
+                results.push({
+                    timepoint: tp,
+                    item: deadlineItems.find(i => i.id === tp.item_id),
+                    daysLeft: (() => {
+                        const targetDate = new Date(tp.date + 'T00:00:00');
+                        const todayDate = new Date(todayStr + 'T00:00:00');
+                        const diffTime = targetDate.getTime() - todayDate.getTime();
+                        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    })()
+                });
+                seenItems.add(tp.item_id);
+            }
+        }
+
+        return results;
+    }, [deadlineTimepoints, deadlineItems, todayStr]);
 
     // 2. 活跃项目周汇总 (Weekly Focus)
     const activeItems = useMemo(() => {
         return deadlineItems.map(item => {
-            const days = past7DaysKeys.map(dateKey => {
+            const dayRecords = past7DaysKeys.map(dateKey => {
                 const dayActs = allActivities.filter(a => a.deadline_item_id === item.id && a.date === dateKey);
                 const hrs = dayActs.reduce((s, a) => s + (a.duration || 0), 0);
                 return { dateKey, hasActivity: dayActs.length > 0, hours: hrs };
             });
-            const totalHrs = days.reduce((s, d) => s + d.hours, 0);
-            return { ...item, weeklyActivity: days, totalHrs };
-        }).filter(item => item.totalHrs > 0)
+            const totalHrs = dayRecords.reduce((s, d) => s + d.hours, 0);
+            const activeDaysCount = dayRecords.filter(d => d.hasActivity).length;
+            return { ...item, weeklyActivity: dayRecords, totalHrs, activeDaysCount };
+        }).filter(item => item.activeDaysCount >= 2) // 仅显示本周活跃 >= 2 天的项目
           .sort((a, b) => b.totalHrs - a.totalHrs);
     }, [deadlineItems, allActivities, past7DaysKeys]);
 
@@ -104,33 +123,40 @@ export default function DashboardPanel({ calendarData, deadlineTimepoints, deadl
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-6 space-y-8">
-                {/* 1. 下一个 Deadline */}
+                {/* 1. 下一个 Deadline 窗口 (2天内) */}
                 <div className="space-y-3">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <Flame size={12} className="text-rose-400" />
-                        Next Deadline
+                        Upcoming Deadlines
                     </div>
-                    {nextTimepoint ? (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm">
-                            {nextTimepointItem && (
-                                <div className="text-[10px] font-mono text-rose-400 uppercase tracking-wider mb-1">{nextTimepointItem.title}</div>
-                            )}
-                            <div className="text-sm font-semibold text-slate-800 leading-tight mb-2 truncate" title={nextTimepoint.label || nextTimepoint.date}>
-                                {nextTimepoint.label || nextTimepoint.date.slice(5).replace('-', '/')}
-                            </div>
-                            <div className="flex items-end justify-between">
-                                <span className="text-xs font-mono text-slate-400">{nextTimepoint.date.slice(5).replace('-', '/')}</span>
-                                <div className="flex items-baseline gap-1">
-                                    {daysUntilNext === 0 ? (
-                                        <span className="text-rose-500 font-black text-lg">TODAY</span>
-                                    ) : (
-                                        <>
-                                            <span className="text-rose-500 font-black text-2xl leading-none">{daysUntilNext}</span>
-                                            <span className="text-[10px] text-rose-400 font-mono font-bold">DAYS LEFT</span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                    {upcomingDeadlines.length > 0 ? (
+                        <div className="space-y-2">
+                            {upcomingDeadlines.map(({ timepoint, item, daysLeft }, idx) => {
+                                const isPrimary = idx === 0;
+                                return (
+                                    <div key={timepoint.id} className={`${isPrimary ? 'bg-slate-50 border-slate-200 p-3 shadow-sm' : 'bg-slate-50/50 border-slate-100 p-2'} border rounded-xl`}>
+                                        {item && (
+                                            <div className="text-[10px] font-mono text-rose-400 uppercase tracking-wider mb-0.5">{item.title}</div>
+                                        )}
+                                        <div className={`${isPrimary ? 'text-sm' : 'text-xs'} font-semibold text-slate-800 leading-tight mb-1 truncate`} title={timepoint.label || timepoint.date}>
+                                            {timepoint.label || timepoint.date.slice(5).replace('-', '/')}
+                                        </div>
+                                        <div className="flex items-end justify-between">
+                                            <span className="text-[10px] font-mono text-slate-400">{timepoint.date.slice(5).replace('-', '/')}</span>
+                                            <div className="flex items-baseline gap-1">
+                                                {daysLeft === 0 ? (
+                                                    <span className={`${isPrimary ? 'text-lg' : 'text-sm'} text-rose-500 font-black`}>TODAY</span>
+                                                ) : (
+                                                    <>
+                                                        <span className={`${isPrimary ? 'text-2xl' : 'text-base'} text-rose-500 font-black leading-none`}>{daysLeft}</span>
+                                                        <span className="text-[8px] text-rose-400 font-mono font-bold">DAYS LEFT</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="bg-slate-50 border border-slate-200 border-dashed rounded-xl p-4 text-center">

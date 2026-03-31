@@ -76,6 +76,7 @@ export interface CourseChapter {
 export interface CourseFormula {
     id: string;
     course_id: string;
+    chapter_id?: string;
     name: string;
     latex: string;
     description?: string;
