@@ -19,7 +19,8 @@ const fetchQuotes = async () => {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        return shuffled as QuoteItem[];
+        // [修改] 每次只抽取前10个格言
+        return shuffled.slice(0, 10) as QuoteItem[];
     }
     return [{ id: 0, text: "No quotes found." }] as QuoteItem[];
 };

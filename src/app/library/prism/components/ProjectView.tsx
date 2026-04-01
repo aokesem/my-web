@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown,
@@ -49,6 +49,58 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     const [tempPaperIds, setTempPaperIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedDirection, setSelectedDirection] = useState<string | null>(null);
+
+    // === Ctrl+B 加粗快捷键处理 ===
+    const handleBoldShortcut = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+            e.preventDefault();
+            const textarea = e.currentTarget;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selected = text.substring(start, end);
+
+            let newText: string;
+            let newStart: number;
+            let newEnd: number;
+
+            // 检查选中文本是否已被 ** 包裹
+            if (start >= 2 && end <= text.length - 2 && text.substring(start - 2, start) === '**' && text.substring(end, end + 2) === '**') {
+                // 取消加粗：移除外层的 **
+                newText = text.substring(0, start - 2) + selected + text.substring(end + 2);
+                newStart = start - 2;
+                newEnd = end - 2;
+            } else if (selected.startsWith('**') && selected.endsWith('**') && selected.length >= 4) {
+                // 选中区域包含了 **，取消加粗
+                newText = text.substring(0, start) + selected.slice(2, -2) + text.substring(end);
+                newStart = start;
+                newEnd = end - 4;
+            } else {
+                // 加粗：包裹 **
+                newText = text.substring(0, start) + '**' + selected + '**' + text.substring(end);
+                newStart = start + 2;
+                newEnd = end + 2;
+            }
+
+            setTempContent(newText);
+            // 恢复光标位置
+            requestAnimationFrame(() => {
+                textarea.selectionStart = newStart;
+                textarea.selectionEnd = newEnd;
+            });
+        }
+    }, []);
+
+    // === 渲染含 **加粗** 的文本 ===
+    const renderBoldText = useCallback((text: string) => {
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={i} className="font-extrabold text-stone-900">{part.slice(2, -2)}</strong>;
+            }
+            return <span key={i}>{part}</span>;
+        });
+    }, []);
 
     const handleSave = async (table: 'prism_project_insights' | 'prism_project_outcomes', junctionTable: 'prism_insight_papers' | 'prism_outcome_papers', idField: 'insight_id' | 'outcome_id') => {
         if (!editingId) return;
@@ -372,7 +424,9 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                 <textarea 
                                                     value={tempContent}
                                                     onChange={e => setTempContent(e.target.value)}
+                                                    onKeyDown={handleBoldShortcut}
                                                     className="w-full bg-white border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-amber-200 outline-none min-h-[80px]"
+                                                    placeholder="支持 Ctrl+B 加粗"
                                                 />
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">关联论文 (多选)</label>
@@ -444,7 +498,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                     <Pencil size={12} />
                                                 </button>
                                                 <div className="text-base text-stone-700 leading-relaxed mb-2 pr-6 whitespace-pre-wrap">
-                                                    {insight.content}
+                                                    {renderBoldText(insight.content)}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 mt-2">
                                                     {insight.paper_ids?.map(pid => {
@@ -486,7 +540,9 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                 <textarea 
                                                     value={tempContent}
                                                     onChange={e => setTempContent(e.target.value)}
+                                                    onKeyDown={handleBoldShortcut}
                                                     className="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-emerald-200 outline-none min-h-[80px]"
+                                                    placeholder="支持 Ctrl+B 加粗"
                                                 />
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">关联论文 (多选)</label>
@@ -561,7 +617,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                                                     <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
                                                     <div className="flex-1 flex flex-col gap-1">
                                                         <span className="text-[15px] text-stone-700 leading-relaxed font-medium pr-6 whitespace-pre-wrap">
-                                                            {outcome.content}
+                                                            {renderBoldText(outcome.content)}
                                                         </span>
                                                         <div className="flex flex-wrap gap-x-3 gap-y-1">
                                                             {outcome.paper_ids?.map(pid => {

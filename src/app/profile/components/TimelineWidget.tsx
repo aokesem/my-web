@@ -169,7 +169,7 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
 
                     {/* 1. 折叠态 (保持不变) */}
                     {!isActive && (
-                        <div className="relative h-full overflow-y-auto custom-scrollbar pr-2">
+                        <div className="relative h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
                             <div className="relative min-h-full pb-16">
                                 <div className="absolute top-0 bottom-0 left-[66px] w-px bg-slate-400/30 z-0" />
                                 <div className="relative space-y-4">
@@ -216,7 +216,7 @@ export default function TimelineWidget({ isActive, onToggle }: TimelineWidgetPro
 
                     {/* 2. 展开态 */}
                     {isActive && (
-                        <div className="relative h-full overflow-y-auto custom-scrollbar pr-2">
+                        <div className="relative h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
                             <div className="relative min-h-full pb-20">
                                 {/* 三色轨道线 */}
                                 <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-between px-30 pointer-events-none opacity-20">
