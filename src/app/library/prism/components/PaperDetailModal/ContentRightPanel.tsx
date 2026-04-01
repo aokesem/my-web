@@ -51,7 +51,7 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
     };
 
     return (
-        <div ref={contentRef} className="flex-1 bg-[#faf9f7] overflow-y-auto p-10 md:p-14 custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
+        <div ref={contentRef} className="flex-1 bg-[#faf9f7] overflow-y-auto overscroll-contain p-10 md:p-14 custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
             <div className="max-w-3xl mx-auto pb-20 print:pb-0">
 
                 {/* Summary */}

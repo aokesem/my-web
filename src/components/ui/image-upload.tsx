@@ -5,8 +5,16 @@ import { supabase } from '@/lib/supabaseClient';
 import { compressImage } from '@/lib/imageUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ImageUploadProps {
     value?: string;
@@ -19,6 +27,9 @@ interface ImageUploadProps {
 
 export function ImageUpload({ value, onChange, bucket, folder, className, autoFocus }: ImageUploadProps) {
     const [uploading, setUploading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -45,6 +56,7 @@ export function ImageUpload({ value, onChange, bucket, folder, className, autoFo
             if (uploadError) throw uploadError;
 
             const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+            setUploadedFiles(prev => [...prev, data.publicUrl]);
             onChange(data.publicUrl);
             toast.success('Image uploaded successfully');
         } catch (error: any) {
@@ -74,8 +86,33 @@ export function ImageUpload({ value, onChange, bucket, folder, className, autoFo
         }
     };
 
-    const handleRemove = () => {
-        onChange('');
+    const handleRemoveClick = () => {
+        if (!value) return;
+        setShowConfirm(true);
+    };
+
+    const handleConfirmRemove = async () => {
+        if (!value) return;
+        
+        try {
+            setDeleting(true);
+
+            // 解析 filePath: value 通常是 .../bucket_name/folder_name/uuid.webp
+            const urlParts = value.split(`/${bucket}/`);
+            if (urlParts.length > 1) {
+                const filePath = urlParts[1];
+                const { error } = await supabase.storage.from(bucket).remove([filePath]);
+                if (error) throw error;
+                
+                toast.success('已从云端永久删除图片');
+            }
+        } catch (error: any) {
+            toast.error('清理云端图片失败: ' + error.message);
+        } finally {
+            setDeleting(false);
+            setShowConfirm(false);
+            onChange(''); // 无论云端是否成功删除，前端都清空预览
+        }
     };
 
     return (
@@ -94,7 +131,7 @@ export function ImageUpload({ value, onChange, bucket, folder, className, autoFo
                             variant="destructive"
                             size="icon"
                             className="h-6 w-6 rounded-full opacity-80 hover:opacity-100"
-                            onClick={handleRemove}
+                            onClick={handleRemoveClick}
                         >
                             <X size={14} />
                         </Button>
@@ -129,6 +166,53 @@ export function ImageUpload({ value, onChange, bucket, folder, className, autoFo
                     </div>
                 </div>
             )}
+
+            {/* 确认删除对话框 */}
+            <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+                <DialogContent className="bg-zinc-950 border-zinc-800 text-gray-100 sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-rose-500">
+                            <AlertTriangle size={20} />
+                            彻底删除云端图片？
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400 pt-2">
+                            {value && uploadedFiles.includes(value) 
+                                ? "这是你刚刚上传的草稿图片，取消保留将会从服务器永久物理清除。" 
+                                : "【高危警告】这似乎是一张正被使用的旧图片。一旦在此删除，服务器上的文件会立刻消失。无论随后你是否保存表单，它都无法找回！"}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6 flex gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowConfirm(false)}
+                            disabled={deleting}
+                            className="bg-transparent border-zinc-700 hover:bg-zinc-800 text-zinc-300"
+                        >
+                            取消
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={handleConfirmRemove}
+                            disabled={deleting}
+                            className="bg-rose-600 hover:bg-rose-700 text-white min-w-[100px]"
+                        >
+                            {deleting ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin mr-2" />
+                                    删除中...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 size={16} className="mr-2" />
+                                    确认永久删除
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

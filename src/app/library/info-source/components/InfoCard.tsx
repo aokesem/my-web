@@ -11,6 +11,7 @@ interface InfoCardProps {
     displayImage?: string;
     sourceName?: string;
     sourceImg?: string;
+    categoryName?: string;
     isHighlighted: boolean;
     onToggleFav: (item: InfoItem) => void;
     onToggleQueue: (item: InfoItem) => void;
@@ -20,7 +21,7 @@ interface InfoCardProps {
 }
 
 export function InfoCard({
-    item, theme, isStudy, displayImage, sourceName, sourceImg, isHighlighted, 
+    item, theme, isStudy, displayImage, sourceName, sourceImg, categoryName, isHighlighted, 
     onToggleFav, onToggleQueue, onEdit, onDeleteSuccess, onClick
 }: InfoCardProps) {
     return (
@@ -74,6 +75,13 @@ export function InfoCard({
                     <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-md bg-black/50 text-white border border-white/10">
                         {sourceImg && <img src={sourceImg} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />}
                         <span className="text-[10px] font-bold tracking-tight leading-none">{sourceName}</span>
+                    </div>
+                )}
+
+                {/* 分类标识 (放在图片右下角) */}
+                {categoryName && (
+                    <div className={`absolute bottom-3 right-3 px-1.5 py-0.5 rounded-lg backdrop-blur-md bg-black/50 border border-white/10 text-xs font-bold tracking-tight ${isStudy ? 'text-blue-400' : 'text-amber-400'}`}>
+                        {categoryName}
                     </div>
                 )}
             </div>

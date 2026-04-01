@@ -176,7 +176,7 @@ export default function PaperDetailModal({
                             </div>
 
                             {/* Panel Content */}
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                            <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar p-8">
                                 {leftPanel === 'info' ? (
                                     <SidebarInfoPanel
                                         paper={paper}

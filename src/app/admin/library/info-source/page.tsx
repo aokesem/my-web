@@ -854,7 +854,11 @@ export default function InfoSourceAdminPage() {
                                     className="w-full h-10 px-3 rounded-md bg-zinc-900 border border-zinc-800 text-sm outline-none"
                                 >
                                     <option value="">未选择</option>
-                                    {sources.map(s => (
+                                    {sources.filter(s => {
+                                        if (!s.group_id) return true;
+                                        const group = groups.find(g => g.id === s.group_id);
+                                        return group?.category_type === itemForm.category_type;
+                                    }).map(s => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
-import { DayStatus, DayData, Deadline, DeadlineItem, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
+import { DayStatus, DayData, Deadline, DeadlineItem, DeadlineTimepoint, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface MonthViewPanelProps {
@@ -10,7 +10,7 @@ interface MonthViewPanelProps {
     viewMonth: number;
     selectedDay: number;
     calendarData: Record<string, DayData>;
-    deadlines: Deadline[];
+    deadlineTimepoints: DeadlineTimepoint[];
     deadlineItems: DeadlineItem[];
     isAdmin: boolean;
     onClose: () => void;
@@ -33,7 +33,7 @@ export default function MonthViewPanel({
     viewMonth,
     selectedDay,
     calendarData,
-    deadlines,
+    deadlineTimepoints,
     deadlineItems,
     isAdmin,
     onClose,
@@ -74,8 +74,16 @@ export default function MonthViewPanel({
     const todayStr = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
     // 检查此日期是否有未完成、且未过期的 deadline
-    const hasActiveDeadline = (dateKey: string) => deadlines.some(d => d.date === dateKey && !d.done && d.date >= todayStr);
+    const hasActiveDeadline = (dateKey: string) => deadlineTimepoints.some(d => d.date === dateKey && !d.done && d.date >= todayStr);
     const isToday = (d: number) => viewYear === today.getFullYear() && viewMonth === today.getMonth() && d === today.getDate();
+
+    // 提取选中日期的具体 Deadline 详情
+    const selectedDayDeadlines = useMemo(() => {
+        return deadlineTimepoints.filter(d => d.date === selectedKey).map(d => ({
+            timepoint: d,
+            item: deadlineItems.find(i => i.id === d.item_id)
+        })).filter(d => d.item !== undefined);
+    }, [deadlineTimepoints, deadlineItems, selectedKey]);
 
     const handleAdd = async () => {
         if (!newActivity.trim()) return;
@@ -222,6 +230,31 @@ export default function MonthViewPanel({
                             )}
                         </div>
                     </div>
+
+                    {/* 今日 Deadline */}
+                    {selectedDayDeadlines.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-1 h-4 bg-rose-400 rounded-full" />
+                                <span className="text-[12px] font-bold text-rose-500 uppercase tracking-wider">今日 Deadline</span>
+                            </div>
+                            <div className="space-y-2 mb-5">
+                                {selectedDayDeadlines.map(({ timepoint, item }) => (
+                                    <div key={timepoint.id} className="bg-rose-50 border border-rose-100/60 rounded-lg px-4 py-3 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-mono text-rose-400 uppercase tracking-wider mb-0.5">{item?.title}</span>
+                                            <span className="text-sm font-semibold text-rose-600">{timepoint.label || timepoint.date}</span>
+                                        </div>
+                                        {timepoint.done && (
+                                            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-500 bg-emerald-50 border border-emerald-100/50 px-2 py-1 rounded-md">
+                                                <Check size={12} /> 已完成
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* 事项记录 */}
                     <div>

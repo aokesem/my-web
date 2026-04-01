@@ -176,7 +176,7 @@ export default function InfoSourcePage() {
                             className={`text-sm max-w-[240px] text-center leading-relaxed transition-colors duration-500 ${hovered === 'life' ? 'text-stone-600/90' : 'text-stone-400/40'
                                 }`}
                         >
-                            日常灵感与生活方式的记录
+                            日常出行与生活信息的集散地
                         </p>
 
                         {/* 进入按钮 */}

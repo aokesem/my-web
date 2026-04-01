@@ -9,6 +9,7 @@ interface BookmarkCardProps {
     theme: any;
     thumbnailUrl?: string; // Derived from parent_item or source
     thumbnailLabel?: string;
+    categoryName?: string;
     onToggleFav: (id: number) => void;
     onToggleQueue: (id: number) => void;
     onToggleRead: (id: number) => void;
@@ -17,7 +18,7 @@ interface BookmarkCardProps {
 }
 
 export function BookmarkCard({
-    bookmark, theme, thumbnailUrl, thumbnailLabel,
+    bookmark, theme, thumbnailUrl, thumbnailLabel, categoryName,
     onToggleFav, onToggleQueue, onToggleRead, onEdit, onDeleteSuccess
 }: BookmarkCardProps) {
     return (
@@ -53,6 +54,11 @@ export function BookmarkCard({
                         <h3 className={`font-bold text-2xl leading-tight truncate ${bookmark.is_read ? theme.textMuted + ' line-through opacity-70' : theme.textBase}`}>
                             {bookmark.title}
                         </h3>
+                        {categoryName && (
+                            <span className={`shrink-0 text-sm font-bold px-1.5 py-0.5 rounded-md ${theme.primaryBg} ${theme.primary}`}>
+                                {categoryName}
+                            </span>
+                        )}
                         {bookmark.is_read && (
                             <span className="shrink-0 text-sm font-bold px-2.5 py-0.5 rounded-md bg-green-500/10 text-green-600 border border-green-500/20">
                                 已阅

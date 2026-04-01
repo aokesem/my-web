@@ -74,7 +74,9 @@ export function InfoItemModal({
                                         disabled={isSaving}
                                     >
                                         <option value="">未分类来源 (或直连大标签)</option>
-                                        {mockSources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {mockSources
+                                            .filter(s => !s.group_id || mockGroups.some(g => g.id === s.group_id))
+                                            .map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
