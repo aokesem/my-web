@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import PaperDetailModal from '../components/PaperDetailModal';
 import ProjectView from '../components/ProjectView';
+import DirectionView from '../components/DirectionView';
 import { usePrismPapers, usePrismProjects } from '../hooks/usePrismData';
 import { PaperDetail, ProjectData } from '../types';
 
@@ -34,7 +35,7 @@ type Paper = PaperDetail;
 
 const TABS = [
     { id: 'projects', label: '项目', disabled: false },
-    { id: 'directions', label: '方向', disabled: true },
+    { id: 'directions', label: '方向', disabled: false },
     { id: 'types', label: '性质', disabled: true },
     { id: 'all', label: '全部论文', disabled: false },
 ];
@@ -461,6 +462,14 @@ export default function LibraryPapersPage() {
                     allPapers={allPapers}
                     onOpenPaper={(id) => setSelectedPaperId(id)}
                     onUpdateProjects={async () => { await mutateProjects(); }}
+                />
+            )}
+
+                {!isLoading && activeTab === 'directions' && (
+                <DirectionView
+                    projects={allProjects}
+                    allPapers={allPapers}
+                    onOpenPaper={(id) => setSelectedPaperId(id)}
                 />
             )}
 

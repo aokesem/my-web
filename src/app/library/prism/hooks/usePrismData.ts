@@ -157,6 +157,7 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
         }));
 
         return {
+            id: proj.id,
             name: proj.name,
             timeline: pTimeline,
             insights: pInsights,

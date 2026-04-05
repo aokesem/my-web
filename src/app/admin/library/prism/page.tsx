@@ -5,9 +5,10 @@ import TagsTab from "./components/TagsTab";
 import ProjectsTab from "./components/ProjectsTab";
 import PapersTab from "./components/PapersTab";
 import CoursesTab from "./components/CoursesTab";
+import DirectionsTab from "./components/DirectionsTab";
 
 export default function PrismAdminPage() {
-    const [activeTab, setActiveTab] = useState<"papers" | "projects" | "tags" | "courses">("papers");
+    const [activeTab, setActiveTab] = useState<"papers" | "projects" | "tags" | "courses" | "directions">("papers");
 
     return (
         <div className="space-y-6">
@@ -44,6 +45,12 @@ export default function PrismAdminPage() {
                 >
                     课程管理
                 </button>
+                <button
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "directions" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
+                    onClick={() => setActiveTab("directions")}
+                >
+                    研究方向管理
+                </button>
             </div>
 
             {/* Content Area */}
@@ -52,6 +59,7 @@ export default function PrismAdminPage() {
                 {activeTab === "projects" && <ProjectsTab />}
                 {activeTab === "tags" && <TagsTab />}
                 {activeTab === "courses" && <CoursesTab />}
+                {activeTab === "directions" && <DirectionsTab />}
             </div>
         </div>
     );

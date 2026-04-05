@@ -43,10 +43,42 @@ export interface ProjectCategory<T> {
 }
 
 export interface ProjectData {
+    id: string;
     name: string;
     timeline: ProjectTimelineEvent[];
     insights: ProjectCategory<ProjectInsight>[];
     outcomes: ProjectCategory<ProjectOutcome>[];
+}
+
+// ============================================================
+// DIRECTION / RESEARCH QUESTIONS MODULE
+// ============================================================
+
+export interface ResearchQuestion {
+    id: string;
+    project_id: string;
+    content: string;
+    sort_order: number;
+    created_at: string;
+    paper_ids: string[];
+}
+
+export interface InnovationPoint {
+    id: string;
+    question_id: string;
+    paper_id?: string;
+    content: string;
+    sort_order: number;
+    created_at: string;
+}
+
+export interface DirectionNote {
+    id: string;
+    project_id: string;
+    column_side: 'left' | 'right';
+    content: string;
+    sort_order: number;
+    created_at: string;
 }
 
 // ============================================================
