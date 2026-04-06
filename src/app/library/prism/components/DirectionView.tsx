@@ -3,6 +3,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Target, Loader2 } from 'lucide-react';
 import { ReactFlowProvider } from 'reactflow';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 import DirectionFlowMap from './DirectionFlowMap';
 import DirectionNotesPanel from './DirectionNotesPanel';
 import { usePrismDirections } from '../hooks/usePrismDirections';
@@ -78,6 +80,26 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
 
     const { questions, innovationPoints, leftNotes, rightNotes, isLoading, mutate } = usePrismDirections(activeProjectId || null);
 
+    // ---- front-end edit / delete for question & innovation nodes ----
+    const handleEditNode = useCallback(async (id: string, content: string) => {
+        const isQuestion = questions.some(q => q.id === id);
+        const table = isQuestion ? 'prism_research_questions' : 'prism_innovation_points';
+        const { error } = await supabase.from(table).update({ content }).eq('id', id);
+        if (error) { toast.error('保存失败'); return; }
+        toast.success('已保存');
+        // Don't call mutate() here — avoids re-layout, local text is already updated
+    }, [questions]);
+
+    const handleDeleteNode = useCallback(async (id: string) => {
+        if (!confirm('确定删除此节点？')) return;
+        const isQuestion = questions.some(q => q.id === id);
+        const table = isQuestion ? 'prism_research_questions' : 'prism_innovation_points';
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) { toast.error('删除失败'); return; }
+        toast.success('已删除');
+        mutate();
+    }, [questions, mutate]);
+
     if (!projects.length) {
         return (
             <div className="flex-1 flex items-center justify-center text-stone-400 font-mono text-sm py-20">
@@ -110,53 +132,53 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
                     ))}
                 </div>
 
-                {isLoading ? (
-                    <div className="flex-1 flex flex-col items-center justify-center">
-                        <Loader2 size={32} className="animate-spin text-stone-300 mb-3" />
-                        <span className="text-sm font-mono text-stone-400">加载研究数据...</span>
-                    </div>
-                ) : (
-                    /* This div takes all remaining space; ResizeObserver reads its pixel height */
-                    <div className="flex-1 min-h-0" ref={containerRef}>
-                        {containerH > 0 && (
-                            <>
-                                {/* Upper: Flow Map */}
-                                <div style={{ width: '100%', height: topH, position: 'relative' }}>
-                                    <ReactFlowProvider>
-                                        <DirectionFlowMap
-                                            questions={questions}
-                                            innovationPoints={innovationPoints}
-                                            allPapers={allPapers}
-                                            onOpenPaper={onOpenPaper}
-                                        />
-                                    </ReactFlowProvider>
-                                </div>
-
-                                {/* Divider */}
-                                <div
-                                    onMouseDown={handleDividerMouseDown}
-                                    style={{ height: DIVIDER_H }}
-                                    className="cursor-row-resize flex items-center justify-center group hover:bg-violet-50/60 transition-colors relative z-20"
-                                >
-                                    <div className="w-12 h-1 rounded-full bg-stone-200 group-hover:bg-violet-400 group-hover:w-20 transition-all" />
-                                </div>
-
-                                {/* Lower: Notes Panel */}
-                                <div style={{ width: '100%', height: bottomH, overflow: 'hidden' }}>
-                                    <DirectionNotesPanel
+                {/* Content area — ref always mounted so ResizeObserver works */}
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar" ref={containerRef}>
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center h-full">
+                            <Loader2 size={32} className="animate-spin text-stone-300 mb-3" />
+                            <span className="text-sm font-mono text-stone-400">加载研究数据...</span>
+                        </div>
+                    ) : containerH > 0 ? (
+                        <>
+                            {/* Upper: Flow Map */}
+                            <div style={{ width: '100%', height: topH, position: 'relative', flexShrink: 0 }}>
+                                <ReactFlowProvider>
+                                    <DirectionFlowMap
                                         questions={questions}
-                                        leftNotes={leftNotes}
-                                        rightNotes={rightNotes}
+                                        innovationPoints={innovationPoints}
                                         allPapers={allPapers}
-                                        projectId={activeProjectId}
                                         onOpenPaper={onOpenPaper}
-                                        mutate={mutate}
+                                        onEditNode={handleEditNode}
+                                        onDeleteNode={handleDeleteNode}
                                     />
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )}
+                                </ReactFlowProvider>
+                            </div>
+
+                            {/* Divider */}
+                            <div
+                                onMouseDown={handleDividerMouseDown}
+                                style={{ height: DIVIDER_H, flexShrink: 0 }}
+                                className="cursor-row-resize flex items-center justify-center group hover:bg-violet-50/60 transition-colors relative z-20"
+                            >
+                                <div className="w-12 h-1 rounded-full bg-stone-200 group-hover:bg-violet-400 group-hover:w-20 transition-all" />
+                            </div>
+
+                            {/* Lower: Notes Panel — minHeight allows global scroll */}
+                            <div style={{ width: '100%', minHeight: bottomH, display: 'flex', flexDirection: 'column' }}>
+                                <DirectionNotesPanel
+                                    questions={questions}
+                                    leftNotes={leftNotes}
+                                    rightNotes={rightNotes}
+                                    allPapers={allPapers}
+                                    projectId={activeProjectId}
+                                    onOpenPaper={onOpenPaper}
+                                    mutate={mutate}
+                                />
+                            </div>
+                        </>
+                    ) : null}
+                </div>
             </div>
         </div>
     );

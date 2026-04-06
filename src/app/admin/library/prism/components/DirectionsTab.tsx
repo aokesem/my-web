@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import {
-    Plus, Trash2, Save, Loader2, HelpCircle, Lightbulb, LinkIcon, X, ChevronRight
+    Plus, Trash2, Save, Loader2, HelpCircle, Lightbulb, LinkIcon, X, ChevronRight, Filter
 } from "lucide-react";
 
 interface Question {
@@ -96,16 +96,29 @@ export default function DirectionsTab() {
 
     // --- CRUD ---
 
-    // Project papers (papers linked to this project via prism_paper_projects)
     const [projectPaperIds, setProjectPaperIds] = useState<string[]>([]);
+    const [directions, setDirections] = useState<{ id: string; name: string }[]>([]);
+    const [paperDirections, setPaperDirections] = useState<{ paper_id: string; direction_id: string }[]>([]);
+    const [filterDirectionId, setFilterDirectionId] = useState<string>("");
+
     useEffect(() => {
         if (!selectedProjectId) return;
-        supabase.from("prism_paper_projects").select("paper_id").eq("project_id", selectedProjectId).then(({ data }) => {
-            setProjectPaperIds((data || []).map((d: any) => d.paper_id));
+        Promise.all([
+            supabase.from("prism_paper_projects").select("paper_id").eq("project_id", selectedProjectId),
+            supabase.from("prism_directions").select("id, name").order("name"),
+            supabase.from("prism_paper_directions").select("paper_id, direction_id"),
+        ]).then(([{ data: pp }, { data: dirs }, { data: pd }]) => {
+            setProjectPaperIds((pp || []).map((d: any) => d.paper_id));
+            setDirections(dirs || []);
+            setPaperDirections(pd || []);
         });
     }, [selectedProjectId]);
 
-    const availablePapers = papers.filter(p => projectPaperIds.includes(p.id));
+    const availablePapers = papers.filter(p => {
+        if (!projectPaperIds.includes(p.id)) return false;
+        if (filterDirectionId === "") return true;
+        return paperDirections.some(pd => pd.paper_id === p.id && pd.direction_id === filterDirectionId);
+    });
 
     const addQuestion = async () => {
         const { error } = await supabase.from("prism_research_questions").insert({
@@ -240,6 +253,14 @@ export default function DirectionsTab() {
                                     <div className="px-4 py-3 border-b border-zinc-800/50 flex items-center gap-2">
                                         <LinkIcon size={14} className="text-violet-400" />
                                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">关联论文</span>
+                                        <select
+                                            value={filterDirectionId}
+                                            onChange={e => setFilterDirectionId(e.target.value)}
+                                            className="ml-auto bg-zinc-800 border border-zinc-700 text-xs text-zinc-400 rounded px-2 py-1 max-w-[120px]"
+                                        >
+                                            <option value="">全部方向</option>
+                                            {directions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                        </select>
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
                                         {availablePapers.length === 0 ? (
