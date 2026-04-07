@@ -242,20 +242,208 @@ function PapersColumn({ questions, allPapers, onOpenPaper }: PapersColumnProps) 
 }
 
 // ============================================================
+// GROUPED NOTES COLUMN (right column — accordion)
+// ============================================================
+
+import type { NoteGroup } from '../hooks/usePrismDirections';
+
+interface GroupedNotesColumnProps {
+    noteGroups: NoteGroup[];
+    projectId: string;
+    mutate: () => void;
+}
+
+function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColumnProps) {
+    const [openGroups, setOpenGroups] = useState<Set<string>>(new Set()); // default all collapsed
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [tempContent, setTempContent] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    const toggle = (id: string) => {
+        setOpenGroups(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const handleAddChild = async (parentId: string, currentCount: number) => {
+        const { error } = await supabase.from('prism_direction_notes').insert({
+            project_id: projectId,
+            column_side: 'right',
+            content: '新笔记...',
+            sort_order: currentCount,
+            parent_id: parentId,
+        });
+        if (error) { toast.error('添加失败'); return; }
+        // Auto-expand the group after adding
+        setOpenGroups(prev => new Set(prev).add(parentId));
+        mutate();
+    };
+
+    const handleSave = async (id: string) => {
+        setIsSaving(true);
+        const { error } = await supabase.from('prism_direction_notes').update({ content: tempContent }).eq('id', id);
+        if (error) { toast.error('保存失败'); } else { toast.success('已保存'); }
+        setEditingId(null);
+        setIsSaving(false);
+        mutate();
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('确定删除这条笔记？')) return;
+        const { error } = await supabase.from('prism_direction_notes').delete().eq('id', id);
+        if (error) { toast.error('删除失败'); return; }
+        mutate();
+    };
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-stone-100 bg-stone-50/50 shrink-0">
+                <div className="p-1 rounded-md border bg-amber-50 text-amber-500 border-amber-100">
+                    <Lightbulb size={14} />
+                </div>
+                <h3 className="text-[13px] font-bold font-mono uppercase tracking-wider text-stone-700">灵感与笔记</h3>
+                <span className="text-[10px] font-mono font-bold text-stone-300 bg-stone-100 px-1.5 py-0.5 rounded ml-auto">
+                    {noteGroups.reduce((s, g) => s + g.children.length, 0)}
+                </span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                {noteGroups.length === 0 ? (
+                    <div className="text-center py-8 text-stone-300 text-xs font-mono">在 Admin 中创建灵感分组</div>
+                ) : noteGroups.map(group => (
+                    <div key={group.title.id} className="rounded-xl border border-stone-200/60 overflow-hidden">
+                        {/* Group title header */}
+                        <div
+                            onClick={() => { if (editingId !== group.title.id) toggle(group.title.id); }}
+                            className={`flex items-center justify-between w-full px-3 py-2.5 bg-amber-50/40 hover:bg-amber-50/80 transition-colors group/title ${editingId !== group.title.id ? 'cursor-pointer' : ''}`}
+                        >
+                            {editingId === group.title.id ? (
+                                <div className="flex-1 flex items-center gap-2 pr-2" onClick={e => e.stopPropagation()}>
+                                    <input
+                                        type="text"
+                                        value={tempContent}
+                                        onChange={e => setTempContent(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') handleSave(group.title.id);
+                                            if (e.key === 'Escape') setEditingId(null);
+                                        }}
+                                        className="flex-1 bg-white border border-amber-200 rounded px-2 py-1 text-[13px] font-bold text-stone-700 outline-none focus:ring-1 focus:ring-amber-500"
+                                        autoFocus
+                                    />
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <button onClick={() => setEditingId(null)} className="p-1 text-stone-400 hover:text-stone-600"><X size={14} /></button>
+                                        <button onClick={() => handleSave(group.title.id)} disabled={isSaving} className="p-1 text-amber-600 hover:bg-amber-100 rounded">
+                                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-1.5 flex-1">
+                                        <ChevronDown size={14} className={`text-amber-500 shrink-0 transition-transform duration-200 ${openGroups.has(group.title.id) ? '' : '-rotate-90'}`} />
+                                        <span className="text-[13px] font-bold text-stone-700 line-clamp-1">{group.title.content}</span>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setEditingId(group.title.id); setTempContent(group.title.content); }}
+                                            className="opacity-0 group-hover/title:opacity-100 p-1 text-stone-400 hover:text-amber-600 hover:bg-amber-100 rounded transition-all ml-1 shrink-0"
+                                        >
+                                            <Pencil size={12} />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                        <span className="text-[10px] font-mono text-stone-300">{group.children.length}</span>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleAddChild(group.title.id, group.children.length); }}
+                                            className="p-0.5 text-stone-400 hover:text-amber-600 hover:bg-amber-100 rounded transition-colors"
+                                        >
+                                            <Plus size={12} />
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Collapsible children */}
+                        <AnimatePresence initial={false}>
+                            {openGroups.has(group.title.id) && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="px-3 pb-3 pt-1 space-y-1.5">
+                                        {group.children.length === 0 ? (
+                                            <div className="text-xs text-stone-300 font-mono py-2 text-center">暂无笔记</div>
+                                        ) : group.children.map(note => (
+                                            <div key={note.id} className="p-2.5 rounded-lg border border-stone-200/50 bg-white hover:bg-amber-50/20 transition-colors relative group/note">
+                                                {editingId === note.id ? (
+                                                    <div className="space-y-2">
+                                                        <textarea
+                                                            value={tempContent}
+                                                            onChange={e => setTempContent(e.target.value)}
+                                                            onKeyDown={e => handleBoldShortcut(e, setTempContent)}
+                                                            className="w-full bg-white border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-amber-200 outline-none min-h-[60px] resize-none"
+                                                            placeholder="支持 Ctrl+B 加粗"
+                                                            autoFocus
+                                                        />
+                                                        <div className="flex justify-end gap-1.5">
+                                                            <button onClick={() => setEditingId(null)} className="p-1 text-stone-400 hover:text-stone-600"><X size={14} /></button>
+                                                            <button
+                                                                onClick={() => handleSave(note.id)}
+                                                                disabled={isSaving}
+                                                                className="flex items-center gap-1 px-2.5 py-1 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 disabled:opacity-50"
+                                                            >
+                                                                {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} 保存
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => { setEditingId(note.id); setTempContent(note.content); }}
+                                                                className="p-1 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-md"
+                                                            ><Pencil size={11} /></button>
+                                                            <button
+                                                                onClick={() => handleDelete(note.id)}
+                                                                className="p-1 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                                            ><Trash2 size={11} /></button>
+                                                        </div>
+                                                        <div className="text-[13px] text-stone-700 leading-relaxed pr-10 whitespace-pre-wrap">
+                                                            {renderBoldText(note.content)}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ============================================================
 // MAIN EXPORT
 // ============================================================
 
 interface DirectionNotesPanelProps {
     questions: ResearchQuestion[];
     leftNotes: DirectionNote[];
-    rightNotes: DirectionNote[];
+    rightNoteGroups: NoteGroup[];
     allPapers: PaperDetail[];
     projectId: string;
     onOpenPaper: (id: string) => void;
     mutate: () => void;
 }
 
-export default function DirectionNotesPanel({ questions, leftNotes, rightNotes, allPapers, projectId, onOpenPaper, mutate }: DirectionNotesPanelProps) {
+export default function DirectionNotesPanel({ questions, leftNotes, rightNoteGroups, allPapers, projectId, onOpenPaper, mutate }: DirectionNotesPanelProps) {
     return (
         <div className="flex-1 flex overflow-hidden bg-white rounded-b-3xl">
             {/* Left column */}
@@ -276,15 +464,11 @@ export default function DirectionNotesPanel({ questions, leftNotes, rightNotes, 
                 <PapersColumn questions={questions} allPapers={allPapers} onOpenPaper={onOpenPaper} />
             </div>
 
-            {/* Right column */}
+            {/* Right column — grouped accordion */}
             <div className="flex-1 min-w-[220px]">
-                <NotesColumn
-                    title="灵感与笔记"
-                    icon={<div className="p-1 rounded-md border bg-amber-50 text-amber-500 border-amber-100"><Lightbulb size={14} /></div>}
-                    color="bg-amber-50/30"
-                    notes={rightNotes}
+                <GroupedNotesColumn
+                    noteGroups={rightNoteGroups}
                     projectId={projectId}
-                    columnSide="right"
                     mutate={mutate}
                 />
             </div>

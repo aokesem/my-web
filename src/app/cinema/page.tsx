@@ -62,10 +62,19 @@ export default function CinemaArchive() {
         setLoading(false);
     };
 
-    // 关键：切换电影时，重置剧照索引
+    // 关键：切换电影时，重置剧照索引 + 预加载所有剧照
     useEffect(() => {
         setStillIdx(0);
-    }, [selectedIdx]);
+
+        // 预加载当前电影的所有剧照到浏览器缓存
+        if (movies[selectedIdx]?.stills) {
+            movies[selectedIdx].stills.forEach((still) => {
+                const url = still.split('|')[0]; // 剧照可能是 "url|position" 格式
+                const img = new window.Image();
+                img.src = url;
+            });
+        }
+    }, [selectedIdx, movies]);
 
     // if (!mounted) return null;
 

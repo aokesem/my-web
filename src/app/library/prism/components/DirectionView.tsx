@@ -78,7 +78,7 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
         };
     }, []); // stable: refs only, no deps needed
 
-    const { questions, innovationPoints, leftNotes, rightNotes, isLoading, mutate } = usePrismDirections(activeProjectId || null);
+    const { questions, innovationPoints, leftNotes, rightNoteGroups, isLoading, mutate } = usePrismDirections(activeProjectId || null);
 
     // ---- front-end edit / delete for question & innovation nodes ----
     const handleEditNode = useCallback(async (id: string, content: string) => {
@@ -169,7 +169,7 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
                                 <DirectionNotesPanel
                                     questions={questions}
                                     leftNotes={leftNotes}
-                                    rightNotes={rightNotes}
+                                    rightNoteGroups={rightNoteGroups}
                                     allPapers={allPapers}
                                     projectId={activeProjectId}
                                     onOpenPaper={onOpenPaper}

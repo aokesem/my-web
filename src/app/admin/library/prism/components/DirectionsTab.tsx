@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import {
-    Plus, Trash2, Save, Loader2, HelpCircle, Lightbulb, LinkIcon, X, ChevronRight, Filter
+    Plus, Trash2, Save, Loader2, HelpCircle, Lightbulb, LinkIcon, X, ChevronRight, Filter, FolderPlus
 } from "lucide-react";
 
 interface Question {
@@ -39,6 +39,12 @@ interface Paper {
     nickname?: string;
 }
 
+interface NoteGroupItem {
+    id: string;
+    content: string;
+    sort_order: number;
+}
+
 export default function DirectionsTab() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [papers, setPapers] = useState<Paper[]>([]);
@@ -48,6 +54,7 @@ export default function DirectionsTab() {
     const [questionPapers, setQuestionPapers] = useState<QuestionPaper[]>([]);
     const [innovations, setInnovations] = useState<Innovation[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [noteGroups, setNoteGroups] = useState<NoteGroupItem[]>([]);
 
     // Fetch projects & papers on mount
     useEffect(() => {
@@ -63,18 +70,18 @@ export default function DirectionsTab() {
         loadBase();
     }, []);
 
-    // Fetch questions when project changes
+    // Fetch questions + note groups when project changes
     useEffect(() => {
         if (!selectedProjectId) return;
         const load = async () => {
             setIsLoading(true);
             setSelectedQuestionId(null);
-            const { data } = await supabase
-                .from("prism_research_questions")
-                .select("*")
-                .eq("project_id", selectedProjectId)
-                .order("sort_order");
-            setQuestions(data || []);
+            const [{ data: qData }, { data: ngData }] = await Promise.all([
+                supabase.from("prism_research_questions").select("*").eq("project_id", selectedProjectId).order("sort_order"),
+                supabase.from("prism_direction_notes").select("id, content, sort_order").eq("project_id", selectedProjectId).eq("column_side", "right").is("parent_id", null).order("sort_order"),
+            ]);
+            setQuestions(qData || []);
+            setNoteGroups(ngData || []);
             setIsLoading(false);
         };
         load();
@@ -180,6 +187,37 @@ export default function DirectionsTab() {
     const deleteInnovation = async (id: string) => {
         await supabase.from("prism_innovation_points").delete().eq("id", id);
         setInnovations(prev => prev.filter(i => i.id !== id));
+    };
+
+    // ---- Note Groups CRUD ----
+    const refreshNoteGroups = async () => {
+        const { data } = await supabase.from("prism_direction_notes").select("id, content, sort_order").eq("project_id", selectedProjectId).eq("column_side", "right").is("parent_id", null).order("sort_order");
+        setNoteGroups(data || []);
+    };
+
+    const addNoteGroup = async () => {
+        const { error } = await supabase.from("prism_direction_notes").insert({
+            project_id: selectedProjectId,
+            column_side: "right",
+            content: "新分组...",
+            sort_order: noteGroups.length,
+            parent_id: null,
+        });
+        if (error) { toast.error("添加失败"); return; }
+        toast.success("已添加");
+        refreshNoteGroups();
+    };
+
+    const updateNoteGroup = async (id: string, content: string) => {
+        const { error } = await supabase.from("prism_direction_notes").update({ content }).eq("id", id);
+        if (error) toast.error("保存失败"); else toast.success("已保存");
+    };
+
+    const deleteNoteGroup = async (id: string) => {
+        if (!confirm("确定删除此分组？其下所有笔记将被删除。")) return;
+        await supabase.from("prism_direction_notes").delete().eq("id", id);
+        setNoteGroups(prev => prev.filter(g => g.id !== id));
+        toast.success("已删除");
     };
 
     const linkedPaperIds = new Set(questionPapers.map(qp => qp.paper_id));
@@ -335,6 +373,46 @@ export default function DirectionsTab() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* ===== Note Groups Section ===== */}
+            <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <Lightbulb size={16} className="text-amber-400" />
+                        <span className="text-sm font-bold text-white">灵感分组管理</span>
+                        <span className="text-xs font-mono text-zinc-500">{noteGroups.length} 组</span>
+                    </div>
+                    <button
+                        onClick={addNoteGroup}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-500 transition-colors"
+                    >
+                        <FolderPlus size={14} /> 新建分组
+                    </button>
+                </div>
+                {noteGroups.length === 0 ? (
+                    <div className="text-center py-6 text-zinc-600 text-xs font-mono">暂无灵感分组，点击上方按钮新建</div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        {noteGroups.map(g => (
+                            <div key={g.id} className="flex items-center gap-2 bg-zinc-800/60 rounded-lg px-3 py-2.5 border border-zinc-700/50 group">
+                                <Lightbulb size={12} className="text-amber-500 shrink-0" />
+                                <input
+                                    type="text"
+                                    defaultValue={g.content}
+                                    onBlur={e => updateNoteGroup(g.id, e.target.value)}
+                                    className="flex-1 bg-transparent text-sm text-zinc-300 outline-none border-none focus:text-white"
+                                />
+                                <button
+                                    onClick={() => deleteNoteGroup(g.id)}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all shrink-0"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

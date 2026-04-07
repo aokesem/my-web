@@ -79,6 +79,7 @@ export interface DirectionNote {
     content: string;
     sort_order: number;
     created_at: string;
+    parent_id?: string | null;
 }
 
 // ============================================================

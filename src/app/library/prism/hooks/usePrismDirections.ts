@@ -2,11 +2,16 @@ import useSWR from 'swr';
 import { supabase } from '@/lib/supabaseClient';
 import { ResearchQuestion, InnovationPoint, DirectionNote } from '../types';
 
+export interface NoteGroup {
+    title: DirectionNote;       // parent_id = null → this is the group title
+    children: DirectionNote[];  // parent_id = title.id
+}
+
 interface DirectionData {
     questions: ResearchQuestion[];
     innovationPoints: InnovationPoint[];
     leftNotes: DirectionNote[];
-    rightNotes: DirectionNote[];
+    rightNoteGroups: NoteGroup[];
 }
 
 const fetchDirectionData = async (projectId: string): Promise<DirectionData> => {
@@ -45,12 +50,26 @@ const fetchDirectionData = async (projectId: string): Promise<DirectionData> => 
     const mappedInnovations: InnovationPoint[] = (innovations || []).filter((i: any) => qIds.has(i.question_id));
 
     const allNotes = (notes || []) as DirectionNote[];
+    const leftNotes = allNotes.filter(n => n.column_side === 'left');
+
+    // Build grouped right notes
+    const rightAll = allNotes.filter(n => n.column_side === 'right');
+    const titles = rightAll.filter(n => !n.parent_id);
+    const childMap = new Map<string, DirectionNote[]>();
+    rightAll.filter(n => n.parent_id).forEach(n => {
+        if (!childMap.has(n.parent_id!)) childMap.set(n.parent_id!, []);
+        childMap.get(n.parent_id!)!.push(n);
+    });
+    const rightNoteGroups: NoteGroup[] = titles.map(t => ({
+        title: t,
+        children: childMap.get(t.id) || [],
+    }));
 
     return {
         questions: mappedQuestions,
         innovationPoints: mappedInnovations,
-        leftNotes: allNotes.filter(n => n.column_side === 'left'),
-        rightNotes: allNotes.filter(n => n.column_side === 'right'),
+        leftNotes,
+        rightNoteGroups,
     };
 };
 
@@ -64,7 +83,7 @@ export function usePrismDirections(projectId: string | null) {
         questions: data?.questions || [],
         innovationPoints: data?.innovationPoints || [],
         leftNotes: data?.leftNotes || [],
-        rightNotes: data?.rightNotes || [],
+        rightNoteGroups: data?.rightNoteGroups || [],
         isLoading,
         isError: error,
         mutate,
