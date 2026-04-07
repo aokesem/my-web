@@ -267,6 +267,18 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
         });
     };
 
+    const handleAddGroup = async () => {
+        const { error } = await supabase.from('prism_direction_notes').insert({
+            project_id: projectId,
+            column_side: 'right',
+            content: '新分组...',
+            sort_order: noteGroups.length,
+            parent_id: null,
+        });
+        if (error) { toast.error('添加失败'); return; }
+        mutate();
+    };
+
     const handleAddChild = async (parentId: string, currentCount: number) => {
         const { error } = await supabase.from('prism_direction_notes').insert({
             project_id: projectId,
@@ -307,6 +319,9 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                 <span className="text-[10px] font-mono font-bold text-stone-300 bg-stone-100 px-1.5 py-0.5 rounded ml-auto">
                     {noteGroups.reduce((s, g) => s + g.children.length, 0)}
                 </span>
+                <button onClick={handleAddGroup} className="p-1 rounded-md bg-amber-100 text-amber-600 hover:bg-amber-200 transition-colors" title="新建分组">
+                    <Plus size={14} />
+                </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                 {noteGroups.length === 0 ? (
