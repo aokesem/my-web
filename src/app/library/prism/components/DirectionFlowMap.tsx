@@ -363,10 +363,9 @@ export default function DirectionFlowMap({ questions, innovationPoints, allPaper
                 zoomOnScroll={false}
                 zoomOnDoubleClick={false}
                 translateExtent={translateExtent}
-                fitView
-                fitViewOptions={{ padding: 0.08, maxZoom: 1 }}
-                minZoom={0.5}
-                maxZoom={1}
+                defaultViewport={{ x: 200, y: 20, zoom: 1 }}
+                minZoom={0.8}
+                maxZoom={1.2}
                 proOptions={{ hideAttribution: true }}
             >
                 <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#d4d4d8" className="opacity-30" />
