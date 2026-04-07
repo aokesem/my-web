@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import {
-    Plus, Trash2, Save, Loader2, HelpCircle, Lightbulb, LinkIcon, X, ChevronRight, Filter, FolderPlus
+    Plus, Trash2, Save, Loader2, HelpCircle, Lightbulb, LinkIcon, X, ChevronRight, Filter, FolderPlus, Check
 } from "lucide-react";
 
 interface Question {
@@ -43,6 +43,119 @@ interface NoteGroupItem {
     id: string;
     content: string;
     sort_order: number;
+}
+
+// ---- Sub-components with explicit save buttons ----
+
+function QuestionEditor({ questionId, initialContent, onSave }: { questionId: string; initialContent: string; onSave: (id: string, content: string) => void }) {
+    const [content, setContent] = useState(initialContent);
+    const changed = content !== initialContent;
+
+    return (
+        <div className="px-5 py-4 border-b border-zinc-800 space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">问题内容</label>
+            <textarea
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-white resize-none min-h-[60px] focus:ring-1 focus:ring-blue-500 outline-none"
+            />
+            {changed && (
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => onSave(questionId, content)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-500 transition-colors"
+                    >
+                        <Save size={12} /> 保存
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function InnovationEditor({ innovation, linkedPapers, onSave, onDelete }: {
+    innovation: Innovation;
+    linkedPapers: Paper[];
+    onSave: (id: string, updates: Partial<Innovation>) => void;
+    onDelete: (id: string) => void;
+}) {
+    const [content, setContent] = useState(innovation.content);
+    const changed = content !== innovation.content;
+
+    return (
+        <div className="bg-zinc-800/50 rounded-lg p-3 space-y-2 border border-zinc-700/50 group">
+            <textarea
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                className="w-full bg-transparent border-none text-sm text-zinc-300 resize-none min-h-[40px] focus:ring-0 outline-none p-0"
+            />
+            <div className="flex items-center justify-between">
+                <select
+                    value={innovation.paper_id || ""}
+                    onChange={e => onSave(innovation.id, { paper_id: e.target.value || undefined })}
+                    className="bg-zinc-900 border border-zinc-700 text-xs text-zinc-400 rounded px-2 py-1 max-w-[180px]"
+                >
+                    <option value="">不关联论文</option>
+                    {linkedPapers.map(p => (
+                        <option key={p.id} value={p.id}>{(p.nickname || p.title).slice(0, 25)}</option>
+                    ))}
+                </select>
+                <div className="flex items-center gap-1">
+                    {changed && (
+                        <button
+                            onClick={() => onSave(innovation.id, { content })}
+                            className="p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-all"
+                            title="保存"
+                        >
+                            <Save size={12} />
+                        </button>
+                    )}
+                    <button
+                        onClick={() => onDelete(innovation.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all"
+                    >
+                        <Trash2 size={12} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function NoteGroupEditor({ group, onSave, onDelete }: {
+    group: NoteGroupItem;
+    onSave: (id: string, content: string) => void;
+    onDelete: (id: string) => void;
+}) {
+    const [content, setContent] = useState(group.content);
+    const changed = content !== group.content;
+
+    return (
+        <div className="flex items-center gap-2 bg-zinc-800/60 rounded-lg px-3 py-2.5 border border-zinc-700/50 group">
+            <Lightbulb size={12} className="text-amber-500 shrink-0" />
+            <input
+                type="text"
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-zinc-300 outline-none border-none focus:text-white"
+            />
+            {changed && (
+                <button
+                    onClick={() => onSave(group.id, content)}
+                    className="p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-all shrink-0"
+                    title="保存"
+                >
+                    <Save size={12} />
+                </button>
+            )}
+            <button
+                onClick={() => onDelete(group.id)}
+                className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all shrink-0"
+            >
+                <Trash2 size={12} />
+            </button>
+        </div>
+    );
 }
 
 export default function DirectionsTab() {
@@ -141,7 +254,9 @@ export default function DirectionsTab() {
 
     const updateQuestion = async (id: string, content: string) => {
         const { error } = await supabase.from("prism_research_questions").update({ content }).eq("id", id);
-        if (error) toast.error("保存失败"); else toast.success("已保存");
+        if (error) { toast.error("保存失败"); return; }
+        toast.success("已保存");
+        setQuestions(prev => prev.map(q => q.id === id ? { ...q, content } : q));
     };
 
     const deleteQuestion = async (id: string) => {
@@ -181,7 +296,9 @@ export default function DirectionsTab() {
 
     const updateInnovation = async (id: string, updates: Partial<Innovation>) => {
         const { error } = await supabase.from("prism_innovation_points").update(updates).eq("id", id);
-        if (error) toast.error("保存失败"); else toast.success("已保存");
+        if (error) { toast.error("保存失败"); return; }
+        toast.success("已保存");
+        setInnovations(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
     };
 
     const deleteInnovation = async (id: string) => {
@@ -210,7 +327,9 @@ export default function DirectionsTab() {
 
     const updateNoteGroup = async (id: string, content: string) => {
         const { error } = await supabase.from("prism_direction_notes").update({ content }).eq("id", id);
-        if (error) toast.error("保存失败"); else toast.success("已保存");
+        if (error) { toast.error("保存失败"); return; }
+        toast.success("已保存");
+        setNoteGroups(prev => prev.map(g => g.id === id ? { ...g, content } : g));
     };
 
     const deleteNoteGroup = async (id: string) => {
@@ -276,14 +395,12 @@ export default function DirectionsTab() {
                     {selectedQuestionId ? (
                         <>
                             {/* Question Content Editor */}
-                            <div className="px-5 py-4 border-b border-zinc-800 space-y-2">
-                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">问题内容</label>
-                                <textarea
-                                    defaultValue={questions.find(q => q.id === selectedQuestionId)?.content || ""}
-                                    onBlur={e => updateQuestion(selectedQuestionId, e.target.value)}
-                                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-white resize-none min-h-[60px] focus:ring-1 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
+                            <QuestionEditor
+                                key={selectedQuestionId}
+                                questionId={selectedQuestionId}
+                                initialContent={questions.find(q => q.id === selectedQuestionId)?.content || ""}
+                                onSave={updateQuestion}
+                            />
 
                             <div className="flex-1 flex overflow-hidden">
                                 {/* Left half: Linked Papers */}
@@ -337,31 +454,13 @@ export default function DirectionsTab() {
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
                                         {innovations.map(inno => (
-                                            <div key={inno.id} className="bg-zinc-800/50 rounded-lg p-3 space-y-2 border border-zinc-700/50 group">
-                                                <textarea
-                                                    defaultValue={inno.content}
-                                                    onBlur={e => updateInnovation(inno.id, { content: e.target.value })}
-                                                    className="w-full bg-transparent border-none text-sm text-zinc-300 resize-none min-h-[40px] focus:ring-0 outline-none p-0"
-                                                />
-                                                <div className="flex items-center justify-between">
-                                                    <select
-                                                        value={inno.paper_id || ""}
-                                                        onChange={e => updateInnovation(inno.id, { paper_id: e.target.value || undefined })}
-                                                        className="bg-zinc-900 border border-zinc-700 text-xs text-zinc-400 rounded px-2 py-1 max-w-[180px]"
-                                                    >
-                                                        <option value="">不关联论文</option>
-                                                        {availablePapers.filter(p => linkedPaperIds.has(p.id)).map(p => (
-                                                            <option key={p.id} value={p.id}>{(p.nickname || p.title).slice(0, 25)}</option>
-                                                        ))}
-                                                    </select>
-                                                    <button
-                                                        onClick={() => deleteInnovation(inno.id)}
-                                                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all"
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            <InnovationEditor
+                                                key={inno.id}
+                                                innovation={inno}
+                                                linkedPapers={availablePapers.filter(p => linkedPaperIds.has(p.id))}
+                                                onSave={updateInnovation}
+                                                onDelete={deleteInnovation}
+                                            />
                                         ))}
                                     </div>
                                 </div>
@@ -395,21 +494,12 @@ export default function DirectionsTab() {
                 ) : (
                     <div className="grid grid-cols-2 gap-3">
                         {noteGroups.map(g => (
-                            <div key={g.id} className="flex items-center gap-2 bg-zinc-800/60 rounded-lg px-3 py-2.5 border border-zinc-700/50 group">
-                                <Lightbulb size={12} className="text-amber-500 shrink-0" />
-                                <input
-                                    type="text"
-                                    defaultValue={g.content}
-                                    onBlur={e => updateNoteGroup(g.id, e.target.value)}
-                                    className="flex-1 bg-transparent text-sm text-zinc-300 outline-none border-none focus:text-white"
-                                />
-                                <button
-                                    onClick={() => deleteNoteGroup(g.id)}
-                                    className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all shrink-0"
-                                >
-                                    <Trash2 size={12} />
-                                </button>
-                            </div>
+                            <NoteGroupEditor
+                                key={g.id}
+                                group={g}
+                                onSave={updateNoteGroup}
+                                onDelete={deleteNoteGroup}
+                            />
                         ))}
                     </div>
                 )}
