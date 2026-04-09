@@ -10,7 +10,7 @@ export interface NoteGroup {
 interface DirectionData {
     questions: ResearchQuestion[];
     innovationPoints: InnovationPoint[];
-    leftNotes: DirectionNote[];
+    leftNoteGroups: NoteGroup[];
     rightNoteGroups: NoteGroup[];
 }
 
@@ -50,25 +50,36 @@ const fetchDirectionData = async (projectId: string): Promise<DirectionData> => 
     const mappedInnovations: InnovationPoint[] = (innovations || []).filter((i: any) => qIds.has(i.question_id));
 
     const allNotes = (notes || []) as DirectionNote[];
-    const leftNotes = allNotes.filter(n => n.column_side === 'left');
+    // Build grouped left notes
+    const leftAll = allNotes.filter(n => n.column_side === 'left');
+    const leftTitles = leftAll.filter(n => !n.parent_id);
+    const leftChildMap = new Map<string, DirectionNote[]>();
+    leftAll.filter(n => n.parent_id).forEach(n => {
+        if (!leftChildMap.has(n.parent_id!)) leftChildMap.set(n.parent_id!, []);
+        leftChildMap.get(n.parent_id!)!.push(n);
+    });
+    const leftNoteGroups: NoteGroup[] = leftTitles.map(t => ({
+        title: t,
+        children: leftChildMap.get(t.id) || [],
+    }));
 
     // Build grouped right notes
     const rightAll = allNotes.filter(n => n.column_side === 'right');
-    const titles = rightAll.filter(n => !n.parent_id);
-    const childMap = new Map<string, DirectionNote[]>();
+    const rightTitles = rightAll.filter(n => !n.parent_id);
+    const rightChildMap = new Map<string, DirectionNote[]>();
     rightAll.filter(n => n.parent_id).forEach(n => {
-        if (!childMap.has(n.parent_id!)) childMap.set(n.parent_id!, []);
-        childMap.get(n.parent_id!)!.push(n);
+        if (!rightChildMap.has(n.parent_id!)) rightChildMap.set(n.parent_id!, []);
+        rightChildMap.get(n.parent_id!)!.push(n);
     });
-    const rightNoteGroups: NoteGroup[] = titles.map(t => ({
+    const rightNoteGroups: NoteGroup[] = rightTitles.map(t => ({
         title: t,
-        children: childMap.get(t.id) || [],
+        children: rightChildMap.get(t.id) || [],
     }));
 
     return {
         questions: mappedQuestions,
         innovationPoints: mappedInnovations,
-        leftNotes,
+        leftNoteGroups,
         rightNoteGroups,
     };
 };
@@ -82,7 +93,7 @@ export function usePrismDirections(projectId: string | null) {
     return {
         questions: data?.questions || [],
         innovationPoints: data?.innovationPoints || [],
-        leftNotes: data?.leftNotes || [],
+        leftNoteGroups: data?.leftNoteGroups || [],
         rightNoteGroups: data?.rightNoteGroups || [],
         isLoading,
         isError: error,

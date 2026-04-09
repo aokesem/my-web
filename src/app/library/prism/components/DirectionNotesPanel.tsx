@@ -2,8 +2,11 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Pencil, Save, X, Plus, Trash2, Loader2, FileText, Lightbulb, MessageSquare, LinkIcon } from 'lucide-react';
+import { ChevronDown, Pencil, Save, X, Plus, Trash2, Loader2, FileText, Lightbulb, MessageSquare, LinkIcon, GripVertical } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, defaultDropAnimationSideEffects } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import type { ResearchQuestion, DirectionNote, PaperDetail } from '../types';
 
@@ -47,112 +50,18 @@ function renderBoldText(text: string) {
     });
 }
 
-// ============================================================
-// NOTES COLUMN
-// ============================================================
-
-interface NotesColumnProps {
-    title: string;
-    icon: React.ReactNode;
-    color: string;
-    notes: DirectionNote[];
-    projectId: string;
-    columnSide: 'left' | 'right';
-    mutate: () => void;
+function AutoResizeTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+    const ref = React.useRef<HTMLTextAreaElement>(null);
+    React.useEffect(() => {
+        if (ref.current) {
+            ref.current.style.height = 'auto';
+            ref.current.style.height = (ref.current.scrollHeight + 2) + 'px';
+        }
+    }, [props.value]);
+    return <textarea ref={ref} {...props} />;
 }
 
-function NotesColumn({ title, icon, color, notes, projectId, columnSide, mutate }: NotesColumnProps) {
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [tempContent, setTempContent] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-
-    const handleAdd = async () => {
-        const { error } = await supabase.from('prism_direction_notes').insert({
-            project_id: projectId,
-            column_side: columnSide,
-            content: '新笔记...',
-            sort_order: notes.length,
-        });
-        if (error) { toast.error('添加失败'); return; }
-        mutate();
-    };
-
-    const handleSave = async (id: string) => {
-        setIsSaving(true);
-        const { error } = await supabase.from('prism_direction_notes').update({ content: tempContent }).eq('id', id);
-        if (error) { toast.error('保存失败'); } else { toast.success('已保存'); }
-        setEditingId(null);
-        setIsSaving(false);
-        mutate();
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('确定删除这条笔记？')) return;
-        const { error } = await supabase.from('prism_direction_notes').delete().eq('id', id);
-        if (error) { toast.error('删除失败'); return; }
-        mutate();
-    };
-
-    return (
-        <div className="flex flex-col h-full">
-            <div className={`flex items-center gap-2 px-4 py-3 border-b border-stone-100 bg-stone-50/50 shrink-0`}>
-                {icon}
-                <h3 className="text-[13px] font-bold font-mono uppercase tracking-wider text-stone-700">{title}</h3>
-                <span className="text-[10px] font-mono font-bold text-stone-300 bg-stone-100 px-1.5 py-0.5 rounded ml-auto">{notes.length}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                {notes.map(note => (
-                    <div key={note.id} className={`p-3 rounded-xl border border-stone-200/60 ${color} hover:bg-white transition-colors relative group/note`}>
-                        {editingId === note.id ? (
-                            <div className="space-y-2">
-                                <textarea
-                                    value={tempContent}
-                                    onChange={e => setTempContent(e.target.value)}
-                                    onKeyDown={e => handleBoldShortcut(e, setTempContent)}
-                                    className="w-full bg-white border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-violet-200 outline-none min-h-[60px] resize-none"
-                                    placeholder="支持 Ctrl+B 加粗"
-                                    autoFocus
-                                />
-                                <div className="flex justify-end gap-1.5">
-                                    <button onClick={() => setEditingId(null)} className="p-1 text-stone-400 hover:text-stone-600"><X size={14} /></button>
-                                    <button
-                                        onClick={() => handleSave(note.id)}
-                                        disabled={isSaving}
-                                        className="flex items-center gap-1 px-2.5 py-1 bg-violet-600 text-white rounded-lg text-xs font-bold hover:bg-violet-700 disabled:opacity-50"
-                                    >
-                                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} 保存
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => { setEditingId(note.id); setTempContent(note.content); }}
-                                        className="p-1 text-stone-400 hover:text-violet-600 hover:bg-violet-50 rounded-md"
-                                    ><Pencil size={12} /></button>
-                                    <button
-                                        onClick={() => handleDelete(note.id)}
-                                        className="p-1 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-md"
-                                    ><Trash2 size={12} /></button>
-                                </div>
-                                <div className="text-[13px] text-stone-700 leading-relaxed pr-12 whitespace-pre-wrap">
-                                    {renderBoldText(note.content)}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                ))}
-                <button
-                    onClick={handleAdd}
-                    className="w-full p-2 rounded-xl border-2 border-dashed border-stone-200 text-stone-400 hover:border-violet-300 hover:text-violet-500 transition-all text-xs font-bold flex items-center justify-center gap-1"
-                >
-                    <Plus size={14} /> 添加笔记
-                </button>
-            </div>
-        </div>
-    );
-}
+// Removed unused NotesColumn
 
 // ============================================================
 // PAPERS COLUMN (middle)
@@ -247,13 +156,33 @@ function PapersColumn({ questions, allPapers, onOpenPaper }: PapersColumnProps) 
 
 import type { NoteGroup } from '../hooks/usePrismDirections';
 
+function SortableItem({ id, children, disabled }: { id: string; children: (listeners: any, attributes: any) => React.ReactNode; disabled?: boolean; }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+    const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 50 : 'auto', position: isDragging ? 'relative' : 'static' } as any;
+    return (
+        <div ref={setNodeRef} style={style}>
+            {children(listeners, attributes)}
+        </div>
+    );
+}
+
 interface GroupedNotesColumnProps {
+    title: string;
+    icon: React.ReactNode;
+    color: {
+        bg: string;
+        border: string;
+        text: string;
+        hoverBg: string;
+        hoverButtonBg: string;
+    };
     noteGroups: NoteGroup[];
     projectId: string;
+    columnSide: 'left' | 'right';
     mutate: () => void;
 }
 
-function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColumnProps) {
+function GroupedNotesColumn({ title, icon, color, noteGroups, projectId, columnSide, mutate }: GroupedNotesColumnProps) {
     const [openGroups, setOpenGroups] = useState<Set<string>>(new Set()); // default all collapsed
     const [editingId, setEditingId] = useState<string | null>(null);
     const [tempContent, setTempContent] = useState('');
@@ -270,7 +199,7 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
     const handleAddGroup = async () => {
         const { error } = await supabase.from('prism_direction_notes').insert({
             project_id: projectId,
-            column_side: 'right',
+            column_side: columnSide,
             content: '新分组...',
             sort_order: noteGroups.length,
             parent_id: null,
@@ -282,7 +211,7 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
     const handleAddChild = async (parentId: string, currentCount: number) => {
         const { error } = await supabase.from('prism_direction_notes').insert({
             project_id: projectId,
-            column_side: 'right',
+            column_side: columnSide,
             content: '新笔记...',
             sort_order: currentCount,
             parent_id: parentId,
@@ -309,29 +238,83 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
         mutate();
     };
 
+    const handleDeleteGroup = async (group: NoteGroup) => {
+        const msg = group.children.length > 0 
+            ? `确定要删除分组 "${group.title.content}" 吗？这也会删除组内的 ${group.children.length} 条笔记！`
+            : `确定删除分组 "${group.title.content}" 吗？`;
+        if (!confirm(msg)) return;
+        
+        if (group.children.length > 0) {
+            await supabase.from('prism_direction_notes').delete().eq('parent_id', group.title.id);
+        }
+        const { error } = await supabase.from('prism_direction_notes').delete().eq('id', group.title.id);
+        if (error) { toast.error('删除失败'); return; }
+        mutate();
+    };
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        
+        const activeStr = String(active.id);
+        const overStr = String(over.id);
+
+        if (activeStr.startsWith('group-') && overStr.startsWith('group-')) {
+            const oldIndex = noteGroups.findIndex(g => `group-${g.title.id}` === activeStr);
+            const newIndex = noteGroups.findIndex(g => `group-${g.title.id}` === overStr);
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const newGroups = arrayMove(noteGroups, oldIndex, newIndex);
+                newGroups.forEach(async (g, i) => {
+                    await supabase.from('prism_direction_notes').update({ sort_order: i }).eq('id', g.title.id);
+                });
+                mutate();
+            }
+        } else if (activeStr.startsWith('note-') && overStr.startsWith('note-')) {
+            const group = noteGroups.find(g => g.children.some(c => `note-${c.id}` === activeStr || `note-${c.id}` === overStr));
+            if (!group) return;
+            const oldIndex = group.children.findIndex(c => `note-${c.id}` === activeStr);
+            const newIndex = group.children.findIndex(c => `note-${c.id}` === overStr);
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const newNotes = arrayMove(group.children, oldIndex, newIndex);
+                newNotes.forEach(async (n, i) => {
+                    await supabase.from('prism_direction_notes').update({ sort_order: i }).eq('id', n.id);
+                });
+                mutate();
+            }
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-stone-100 bg-stone-50/50 shrink-0">
-                <div className="p-1 rounded-md border bg-amber-50 text-amber-500 border-amber-100">
-                    <Lightbulb size={14} />
-                </div>
-                <h3 className="text-[13px] font-bold font-mono uppercase tracking-wider text-stone-700">灵感与笔记</h3>
+                {icon}
+                <h3 className="text-[13px] font-bold font-mono uppercase tracking-wider text-stone-700">{title}</h3>
                 <span className="text-[10px] font-mono font-bold text-stone-300 bg-stone-100 px-1.5 py-0.5 rounded ml-auto">
                     {noteGroups.reduce((s, g) => s + g.children.length, 0)}
                 </span>
-                <button onClick={handleAddGroup} className="p-1 rounded-md bg-amber-100 text-amber-600 hover:bg-amber-200 transition-colors" title="新建分组">
+                <button onClick={handleAddGroup} className={`p-1 rounded-md ${color.bg} ${color.text} ${color.hoverBg} transition-colors`} title="新建分组">
                     <Plus size={14} />
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                {noteGroups.length === 0 ? (
-                    <div className="text-center py-8 text-stone-300 text-xs font-mono">在 Admin 中创建灵感分组</div>
-                ) : noteGroups.map(group => (
-                    <div key={group.title.id} className="rounded-xl border border-stone-200/60 overflow-hidden">
-                        {/* Group title header */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    {noteGroups.length === 0 ? (
+                        <div className="text-center py-8 text-stone-300 text-xs font-mono">暂无分组</div>
+                    ) : (
+                        <SortableContext items={noteGroups.map(g => `group-${g.title.id}`)} strategy={verticalListSortingStrategy}>
+                            {noteGroups.map(group => (
+                                <SortableItem key={`group-${group.title.id}`} id={`group-${group.title.id}`} disabled={editingId !== null}>
+                                    {(groupListeners, groupAttributes) => (
+                                        <div className={`rounded-xl border ${color.border} overflow-hidden`}>
+                                            {/* Group title header */}
                         <div
                             onClick={() => { if (editingId !== group.title.id) toggle(group.title.id); }}
-                            className={`flex items-center justify-between w-full px-3 py-2.5 bg-amber-50/40 hover:bg-amber-50/80 transition-colors group/title ${editingId !== group.title.id ? 'cursor-pointer' : ''}`}
+                            className={`flex items-center justify-between w-full px-3 py-2.5 ${color.bg} ${color.hoverBg} transition-colors group/title ${editingId !== group.title.id ? 'cursor-pointer' : ''}`}
                         >
                             {editingId === group.title.id ? (
                                 <div className="flex-1 flex items-center gap-2 pr-2" onClick={e => e.stopPropagation()}>
@@ -348,7 +331,7 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                                     />
                                     <div className="flex items-center gap-1 shrink-0">
                                         <button onClick={() => setEditingId(null)} className="p-1 text-stone-400 hover:text-stone-600"><X size={14} /></button>
-                                        <button onClick={() => handleSave(group.title.id)} disabled={isSaving} className="p-1 text-amber-600 hover:bg-amber-100 rounded">
+                                        <button onClick={() => handleSave(group.title.id)} disabled={isSaving} className={`p-1 ${color.text} ${color.hoverBg} rounded`}>
                                             {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                         </button>
                                     </div>
@@ -356,20 +339,27 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                             ) : (
                                 <>
                                     <div className="flex items-center gap-1.5 flex-1">
-                                        <ChevronDown size={14} className={`text-amber-500 shrink-0 transition-transform duration-200 ${openGroups.has(group.title.id) ? '' : '-rotate-90'}`} />
+                                        <div {...groupListeners} {...groupAttributes} className={`p-1 text-stone-300 hover:${color.text.split(' ')[0]} cursor-grab active:cursor-grabbing`} onClick={e => e.stopPropagation()}><GripVertical size={14} /></div>
+                                        <ChevronDown size={14} className={`${color.text} shrink-0 transition-transform duration-200 ${openGroups.has(group.title.id) ? '' : '-rotate-90'}`} />
                                         <span className="text-[13px] font-bold text-stone-700 line-clamp-1">{group.title.content}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setEditingId(group.title.id); setTempContent(group.title.content); }}
-                                            className="opacity-0 group-hover/title:opacity-100 p-1 text-stone-400 hover:text-amber-600 hover:bg-amber-100 rounded transition-all ml-1 shrink-0"
+                                            className={`opacity-0 group-hover/title:opacity-100 p-1 text-stone-400 hover:${color.text.split(' ')[0]} ${color.hoverBg} rounded transition-all ml-1 shrink-0`}
                                         >
                                             <Pencil size={12} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group); }}
+                                            className="opacity-0 group-hover/title:opacity-100 p-1 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0"
+                                        >
+                                            <Trash2 size={12} />
                                         </button>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
                                         <span className="text-[10px] font-mono text-stone-300">{group.children.length}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleAddChild(group.title.id, group.children.length); }}
-                                            className="p-0.5 text-stone-400 hover:text-amber-600 hover:bg-amber-100 rounded transition-colors"
+                                            className={`p-0.5 text-stone-400 hover:${color.text.split(' ')[0]} ${color.hoverBg} rounded transition-colors`}
                                         >
                                             <Plus size={12} />
                                         </button>
@@ -389,17 +379,20 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                                     className="overflow-hidden"
                                 >
                                     <div className="px-3 pb-3 pt-1 space-y-1.5">
-                                        {group.children.length === 0 ? (
-                                            <div className="text-xs text-stone-300 font-mono py-2 text-center">暂无笔记</div>
-                                        ) : group.children.map(note => (
-                                            <div key={note.id} className="p-2.5 rounded-lg border border-stone-200/50 bg-white hover:bg-amber-50/20 transition-colors relative group/note">
+                                        <SortableContext items={group.children.map(c => `note-${c.id}`)} strategy={verticalListSortingStrategy}>
+                                            {group.children.length === 0 ? (
+                                                <div className="text-xs text-stone-300 font-mono py-2 text-center">暂无笔记</div>
+                                            ) : group.children.map(note => (
+                                                <SortableItem key={`note-${note.id}`} id={`note-${note.id}`} disabled={editingId !== null}>
+                                                    {(noteListeners, noteAttributes) => (
+                                                        <div className={`p-2.5 rounded-lg border border-stone-200/50 bg-white ${color.hoverBg.replace('bg-', 'hover:bg-').replace('/40', '/20')} transition-colors relative group/note`}>
                                                 {editingId === note.id ? (
                                                     <div className="space-y-2">
-                                                        <textarea
+                                                        <AutoResizeTextarea
                                                             value={tempContent}
                                                             onChange={e => setTempContent(e.target.value)}
                                                             onKeyDown={e => handleBoldShortcut(e, setTempContent)}
-                                                            className="w-full bg-white border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-amber-200 outline-none min-h-[60px] resize-none"
+                                                            className={`w-full bg-white border border-stone-200 rounded-lg p-2 text-sm text-stone-700 focus:ring-1 focus:ring-${color.text.split('-')[1]}-200 outline-none min-h-[60px] resize-none overflow-hidden`}
                                                             placeholder="支持 Ctrl+B 加粗"
                                                             autoFocus
                                                         />
@@ -408,7 +401,7 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                                                             <button
                                                                 onClick={() => handleSave(note.id)}
                                                                 disabled={isSaving}
-                                                                className="flex items-center gap-1 px-2.5 py-1 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 disabled:opacity-50"
+                                                                className={`flex items-center gap-1 px-2.5 py-1 ${color.hoverButtonBg} text-white rounded-lg text-xs font-bold disabled:opacity-50`}
                                                             >
                                                                 {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} 保存
                                                             </button>
@@ -417,9 +410,10 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                                                 ) : (
                                                     <>
                                                         <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                                                            <div {...noteListeners} {...noteAttributes} className="p-1 text-stone-300 hover:text-stone-500 cursor-grab active:cursor-grabbing"><GripVertical size={11} /></div>
                                                             <button
                                                                 onClick={() => { setEditingId(note.id); setTempContent(note.content); }}
-                                                                className="p-1 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-md"
+                                                                className={`p-1 text-stone-400 hover:${color.text.split(' ')[0]} ${color.hoverBg} rounded-md`}
                                                             ><Pencil size={11} /></button>
                                                             <button
                                                                 onClick={() => handleDelete(note.id)}
@@ -431,14 +425,22 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
                                                         </div>
                                                     </>
                                                 )}
-                                            </div>
-                                        ))}
+                                                        </div>
+                                                    )}
+                                                </SortableItem>
+                                            ))}
+                                        </SortableContext>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
-                ))}
+                                    )}
+                                </SortableItem>
+                            ))}
+                        </SortableContext>
+                    )}
+                </DndContext>
             </div>
         </div>
     );
@@ -450,7 +452,7 @@ function GroupedNotesColumn({ noteGroups, projectId, mutate }: GroupedNotesColum
 
 interface DirectionNotesPanelProps {
     questions: ResearchQuestion[];
-    leftNotes: DirectionNote[];
+    leftNoteGroups: NoteGroup[];
     rightNoteGroups: NoteGroup[];
     allPapers: PaperDetail[];
     projectId: string;
@@ -458,16 +460,22 @@ interface DirectionNotesPanelProps {
     mutate: () => void;
 }
 
-export default function DirectionNotesPanel({ questions, leftNotes, rightNoteGroups, allPapers, projectId, onOpenPaper, mutate }: DirectionNotesPanelProps) {
+export default function DirectionNotesPanel({ questions, leftNoteGroups, rightNoteGroups, allPapers, projectId, onOpenPaper, mutate }: DirectionNotesPanelProps) {
     return (
         <div className="flex-1 flex overflow-hidden bg-white rounded-b-3xl">
             {/* Left column */}
             <div className="flex-1 border-r border-stone-100 min-w-[220px]">
-                <NotesColumn
+                <GroupedNotesColumn
                     title="问题思考"
                     icon={<div className="p-1 rounded-md border bg-blue-50 text-blue-500 border-blue-100"><MessageSquare size={14} /></div>}
-                    color="bg-blue-50/30"
-                    notes={leftNotes}
+                    color={{
+                        bg: 'bg-blue-50/40',
+                        border: 'border-blue-100',
+                        text: 'text-blue-600',
+                        hoverBg: 'hover:bg-blue-100/60',
+                        hoverButtonBg: 'bg-blue-600 hover:bg-blue-700'
+                    }}
+                    noteGroups={leftNoteGroups}
                     projectId={projectId}
                     columnSide="left"
                     mutate={mutate}
@@ -482,8 +490,18 @@ export default function DirectionNotesPanel({ questions, leftNotes, rightNoteGro
             {/* Right column — grouped accordion */}
             <div className="flex-1 min-w-[220px]">
                 <GroupedNotesColumn
+                    title="灵感与笔记"
+                    icon={<div className="p-1 rounded-md border bg-amber-50 text-amber-500 border-amber-100"><Lightbulb size={14} /></div>}
+                    color={{
+                        bg: 'bg-amber-50/40',
+                        border: 'border-stone-200/60',
+                        text: 'text-amber-600',
+                        hoverBg: 'hover:bg-amber-100/60',
+                        hoverButtonBg: 'bg-amber-600 hover:bg-amber-700'
+                    }}
                     noteGroups={rightNoteGroups}
                     projectId={projectId}
+                    columnSide="right"
                     mutate={mutate}
                 />
             </div>

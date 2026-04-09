@@ -306,9 +306,10 @@ interface DirectionFlowMapProps {
     onOpenPaper: (id: string) => void;
     onEditNode?: (id: string, content: string) => void;
     onDeleteNode?: (id: string) => void;
+    onHeightChange?: (h: number) => void;
 }
 
-export default function DirectionFlowMap({ questions, innovationPoints, allPapers, onOpenPaper, onEditNode, onDeleteNode }: DirectionFlowMapProps) {
+export default function DirectionFlowMap({ questions, innovationPoints, allPapers, onOpenPaper, onEditNode, onDeleteNode, onHeightChange }: DirectionFlowMapProps) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const [wrapperH, setWrapperH] = useState(0);
 
@@ -323,8 +324,12 @@ export default function DirectionFlowMap({ questions, innovationPoints, allPaper
     const callbacks = useMemo(() => ({ onEdit: onEditNode, onDelete: onDeleteNode }), [onEditNode, onDeleteNode]);
     const { nodes, edges, totalHeight } = useMemo(
         () => buildLayout(questions, innovationPoints, allPapers, callbacks),
-        [questions, innovationPoints, allPapers]
+        [questions, innovationPoints, allPapers, callbacks]
     );
+
+    useEffect(() => {
+        onHeightChange?.(totalHeight);
+    }, [totalHeight, onHeightChange]);
 
     // Calculate translate extent to prevent scrolling past content
     const translateExtent = useMemo((): [[number, number], [number, number]] => {

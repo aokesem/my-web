@@ -43,9 +43,16 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
     const topH = Math.floor((containerH - DIVIDER_H) * topRatio);
     const bottomH = containerH - DIVIDER_H - topH;
 
+    const [maxFlowH, setMaxFlowH] = useState(0);
+
     // ---- drag divider ----
     const isDragging = useRef(false);
     const lastY = useRef(0);
+    const topRatioRef = useRef(topRatio);
+    useEffect(() => { topRatioRef.current = topRatio; }, [topRatio]);
+    
+    const maxFlowHRef = useRef(maxFlowH);
+    useEffect(() => { maxFlowHRef.current = maxFlowH; }, [maxFlowH]);
 
     const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -58,11 +65,18 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (!isDragging.current || !containerRef.current) return;
-            const delta = e.clientY - lastY.current;
+            const dy = e.clientY - lastY.current;
             lastY.current = e.clientY;
             const h = containerRef.current.clientHeight - DIVIDER_H;
             if (h <= 0) return;
-            setTopRatio(prev => Math.min(0.8, Math.max(0.2, prev + delta / h)));
+            let newTopH = Math.floor(h * topRatioRef.current) + dy;
+            
+            // Constrain
+            if (newTopH < 150) newTopH = 150;
+            if (maxFlowHRef.current > 0 && newTopH > maxFlowHRef.current + 40) newTopH = maxFlowHRef.current + 40;
+            if (newTopH > h - 150) newTopH = h - 150;
+            
+            setTopRatio(newTopH / h);
         };
         const onUp = () => {
             if (!isDragging.current) return;
@@ -78,7 +92,7 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
         };
     }, []); // stable: refs only, no deps needed
 
-    const { questions, innovationPoints, leftNotes, rightNoteGroups, isLoading, mutate } = usePrismDirections(activeProjectId || null);
+    const { questions, innovationPoints, leftNoteGroups, rightNoteGroups, isLoading, mutate } = usePrismDirections(activeProjectId || null);
 
     // ---- front-end edit / delete for question & innovation nodes ----
     const handleEditNode = useCallback(async (id: string, content: string) => {
@@ -151,6 +165,7 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
                                         onOpenPaper={onOpenPaper}
                                         onEditNode={handleEditNode}
                                         onDeleteNode={handleDeleteNode}
+                                        onHeightChange={setMaxFlowH}
                                     />
                                 </ReactFlowProvider>
                             </div>
@@ -168,7 +183,7 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
                             <div style={{ width: '100%', minHeight: bottomH, display: 'flex', flexDirection: 'column' }}>
                                 <DirectionNotesPanel
                                     questions={questions}
-                                    leftNotes={leftNotes}
+                                    leftNoteGroups={leftNoteGroups}
                                     rightNoteGroups={rightNoteGroups}
                                     allPapers={allPapers}
                                     projectId={activeProjectId}
