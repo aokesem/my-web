@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
-import { useEditor, EditorContent, EditorContext, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, EditorContext, Editor, ReactNodeViewRenderer } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -11,8 +11,13 @@ import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { supabase } from '@/lib/supabaseClient';
 import { compressImage } from '@/lib/imageUtils';
 import { toast } from 'sonner';
+import { common, createLowlight } from 'lowlight';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { CodeBlockView } from './code-block-view';
 import 'tippy.js/dist/tippy.css';
 import 'katex/dist/katex.min.css';
+
+const lowlight = createLowlight(common);
 
 // Helper: extract Supabase storage path from a public URL
 function extractStoragePath(url: string, bucket: string): string | null {
@@ -116,6 +121,15 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
         extensions: [
             StarterKit.configure({
                 heading: false, // Disabled: using HeadingWithId instead
+                codeBlock: false, // Disabled: using CodeBlockLowlight instead
+            }),
+            CodeBlockLowlight.extend({
+                addNodeView() {
+                    return ReactNodeViewRenderer(CodeBlockView);
+                },
+            }).configure({
+                lowlight,
+                defaultLanguage: 'javascript',
             }),
             HeadingWithId.configure({
                 levels: [1, 2, 3, 4, 5, 6],

@@ -116,3 +116,27 @@ export interface CourseFormula {
     sort_order: number;
     created_at: string;
 }
+
+// ============================================================
+// CODEBASE (Language & Tools) MODULE
+// ============================================================
+
+export interface CodebaseLanguage {
+    id: string;
+    name: string;
+    icon?: string;
+    color?: string;
+    sort_order: number;
+    created_at: string;
+}
+
+export interface CodebaseNode {
+    id: string;
+    language_id: string;
+    parent_id?: string | null;
+    title: string;
+    level: number;
+    notes?: string;
+    sort_order: number;
+    created_at: string;
+}

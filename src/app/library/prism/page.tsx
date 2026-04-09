@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookText, FileText, ArrowUpRight, Triangle } from 'lucide-react';
+import { ArrowLeft, BookText, FileText, ArrowUpRight, Triangle, FileCode } from 'lucide-react';
 import Link from 'next/link';
 
 // ============================================================
@@ -29,6 +29,16 @@ const SECTIONS = [
         href: '/library/prism/papers',
         icon: FileText,
         accentColor: 'cyan',
+    },
+    {
+        id: 'codebase',
+        title: '语言与工具',
+        subtitle: 'CODEBASE',
+        description: '极致结构化的深层级目录，沉淀高密度的代码片段与工具速查手册。',
+        count: '0 Languages',
+        href: '/library/prism/codebase',
+        icon: FileCode,
+        accentColor: 'emerald',
     },
 ];
 
@@ -61,6 +71,16 @@ const ACCENT_STYLES: Record<string, {
         tagText: 'text-cyan-600',
         countColor: 'text-cyan-400',
         gradientFrom: 'from-cyan-500/5',
+    },
+    emerald: {
+        border: 'border-emerald-200/60',
+        hoverBorder: 'hover:border-emerald-300',
+        iconBg: 'bg-emerald-50',
+        iconColor: 'text-emerald-500',
+        tagBg: 'bg-emerald-50',
+        tagText: 'text-emerald-600',
+        countColor: 'text-emerald-400',
+        gradientFrom: 'from-emerald-500/5',
     },
 };
 
@@ -100,8 +120,8 @@ export default function PrismPage() {
             {/* ===== MAIN CONTENT ===== */}
             <main className="flex-1 w-full max-w-7xl mx-auto px-10 pb-12 flex items-stretch gap-8">
 
-                {/* Cards Area - 2/3 width, left-aligned */}
-                <div className="flex gap-8 w-2/3">
+                {/* Cards Area – full width */}
+                <div className="flex gap-8 w-full">
                     {SECTIONS.map((section, i) => {
                         const Icon = section.icon;
                         const styles = ACCENT_STYLES[section.accentColor];
@@ -175,25 +195,7 @@ export default function PrismPage() {
                     })}
                 </div>
 
-                {/* Right whitespace area - 1/3 width with subtle decoration */}
-                <div className="w-1/3 flex flex-col items-center justify-center pointer-events-none select-none">
-                    {/* Minimal prism-themed decoration */}
-                    <svg viewBox="0 0 120 200" className="w-20 opacity-[0.06]">
-                        {/* Prism shape */}
-                        <polygon
-                            points="60,10 110,100 60,190 10,100"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            className="text-purple-900"
-                        />
-                        <line x1="60" y1="10" x2="60" y2="190" stroke="currentColor" strokeWidth="0.5" className="text-purple-900" />
-                        <line x1="10" y1="100" x2="110" y2="100" stroke="currentColor" strokeWidth="0.5" className="text-purple-900" />
-                    </svg>
-                    <span className="text-[9px] font-mono text-stone-300 uppercase tracking-[0.3em] mt-4">
-                        Prism_v0.1
-                    </span>
-                </div>
+
             </main>
 
             {/* ===== FOOTER ===== */}
