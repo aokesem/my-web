@@ -41,16 +41,21 @@ export default function WeekActivityListPanel({
         }
     }, [editingId]);
 
-    // 只显示有时间段的事项，按 day_of_week -> start_time 排序
-    const sortedActivities = useMemo(() => {
-        return allActivities
+    // 将事项拆分为「单次」与「循环」
+    const splitActivities = useMemo(() => {
+        const sorted = allActivities
             .filter(a => a.start_time && a.end_time)
             .sort((a, b) => {
-                const dayA = a.day_of_week ?? -1; // 无 day_of_week 的排最前
+                const dayA = a.day_of_week ?? -1;
                 const dayB = b.day_of_week ?? -1;
                 if (dayA !== dayB) return dayA - dayB;
                 return (a.start_time || '').localeCompare(b.start_time || '');
             });
+
+        return {
+            oneOffs: sorted.filter(a => a.day_of_week == null),
+            routines: sorted.filter(a => a.day_of_week != null)
+        };
     }, [allActivities]);
 
     const startEdit = (act: Activity) => {
@@ -98,82 +103,66 @@ export default function WeekActivityListPanel({
 
     const fmtTime = (t: string) => t.length > 5 ? t.slice(0, 5) : t;
 
-    return (
-        <div className="w-[260px] bg-white/95 backdrop-blur-xl rounded-r-2xl border border-l-0 border-slate-200/80 flex flex-col overflow-hidden">
-            {/* 标题栏 */}
-            <div className="px-5 py-4 border-b border-slate-100 shrink-0">
-                <div className="flex items-center gap-2">
-                    <ListTodo size={16} className="text-blue-400" />
-                    <span className="font-mono font-bold text-slate-500 tracking-[0.15em] uppercase text-xs">Activities</span>
-                    <span className="ml-auto text-[10px] font-mono text-slate-300">{sortedActivities.length}</span>
-                </div>
+    const renderActivityGroup = (title: string, list: Activity[], iconColor: string) => (
+        <div className="space-y-1">
+            <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
+                <div className={`w-1 h-3 rounded-full ${iconColor}`} />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</span>
+                <span className="ml-auto text-[9px] font-mono text-slate-300">{list.length}</span>
             </div>
+            {list.length === 0 ? (
+                <div className="text-[11px] text-slate-300 italic px-4 py-2 opacity-60">暂无事项</div>
+            ) : (
+                list.map(act => {
+                    const isEditing = editingId === act.id;
+                    const colorClass = act.color || 'bg-blue-500';
+                    const dayLabel = act.day_of_week != null ? DAY_LABELS[act.day_of_week] : null;
+                    const startDateStr = act.date ? `${new Date(act.date + 'T00:00:00').getMonth() + 1}/${new Date(act.date + 'T00:00:00').getDate()}` : null;
+                    const recurUntilStr = act.recur_until
+                        ? `${new Date(act.recur_until + 'T00:00:00').getMonth() + 1}/${new Date(act.recur_until + 'T00:00:00').getDate()}`
+                        : null;
+                    const dateRangeStr = startDateStr && recurUntilStr ? `${startDateStr} - ${recurUntilStr}` : null;
 
-            {/* 事项列表 */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
-                {sortedActivities.length === 0 ? (
-                    <div className="text-sm text-slate-300 italic py-6 text-center">暂无事项</div>
-                ) : (
-                    sortedActivities.map(act => {
-                        const isEditing = editingId === act.id;
-                        const colorClass = act.color || 'bg-blue-500';
-                        const dayLabel = act.day_of_week != null ? DAY_LABELS[act.day_of_week] : null;
-                        const startDateStr = act.date ? `${new Date(act.date + 'T00:00:00').getMonth() + 1}/${new Date(act.date + 'T00:00:00').getDate()}` : null;
-                        const recurUntilStr = act.recur_until
-                            ? `${new Date(act.recur_until + 'T00:00:00').getMonth() + 1}/${new Date(act.recur_until + 'T00:00:00').getDate()}`
-                            : null;
-                        const dateRangeStr = startDateStr && recurUntilStr ? `${startDateStr} - ${recurUntilStr}` : null;
-
-                        return (
-                            <div
-                                key={act.id}
-                                className={`flex items-start gap-2.5 px-2 py-2 rounded-lg group transition-colors hover:bg-slate-50 ${!isEditing ? 'cursor-pointer' : ''}`}
-                                onClick={() => !isEditing && handleJump(act)}
-                            >
-                                {/* 左侧色条 */}
-                                <div className={`w-1 shrink-0 rounded-full self-stretch ${colorClass}`} />
-
-                                {/* 内容区 */}
-                                <div className="flex-1 min-w-0">
-                                    {isEditing ? (
-                                        <div className="flex flex-col gap-2">
-                                            <textarea
-                                                ref={inputRef}
-                                                value={editValue}
-                                                onChange={e => setEditValue(e.target.value)}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') {
-                                                        if (e.shiftKey) {
-                                                            return; // 允许换行
-                                                        } else {
-                                                            e.preventDefault();
-                                                            confirmEdit();
-                                                        }
-                                                    }
-                                                    if (e.key === 'Escape') cancelEdit();
-                                                }}
-                                                onBlur={confirmEdit}
-                                                className="flex-1 min-w-0 bg-blue-50 border border-blue-200 rounded px-2 py-1 text-sm text-slate-800 focus:outline-none focus:border-blue-400 resize-none overflow-y-auto"
-                                                style={{ minHeight: '40px', maxHeight: '120px' }}
-                                                rows={1}
-                                            />
-                                            <div className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 self-start">
-                                                {COLORS.map(c => (
-                                                    <button
-                                                        key={c.name}
-                                                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                                        onClick={(e) => { e.stopPropagation(); setEditColor(c.class); }}
-                                                        className={`w-4 h-4 rounded-md ${c.class} transition-all ${editColor === c.class ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-60 hover:opacity-100'}`}
-                                                    />
-                                                ))}
-                                            </div>
+                    return (
+                        <div
+                            key={act.id}
+                            className={`flex items-start gap-2.5 px-2 py-2 rounded-lg group transition-colors hover:bg-slate-50 ${!isEditing ? 'cursor-pointer' : ''}`}
+                            onClick={() => !isEditing && handleJump(act)}
+                        >
+                            <div className={`w-1 shrink-0 rounded-full self-stretch ${colorClass}`} />
+                            <div className="flex-1 min-w-0">
+                                {isEditing ? (
+                                    <div className="flex flex-col gap-2">
+                                        <textarea
+                                            ref={inputRef}
+                                            value={editValue}
+                                            onChange={e => setEditValue(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    if (e.shiftKey) return;
+                                                    else { e.preventDefault(); confirmEdit(); }
+                                                }
+                                                if (e.key === 'Escape') cancelEdit();
+                                            }}
+                                            onBlur={confirmEdit}
+                                            className="flex-1 min-w-0 bg-blue-50 border border-blue-200 rounded px-2 py-1 text-sm text-slate-800 focus:outline-none focus:border-blue-400 resize-none overflow-y-auto"
+                                            style={{ minHeight: '40px', maxHeight: '120px' }}
+                                            rows={1}
+                                        />
+                                        <div className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 self-start">
+                                            {COLORS.map(c => (
+                                                <button
+                                                    key={c.name}
+                                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                    onClick={(e) => { e.stopPropagation(); setEditColor(c.class); }}
+                                                    className={`w-4 h-4 rounded-md ${c.class} transition-all ${editColor === c.class ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-60 hover:opacity-100'}`}
+                                                />
+                                            ))}
                                         </div>
-                                    ) : (
-                                        <>
-                                        <div
-                                            className={`text-[20px] font-semibold leading-tight text-slate-800 whitespace-pre-wrap wrap-break-word ${!isEditing ? 'group-hover:text-blue-600' : ''}`}
-                                            title="点击跳转至该事项所在周"
-                                        >
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className={`text-[15px] font-semibold leading-tight text-slate-800 whitespace-pre-wrap wrap-break-word ${!isEditing ? 'group-hover:text-blue-600' : ''}`}>
                                             {act.content}
                                         </div>
                                         {act.deadline_item_id && (() => {
@@ -184,47 +173,52 @@ export default function WeekActivityListPanel({
                                                 </div>
                                             ) : null;
                                         })()}
-                                        </>
-                                    )}
-                                    <div className="text-[12px] font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                        {dayLabel && <span className="text-slate-400">{dayLabel}</span>}
-                                        <span className="text-slate-400">{fmtTime(act.start_time!)}-{fmtTime(act.end_time!)}</span>
-                                        {dateRangeStr && (
-                                            <span className="text-[11px] text-blue-500/90 italic font-medium tracking-tight bg-blue-50/50 px-1 rounded-sm">{dateRangeStr}</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* 操作按钮 */}
-                                {isAdmin && !isEditing && (
-                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); startEdit(act); }}
-                                            className="p-0.5 text-slate-300 hover:text-blue-500 transition-colors"
-                                            title="编辑"
-                                        >
-                                            <Pencil size={12} />
-                                        </button>
-                                        <SafeDeleteDialog
-                                            table="calendar_activities"
-                                            recordId={act.id}
-                                            title="确定要彻底删除该事项吗？"
-                                            onSuccess={onRefresh}
-                                        >
-                                            <button
-                                                className="p-0.5 text-slate-300 hover:text-rose-400 transition-colors"
-                                                title="删除"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        </SafeDeleteDialog>
-                                    </div>
+                                    </>
                                 )}
+                                <div className="text-[11px] font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    {act.date && !dayLabel && (
+                                        <span className="text-blue-500 font-bold bg-blue-50 px-1 rounded-sm">
+                                            {act.date.slice(5).replace('-', '/')}
+                                        </span>
+                                    )}
+                                    {dayLabel && <span className="text-slate-400">{dayLabel}</span>}
+                                    <span className="text-slate-400">{fmtTime(act.start_time!)}-{fmtTime(act.end_time!)}</span>
+                                    {dateRangeStr && (
+                                        <span className="text-[10px] text-blue-500/90 italic font-medium tracking-tight bg-blue-50/50 px-1 rounded-sm">{dateRangeStr}</span>
+                                    )}
+                                </div>
                             </div>
-                        );
-                    })
-                )}
+
+                            {isAdmin && !isEditing && (
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
+                                    <button onClick={(e) => { e.stopPropagation(); startEdit(act); }} className="p-0.5 text-slate-300 hover:text-blue-500"><Pencil size={12} /></button>
+                                    <SafeDeleteDialog table="calendar_activities" recordId={act.id} title="确定要彻底删除该事项吗？" onSuccess={onRefresh}>
+                                        <button className="p-0.5 text-slate-300 hover:text-rose-400" onClick={(e) => e.stopPropagation()}><Trash2 size={12} /></button>
+                                    </SafeDeleteDialog>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
+        </div>
+    );
+
+    return (
+        <div className="w-[260px] bg-white/95 backdrop-blur-xl rounded-r-2xl border border-l-0 border-slate-200/80 flex flex-col overflow-hidden">
+            {/* 标题栏 */}
+            <div className="px-5 py-4 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-2">
+                    <ListTodo size={16} className="text-blue-400" />
+                    <span className="font-mono font-bold text-slate-500 tracking-[0.15em] uppercase text-xs">Activities</span>
+                    <span className="ml-auto text-[10px] font-mono text-slate-300">{allActivities.length}</span>
+                </div>
+            </div>
+
+            {/* 事项列表 */}
+            <div className="flex-1 overflow-y-auto px-2 py-4 space-y-6">
+                {renderActivityGroup("单次任务", splitActivities.oneOffs, "bg-blue-400")}
+                {renderActivityGroup("周期循环", splitActivities.routines, "bg-slate-400")}
             </div>
         </div>
     );

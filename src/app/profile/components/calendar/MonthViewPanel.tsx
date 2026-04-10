@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
-import { DayStatus, DayData, Deadline, DeadlineItem, DeadlineTimepoint, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS } from './types';
+import { DayStatus, DayData, Deadline, DeadlineItem, DeadlineTimepoint, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS, Activity } from './types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface MonthViewPanelProps {
@@ -12,6 +12,7 @@ interface MonthViewPanelProps {
     calendarData: Record<string, DayData>;
     deadlineTimepoints: DeadlineTimepoint[];
     deadlineItems: DeadlineItem[];
+    allActivities: Activity[];
     isAdmin: boolean;
     onClose: () => void;
     onToggleMode: () => void;
@@ -35,6 +36,7 @@ export default function MonthViewPanel({
     calendarData,
     deadlineTimepoints,
     deadlineItems,
+    allActivities,
     isAdmin,
     onClose,
     onToggleMode,
@@ -84,6 +86,16 @@ export default function MonthViewPanel({
             item: deadlineItems.find(i => i.id === d.item_id)
         })).filter(d => d.item !== undefined);
     }, [deadlineTimepoints, deadlineItems, selectedKey]);
+
+    // 检查明天是否有单次任务规划
+    const tomorrowWarning = useMemo(() => {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = formatDateKey(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+
+        const hasOneOff = allActivities.some(a => a.date === tomorrowStr && a.day_of_week == null);
+        return !hasOneOff;
+    }, [allActivities, today]);
 
     const handleAdd = async () => {
         if (!newActivity.trim()) return;
@@ -168,13 +180,24 @@ export default function MonthViewPanel({
                             const isTod = isToday(cell.day);
                             const isActiveDead = hasActiveDeadline(key);
 
+                            // 琥珀色斜条纹预警：如果是明天，且明天没有任何单次任务
+                            const isTomorrow = (() => {
+                                const tomorrow = new Date(today);
+                                tomorrow.setDate(tomorrow.getDate() + 1);
+                                return viewYear === tomorrow.getFullYear() && viewMonth === tomorrow.getMonth() && cell.day === tomorrow.getDate();
+                            })();
+                            const isTomorrowEmpty = isTomorrow && !allActivities.some(a => a.date === key && a.day_of_week == null);
+
                             return (
                                 <button
                                     key={i}
                                     onClick={() => onSelectDay(cell.day!)}
-                                    className={`h-[40px] rounded-lg relative flex items-center justify-center transition-all duration-200 m-1 
+                                    className={`h-[40px] rounded-lg relative flex items-center justify-center transition-all duration-200 m-1 overflow-hidden
                                         ${isSel ? 'bg-blue-50 ring-2 ring-blue-400 font-black' : 'hover:bg-slate-50/70'} 
                                         ${isActiveDead && !isSel ? 'ring-1 ring-rose-400/80 bg-rose-50/30' : ''}`}
+                                    style={isTomorrowEmpty && !isSel ? {
+                                        backgroundImage: 'repeating-linear-gradient(45deg, #fef3c7, #fef3c7 8px, #fde68a 8px, #fde68a 16px)'
+                                    } : {}}
                                 >
                                     {status && (
                                         <div className={`absolute inset-2.5 rounded-md ${STATUS_COLORS[status].bg} opacity-80`} />

@@ -406,6 +406,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         calendarData={calendarData}
                                         deadlineTimepoints={deadlineTimepoints}
                                         deadlineItems={deadlineItems}
+                                        allActivities={allActivities}
                                         isAdmin={isAdmin}
                                         onClose={onToggle}
                                         onToggleMode={() => setViewMode('week')}
