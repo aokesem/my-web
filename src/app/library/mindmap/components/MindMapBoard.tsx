@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import ReactFlow, {
-    Background, Controls, Panel, addEdge, MarkerType, BackgroundVariant,
+    Background, Controls, ControlButton, Panel, addEdge, MarkerType, BackgroundVariant,
     Connection, Edge, Node, useReactFlow, useUpdateNodeInternals
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -10,29 +10,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, Share2, Hand, BoxSelect, ArrowRightCircle,
     StickyNote, Frame, Palette, Type, Bold,
-    GitGraph, Route, Plus, Trash2, RotateCcw, RotateCw, Save, Loader2
+    GitGraph, Route, Plus, Trash2, RotateCcw, RotateCw, Save, Loader2, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import dagre from 'dagre';
-import { toPng } from 'html-to-image';
+import { toPng, toCanvas } from 'html-to-image';
 import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabaseClient';
 import { STYLE_PRESETS } from '../constants';
 import { calculateNodeSize } from '../utils';
 import { useHistory } from '../hooks/useHistory';
-import { RoughNode } from './RoughNode';
-import { RoughGroup } from './RoughGroup';
-import { RoughEdge } from './RoughEdge';
+import { ModernNode } from './ModernNode';
+import { ModernGroup } from './ModernGroup';
+import { ModernEdge } from './ModernEdge';
 
 const nodeTypes = {
-    rough: RoughNode,
-    roughGroup: RoughGroup,
+    modern: ModernNode,
+    modernGroup: ModernGroup,
+    // Alias old types to new components for backward compatibility
+    rough: ModernNode,
+    roughGroup: ModernGroup,
 };
 
 const edgeTypes = {
-    rough: RoughEdge,
+    modern: ModernEdge,
+    rough: ModernEdge,
 };
 
 export const MindMapBoard = () => {
@@ -149,16 +153,47 @@ export const MindMapBoard = () => {
         loadMap();
     }, [categoryId, setNodes, setEdges]);
 
+    const captureThumbnail = useCallback(async (): Promise<string | null> => {
+        if (!reactFlowWrapper.current) return null;
+        try {
+            const canvas = await toCanvas(reactFlowWrapper.current, {
+                cacheBust: true,
+                backgroundColor: '#fdfbf7',
+                pixelRatio: 0.5,
+                filter: (node) => {
+                    if (node.classList?.contains('no-export')) return false;
+                    if (node.classList?.contains('react-flow__controls') ||
+                        node.classList?.contains('react-flow__panel') ||
+                        node.classList?.contains('react-flow__attribution') ||
+                        node.classList?.contains('react-flow__minimap')) return false;
+                    return true;
+                }
+            });
+            return canvas.toDataURL('image/webp', 0.7);
+        } catch (err) {
+            console.error('Thumbnail capture failed:', err);
+            return null;
+        }
+    }, [reactFlowWrapper]);
+
     const handleSave = useCallback(async () => {
         setIsSaving(true);
         try {
             const flowData = { nodes, edges };
+            // Capture thumbnail in parallel
+            const thumbnail = await captureThumbnail();
+
+            const updatePayload: any = {
+                nodes_data: flowData,
+                updated_at: new Date().toISOString()
+            };
+            if (thumbnail) {
+                updatePayload.thumbnail = thumbnail;
+            }
+
             const { error } = await supabase
                 .from('mind_maps')
-                .update({
-                    nodes_data: flowData,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updatePayload)
                 .eq('id', categoryId);
 
             if (error) throw error;
@@ -171,7 +206,7 @@ export const MindMapBoard = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [nodes, edges, categoryId]);
+    }, [nodes, edges, categoryId, captureThumbnail]);
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -204,15 +239,14 @@ export const MindMapBoard = () => {
         dagreGraph.setDefaultEdgeLabel(() => ({}));
 
         const isHorizontal = direction === 'LR';
-        dagreGraph.setGraph({ rankdir: direction });
+        dagreGraph.setGraph({ rankdir: direction, nodesep: 40, ranksep: 100 });
 
         nds.forEach((node) => {
-            const { width, height } = node.type === 'roughGroup'
+            const isGroup = node.type === 'modernGroup' || node.type === 'roughGroup';
+            const { width, height } = isGroup
                 ? { width: (node.style?.width as number || 400), height: (node.style?.height as number || 240) }
-                : {
-                    width: node.data.width || calculateNodeSize(node.data.label || '').width,
-                    height: node.data.height || calculateNodeSize(node.data.label || '').height
-                };
+                : calculateNodeSize(node.data.label || '');
+            
             dagreGraph.setNode(node.id, { width, height });
         });
 
@@ -224,12 +258,10 @@ export const MindMapBoard = () => {
 
         return nds.map((node) => {
             const nodeWithPosition = dagreGraph.node(node.id);
-            const { width, height } = node.type === 'roughGroup'
+            const isGroup = node.type === 'modernGroup' || node.type === 'roughGroup';
+            const { width, height } = isGroup
                 ? { width: (node.style?.width as number || 400), height: (node.style?.height as number || 240) }
-                : {
-                    width: node.data.width || calculateNodeSize(node.data.label || '').width,
-                    height: node.data.height || calculateNodeSize(node.data.label || '').height
-                };
+                : calculateNodeSize(node.data.label || '');
 
             return {
                 ...node,
@@ -281,9 +313,9 @@ export const MindMapBoard = () => {
 
         const newNode: Node = {
             id,
-            type: 'rough',
+            type: 'modern',
             position,
-            data: { id: id.slice(-4), label: '灵感片段...', type: 'IDEA' },
+            data: { label: '灵感片段...', colorId: 'white' },
         };
         setNodes(nds => nds.concat(newNode));
     }, [reactFlowInstance, setNodes, saveToHistory]);
@@ -299,9 +331,9 @@ export const MindMapBoard = () => {
 
         const newGroup: Node = {
             id,
-            type: 'roughGroup',
+            type: 'modernGroup',
             position,
-            data: { label: 'GROUP_BLOCK' },
+            data: { label: '未命名分组' },
             style: { width: 400, height: 240 },
             zIndex: -1,
         };
@@ -310,22 +342,24 @@ export const MindMapBoard = () => {
 
     // Create Child Node (Intelligent)
     const createChildNode = useCallback(() => {
-        const selectedNode = nodes.find(n => n.selected && n.type === 'rough');
+        const selectedNode = nodes.find(n => n.selected && (n.type === 'modern' || n.type === 'rough'));
         if (!selectedNode) return;
 
         saveToHistory();
         const id = `node-${Date.now()}`;
         const newNode: Node = {
             id,
-            type: 'rough',
+            type: 'modern',
             position: { x: selectedNode.position.x, y: selectedNode.position.y + 150 },
-            data: { id: id.slice(-4), label: '新子节点', type: 'BRANCH' },
+            data: { label: '新子节点', colorId: selectedNode.data?.colorId || 'white' },
         };
         const newEdge: Edge = {
             id: `e-${selectedNode.id}-${id}`,
             source: selectedNode.id,
             target: id,
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#d1d5db' }
+            type: 'modern',
+            style: { stroke: '#94a3b8', strokeWidth: 1.5 },
+            markerEnd: { type: MarkerType.Arrow, color: '#94a3b8' }
         };
 
         setNodes(nds => nds.concat(newNode));
@@ -334,7 +368,7 @@ export const MindMapBoard = () => {
 
     // Create Sibling Node
     const createSiblingNode = useCallback(() => {
-        const selectedNode = nodes.find(n => n.selected && n.type === 'rough');
+        const selectedNode = nodes.find(n => n.selected && (n.type === 'modern' || n.type === 'rough'));
         if (!selectedNode) return;
 
         saveToHistory();
@@ -346,10 +380,10 @@ export const MindMapBoard = () => {
 
         const newNode: Node = {
             id,
-            type: 'rough',
+            type: 'modern',
             // Position slightly below the selected node
             position: { x: selectedNode.position.x, y: selectedNode.position.y + 100 },
-            data: { id: id.slice(-4), label: '新兄弟节点', type: selectedNode.data.type || 'BRANCH' },
+            data: { label: '新兄弟节点', colorId: selectedNode.data?.colorId || 'white' },
         };
 
         if (parentId) {
@@ -357,7 +391,9 @@ export const MindMapBoard = () => {
                 id: `e-${parentId}-${id}`,
                 source: parentId,
                 target: id,
-                markerEnd: { type: MarkerType.ArrowClosed, color: '#d1d5db' }
+                type: 'modern',
+                style: { stroke: '#94a3b8', strokeWidth: 1.5 },
+                markerEnd: { type: MarkerType.Arrow, color: '#94a3b8' }
             };
             setEdges(eds => eds.concat(newEdge));
         }
@@ -378,7 +414,9 @@ export const MindMapBoard = () => {
             id: `e-${sourceId}-${targetId}-${Date.now()}`,
             source: sourceId,
             target: targetId,
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#d1d5db' }
+            type: 'modern',
+            style: { stroke: '#94a3b8', strokeWidth: 1.5 },
+            markerEnd: { type: MarkerType.Arrow, color: '#94a3b8' }
         };
         setEdges(eds => addEdge(newEdge, eds));
     }, [selectedIds, setEdges, saveToHistory]);
@@ -419,6 +457,10 @@ export const MindMapBoard = () => {
             }
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 deleteSelected();
+            }
+            if (e.key === ' ') {
+                e.preventDefault();
+                setInteractionMode(prev => prev === 'pan' ? 'select' : 'pan');
             }
         };
 
@@ -543,134 +585,135 @@ export const MindMapBoard = () => {
                 </div>
             </div>
 
-            {/* --- Advanced Toolbar --- */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-2 py-2 bg-stone-800/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl no-export">
-                {/* Mode Switchers */}
-                <div className="flex bg-stone-900/50 rounded-xl p-0.5 border border-white/5">
+            {/* --- Sidebar UI Controls --- */}
+            <div className="absolute left-8 top-1/2 -translate-y-1/2 z-50 flex flex-row items-center gap-4 no-export">
+                {/* Advanced Toolbar */}
+                <div className="flex flex-col items-center gap-2 p-2 bg-stone-800/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
+                    {/* Mode Switchers */}
+                    <div className="flex flex-col bg-stone-900/50 rounded-xl p-0.5 border border-white/5">
+                        <button
+                            onClick={() => setInteractionMode('pan')}
+                            className={`p-2.5 rounded-lg transition-all ${interactionMode === 'pan' ? 'bg-white/10 text-white shadow-sm' : 'text-stone-500 hover:text-stone-300'}`}
+                            title="Pan Mode (Hand)"
+                        >
+                            <Hand size={18} strokeWidth={1.5} />
+                        </button>
+                        <button
+                            onClick={() => setInteractionMode('select')}
+                            className={`p-2.5 rounded-lg transition-all ${interactionMode === 'select' ? 'bg-white/10 text-white shadow-sm' : 'text-stone-500 hover:text-stone-300'}`}
+                            title="Select Mode (Box)"
+                        >
+                            <BoxSelect size={18} strokeWidth={1.5} />
+                        </button>
+                    </div>
+
+                    <div className="w-8 h-px bg-white/10 my-1" />
+
+                    {/* Object Creation */}
                     <button
-                        onClick={() => setInteractionMode('pan')}
-                        className={`p-2 rounded-lg transition-all ${interactionMode === 'pan' ? 'bg-white/10 text-white shadow-sm' : 'text-stone-500 hover:text-stone-300'}`}
-                        title="Pan Mode (Hand)"
+                        onClick={createFreeNode}
+                        className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                        title="Create Free Node"
                     >
-                        <Hand size={16} strokeWidth={1.5} />
+                        <StickyNote size={18} strokeWidth={1.5} />
                     </button>
                     <button
-                        onClick={() => setInteractionMode('select')}
-                        className={`p-2 rounded-lg transition-all ${interactionMode === 'select' ? 'bg-white/10 text-white shadow-sm' : 'text-stone-500 hover:text-stone-300'}`}
-                        title="Select Mode (Box)"
+                        onClick={createChildNode}
+                        className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                        title="Add Child Node (Tab)"
                     >
-                        <BoxSelect size={16} strokeWidth={1.5} />
+                        <Plus size={18} strokeWidth={1.5} />
+                    </button>
+                    <button
+                        onClick={createGroupFrame}
+                        className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                        title="Create Grouping Frame"
+                    >
+                        <Frame size={18} strokeWidth={1.5} />
+                    </button>
+                    <button
+                        onClick={connectSelectedNodes}
+                        className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                        title="Connect Selected Nodes"
+                    >
+                        <ArrowRightCircle size={18} strokeWidth={1.5} />
+                    </button>
+
+                    <div className="w-8 h-px bg-white/10 my-1" />
+
+                    {/* History & Delete */}
+                    <button
+                        onClick={undo}
+                        disabled={!canUndo}
+                        className={`p-2.5 rounded-xl transition-all ${canUndo ? 'text-stone-400 hover:bg-white/10 hover:text-white' : 'text-stone-700 cursor-not-allowed'}`}
+                        title="Undo (Ctrl+Z)"
+                    >
+                        <RotateCcw size={18} strokeWidth={1.5} />
+                    </button>
+                    <button
+                        onClick={redo}
+                        disabled={!canRedo}
+                        className={`p-2.5 rounded-xl transition-all ${canRedo ? 'text-stone-400 hover:bg-white/10 hover:text-white' : 'text-stone-700 cursor-not-allowed'}`}
+                        title="Redo (Ctrl+Y)"
+                    >
+                        <RotateCw size={18} strokeWidth={1.5} />
+                    </button>
+                    <button
+                        onClick={deleteSelected}
+                        className="p-2.5 text-red-400/80 hover:text-red-300 hover:bg-red-400/20 rounded-xl transition-all"
+                        title="Delete Selected (Backspace)"
+                    >
+                        <Trash2 size={18} strokeWidth={1.5} />
                     </button>
                 </div>
 
-                <div className="w-px h-5 bg-white/10 mx-1" />
-
-                {/* Object Creation */}
-                <button
-                    onClick={createFreeNode}
-                    className="p-2 text-stone-300 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-                    title="Create Free Node (Sticky Note)"
-                >
-                    <StickyNote size={16} strokeWidth={1.5} />
-                </button>
-                <button
-                    onClick={createChildNode}
-                    className="p-2 text-stone-300 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-                    title="Add Child Node (Tab)"
-                >
-                    <Plus size={16} strokeWidth={1.5} />
-                </button>
-                <button
-                    onClick={createGroupFrame}
-                    className="p-2 text-stone-300 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-                    title="Create Grouping Frame"
-                >
-                    <Frame size={16} strokeWidth={1.5} />
-                </button>
-                <button
-                    onClick={connectSelectedNodes}
-                    className="p-2 text-stone-300 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-                    title="Connect Selected Nodes"
-                >
-                    <ArrowRightCircle size={16} strokeWidth={1.5} />
-                </button>
-
-                <div className="w-px h-5 bg-white/10 mx-1" />
-
-                {/* History & Delete */}
-                <button
-                    onClick={undo}
-                    disabled={!canUndo}
-                    className={`p-2 rounded-xl transition-all ${canUndo ? 'text-stone-300 hover:bg-white/10 hover:text-white' : 'text-stone-600 cursor-not-allowed'}`}
-                    title="Undo (Ctrl+Z)"
-                >
-                    <RotateCcw size={16} strokeWidth={1.5} />
-                </button>
-                <button
-                    onClick={redo}
-                    disabled={!canRedo}
-                    className={`p-2 rounded-xl transition-all ${canRedo ? 'text-stone-300 hover:bg-white/10 hover:text-white' : 'text-stone-600 cursor-not-allowed'}`}
-                    title="Redo (Ctrl+Y)"
-                >
-                    <RotateCw size={16} strokeWidth={1.5} />
-                </button>
-                <button
-                    onClick={deleteSelected}
-                    className="p-2 text-red-300/80 hover:text-red-200 hover:bg-red-400/20 rounded-xl transition-all"
-                    title="Delete Selected (Backspace)"
-                >
-                    <Trash2 size={16} strokeWidth={1.5} />
-                </button>
-            </div>
-
-            {/* --- Style Toolbar (Conditional) --- */}
-            <AnimatePresence mode="wait">
-                {selectedIds.length > 0 && !nodes.find(n => n.id === selectedIds[0] && n.type === 'roughGroup') && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20, x: '-50%' }}
-                        animate={{ opacity: 1, y: 0, x: '-50%' }}
-                        exit={{ opacity: 0, y: -20, x: '-50%' }}
-                        className="absolute top-20 left-1/2 z-50 flex items-center gap-2 px-3 py-1.5 bg-stone-900/60 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl no-export"
-                    >
-                        <div className="flex items-center gap-0.5 pr-2 border-r border-white/10">
-                            <Palette size={12} strokeWidth={1.5} className="text-stone-500 mr-1" />
-                            {STYLE_PRESETS.colors.map(color => (
-                                <button
-                                    key={color.id}
-                                    onClick={() => updateSelectedNodesStyle({ colorId: color.id })}
-                                    className="w-4 h-4 rounded-full border border-white/10 transition-transform hover:scale-125"
-                                    style={{ backgroundColor: color.stroke }}
-                                    title={color.label}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="flex items-center gap-1 px-1 border-r border-white/10">
-                            {STYLE_PRESETS.borderWeights.map(weight => (
-                                <button
-                                    key={weight.id}
-                                    onClick={() => updateSelectedNodesStyle({ borderWeightId: weight.id })}
-                                    className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/5 transition-all"
-                                    title={`边框: ${weight.label}`}
-                                >
-                                    <Type size={14} strokeWidth={weight.id === 'heavy' ? 3 : 1.5} />
-                                </button>
-                            ))}
-                        </div>
-
-                        <button
-                            onClick={() => {
-                                const isBold = nodes.find(n => n.id === selectedIds[0])?.data?.fontWeight === 'bold';
-                                updateSelectedNodesStyle({ fontWeight: isBold ? 'normal' : 'bold' });
-                            }}
-                            className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/5 transition-all"
-                            title="加粗文字"
+                {/* --- Style Toolbar (Conditional) --- */}
+                <AnimatePresence mode="wait">
+                    {selectedIds.length > 0 && !nodes.find(n => n.id === selectedIds[0] && n.type === 'roughGroup') && (
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="flex flex-col items-center gap-3 p-2 bg-stone-900/80 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl"
                         >
-                            <Bold size={14} strokeWidth={2.5} />
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            <div className="flex flex-col items-center gap-1.5 pb-2 border-b border-white/10">
+                                {STYLE_PRESETS.colors.map(color => (
+                                    <button
+                                        key={color.id}
+                                        onClick={() => updateSelectedNodesStyle({ colorId: color.id })}
+                                        className={`w-5 h-5 rounded-full border border-white/10 transition-transform hover:scale-125 ${color.bg === 'bg-white' ? 'bg-white' : color.bg}`}
+                                        title={color.label}
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="flex flex-col gap-1 py-1 border-b border-white/10">
+                                {STYLE_PRESETS.borderWeights.map(weight => (
+                                    <button
+                                        key={weight.id}
+                                        onClick={() => updateSelectedNodesStyle({ borderWeightId: weight.id })}
+                                        className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+                                        title={`边框: ${weight.label}`}
+                                    >
+                                        <Type size={16} strokeWidth={weight.id === 'heavy' ? 3 : 1.5} />
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    const isBold = nodes.find(n => n.id === selectedIds[0])?.data?.fontWeight === 'bold';
+                                    updateSelectedNodesStyle({ fontWeight: isBold ? 'normal' : 'bold' });
+                                }}
+                                className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+                                title="加粗文字"
+                            >
+                                <Bold size={16} strokeWidth={2.5} />
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
 
             <div className="absolute top-8 right-8 z-50 flex items-center gap-6 no-export">
                 {/* Layout Switches (Top Right) */}
@@ -770,27 +813,23 @@ export const MindMapBoard = () => {
                 >
                     <Background
                         variant={BackgroundVariant.Dots}
-                        gap={32}
+                        gap={24}
                         size={1}
-                        color="#4a4a4a"
-                        className="opacity-[0.08]"
+                        color="#cbd5e1"
+                        className="opacity-40"
                     />
 
-                    <Controls className="bg-white! border-stone-200! shadow-sm! rounded-lg! overflow-hidden" />
+                    <Controls className="bg-white! border-stone-200! shadow-sm! rounded-lg! overflow-hidden">
+                        <ControlButton 
+                            onClick={() => onLayout('LR')}
+                            title="自动一键布局 (XMind 模式)"
+                            className="bg-white hover:bg-stone-50 transition-colors"
+                        >
+                            <Sparkles size={14} className="text-amber-500" />
+                        </ControlButton>
+                    </Controls>
 
-                    <Panel position="bottom-right" className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-stone-200 shadow-lg mb-8 mr-8 pointer-events-none select-none">
-                        <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-center gap-10">
-                                <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-widest">Logic_Core</span>
-                                <span className="text-[10px] font-mono text-sky-500">v1.3.1_tools</span>
-                            </div>
-                            <div className="h-px w-full bg-stone-100" />
-                            <div className="space-y-1">
-                                <div className="text-[8px] font-mono text-stone-300">HISTORY_DEPTH: {history.length}</div>
-                                <div className="text-[8px] font-mono text-stone-300 uppercase tracking-tighter">TOOL: {interactionMode.toUpperCase()}</div>
-                            </div>
-                        </div>
-                    </Panel>
+
                 </ReactFlow>
             </div>
 

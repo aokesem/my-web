@@ -40,8 +40,8 @@ export const RoughNode = ({ id, data, selected }: NodeProps) => {
 
         // Draw hand-drawn rectangle with dynamic styling and size
         rc.rectangle(2, 2, width - 4, height - 4, {
-            roughness: activeWeight.roughness,
-            stroke: activeColor.stroke,
+            roughness: 0.5,
+            stroke: '#4a4a4a',
             strokeWidth: activeWeight.width,
             fill: activeColor.bg,
             fillStyle: 'hachure',
