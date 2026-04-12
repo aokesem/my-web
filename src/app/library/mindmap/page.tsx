@@ -268,7 +268,7 @@ export default function MindMapMatrixPage() {
                             <Input
                                 id="title"
                                 placeholder="e.g. Neural Architecture v1"
-                                className="bg-white border-stone-200 focus:border-sky-500 font-serif"
+                                className="bg-white border-stone-200 focus:border-sky-500 font-serif text-stone-900"
                                 value={newMapData.title}
                                 onChange={(e) => {
                                     const title = e.target.value;
@@ -283,7 +283,7 @@ export default function MindMapMatrixPage() {
                             <Input
                                 id="id"
                                 placeholder="neural-architecture-v1"
-                                className="bg-stone-50 border-stone-200 font-mono text-xs text-stone-600"
+                                className="bg-stone-50 border-stone-200 font-mono text-xs text-stone-900"
                                 value={newMapData.id}
                                 onChange={(e) => setNewMapData({ ...newMapData, id: e.target.value })}
                             />
@@ -293,7 +293,7 @@ export default function MindMapMatrixPage() {
                             <Input
                                 id="desc"
                                 placeholder="Brief objective..."
-                                className="bg-white border-stone-200 focus:border-sky-500"
+                                className="bg-white border-stone-200 focus:border-sky-500 text-stone-900"
                                 value={newMapData.description}
                                 onChange={(e) => setNewMapData({ ...newMapData, description: e.target.value })}
                             />
@@ -324,7 +324,7 @@ export default function MindMapMatrixPage() {
                                 <Input
                                     value={editMapData.title}
                                     onChange={e => setEditMapData({ ...editMapData, title: e.target.value })}
-                                    className="bg-white border-stone-200 focus:border-sky-500 font-serif"
+                                    className="bg-white border-stone-200 focus:border-sky-500 font-serif text-stone-900"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -332,7 +332,7 @@ export default function MindMapMatrixPage() {
                                 <Input
                                     value={editMapData.en_title}
                                     onChange={e => setEditMapData({ ...editMapData, en_title: e.target.value })}
-                                    className="bg-white border-stone-200 focus:border-sky-500 font-mono text-xs"
+                                    className="bg-white border-stone-200 focus:border-sky-500 font-mono text-xs text-stone-900"
                                 />
                             </div>
                         </div>
@@ -341,7 +341,7 @@ export default function MindMapMatrixPage() {
                             <Input
                                 value={editMapData.description}
                                 onChange={e => setEditMapData({ ...editMapData, description: e.target.value })}
-                                className="bg-white border-stone-200 focus:border-sky-500"
+                                className="bg-white border-stone-200 focus:border-sky-500 text-stone-900"
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -350,7 +350,7 @@ export default function MindMapMatrixPage() {
                                 <Input
                                     value={editMapData.icon}
                                     onChange={e => setEditMapData({ ...editMapData, icon: e.target.value })}
-                                    className="bg-white border-stone-200 focus:border-sky-500 font-mono text-xs"
+                                    className="bg-white border-stone-200 focus:border-sky-500 font-mono text-xs text-stone-900"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -358,7 +358,7 @@ export default function MindMapMatrixPage() {
                                 <select
                                     value={editMapData.status}
                                     onChange={e => setEditMapData({ ...editMapData, status: e.target.value })}
-                                    className="w-full h-10 px-3 rounded-md border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                                    className="w-full h-10 px-3 rounded-md border border-stone-200 bg-white text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                                 >
                                     <option value="Draft">Draft</option>
                                     <option value="Operational">Operational</option>
