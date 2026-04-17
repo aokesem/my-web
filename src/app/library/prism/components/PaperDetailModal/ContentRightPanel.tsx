@@ -9,9 +9,10 @@ interface ContentRightPanelProps {
     paper: PaperDetail;
     editorRef: React.RefObject<BlockEditorRef | null | any>;
     onUpdate: (field: keyof PaperDetail, value: any) => Promise<void>;
+    onEditingChange?: (isEditing: boolean) => void;
 }
 
-export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPanelProps) {
+export function ContentRightPanel({ paper, editorRef, onUpdate, onEditingChange }: ContentRightPanelProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -26,6 +27,12 @@ export function ContentRightPanel({ paper, editorRef, onUpdate }: ContentRightPa
     // Notes state
     const [editingNotes, setEditingNotes] = useState(false);
     const [tempNotes, setTempNotes] = useState(paper.notes || '');
+
+    // Notify parent about editing state
+    React.useEffect(() => {
+        const isEditing = editingSummary || editingFigures || editingNotes;
+        if (onEditingChange) onEditingChange(isEditing);
+    }, [editingSummary, editingFigures, editingNotes]);
 
     const handleUpdateField = async (field: keyof PaperDetail, value: any, cleanup: () => void) => {
         setIsSaving(true);

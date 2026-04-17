@@ -9,7 +9,9 @@ interface WeekActivityListPanelProps {
     allActivities: Activity[];
     deadlineItems: DeadlineItem[];
     isAdmin: boolean;
+    selectedKey?: string;
     onRemoveActivity: (id: number) => Promise<void>;
+    onClearDayOneOffs?: (dateKey: string) => Promise<void>;
     onRefresh: () => void;
     onUpdateActivity: (id: number, updates: { content?: string, color?: string }) => Promise<void>;
     onJumpToDate?: (dateStr: string) => void;
@@ -27,7 +29,7 @@ const COLORS = [
 const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export default function WeekActivityListPanel({
-    allActivities, deadlineItems, isAdmin, onRemoveActivity, onRefresh, onUpdateActivity, onJumpToDate
+    allActivities, deadlineItems, isAdmin, selectedKey, onRemoveActivity, onClearDayOneOffs, onRefresh, onUpdateActivity, onJumpToDate
 }: WeekActivityListPanelProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -43,19 +45,22 @@ export default function WeekActivityListPanel({
 
     // 将事项拆分为「单次」与「循环」
     const splitActivities = useMemo(() => {
-        const sorted = allActivities
-            .filter(a => a.start_time && a.end_time)
+        const oneOffs = allActivities
+            .filter(a => a.day_of_week == null && a.start_time && a.end_time)
             .sort((a, b) => {
-                const dayA = a.day_of_week ?? -1;
-                const dayB = b.day_of_week ?? -1;
-                if (dayA !== dayB) return dayA - dayB;
+                const dateComp = (a.date || '').localeCompare(b.date || '');
+                if (dateComp !== 0) return dateComp;
                 return (a.start_time || '').localeCompare(b.start_time || '');
             });
 
-        return {
-            oneOffs: sorted.filter(a => a.day_of_week == null),
-            routines: sorted.filter(a => a.day_of_week != null)
-        };
+        const routines = allActivities
+            .filter(a => a.day_of_week != null && a.start_time && a.end_time)
+            .sort((a, b) => {
+                // 按结束日期升序排
+                return (a.recur_until || '').localeCompare(b.recur_until || '');
+            });
+
+        return { oneOffs, routines };
     }, [allActivities]);
 
     const startEdit = (act: Activity) => {
@@ -103,12 +108,29 @@ export default function WeekActivityListPanel({
 
     const fmtTime = (t: string) => t.length > 5 ? t.slice(0, 5) : t;
 
-    const renderActivityGroup = (title: string, list: Activity[], iconColor: string) => (
+    const renderActivityGroup = (title: string, list: Activity[], iconColor: string, isOneOff: boolean) => (
         <div className="space-y-1">
             <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
                 <div className={`w-1 h-3 rounded-full ${iconColor}`} />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</span>
-                <span className="ml-auto text-[9px] font-mono text-slate-300">{list.length}</span>
+                <span className="text-[9px] font-mono text-slate-300 ml-1">{list.length}</span>
+                
+                {isAdmin && isOneOff && onClearDayOneOffs && selectedKey && (
+                    <button 
+                        onClick={() => {
+                            const count = list.filter(a => a.date === selectedKey).length;
+                            if (count === 0) return;
+                            if (window.confirm(`确定要清空选中日 (${selectedKey}) 的所有 ${count} 个单次任务吗？`)) {
+                                onClearDayOneOffs(selectedKey);
+                            }
+                        }}
+                        className="ml-auto text-[9px] font-bold text-rose-400/70 hover:text-rose-500 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md hover:bg-rose-50 transition-colors"
+                        title="清空选中日单次任务"
+                    >
+                        <Trash2 size={10} />
+                        <span>CLEAR DAY</span>
+                    </button>
+                )}
             </div>
             {list.length === 0 ? (
                 <div className="text-[11px] text-slate-300 italic px-4 py-2 opacity-60">暂无事项</div>
@@ -217,8 +239,8 @@ export default function WeekActivityListPanel({
 
             {/* 事项列表 */}
             <div className="flex-1 overflow-y-auto px-2 py-4 space-y-6">
-                {renderActivityGroup("单次任务", splitActivities.oneOffs, "bg-blue-400")}
-                {renderActivityGroup("周期循环", splitActivities.routines, "bg-slate-400")}
+                {renderActivityGroup("单次任务", splitActivities.oneOffs, "bg-blue-400", true)}
+                {renderActivityGroup("周期循环", splitActivities.routines, "bg-slate-400", false)}
             </div>
         </div>
     );

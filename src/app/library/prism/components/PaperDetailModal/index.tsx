@@ -17,6 +17,7 @@ export interface PaperDetailModalProps {
     open: boolean;
     onClose: () => void;
     onUpdate?: () => Promise<void>;
+    onEditingChange?: (isEditing: boolean) => void;
     hasPrev?: boolean;
     hasNext?: boolean;
     onPrev?: () => void;
@@ -28,19 +29,39 @@ export default function PaperDetailModal({
     open,
     onClose,
     onUpdate,
+    onEditingChange,
     hasPrev,
     hasNext,
     onPrev,
     onNext
 }: PaperDetailModalProps) {
     const [leftPanel, setLeftPanel] = useState<'info' | 'toc'>('info');
+    const [isEditing, setIsEditing] = useState(false);
     const editorRef = useRef<BlockEditorRef>(null);
+
+    // Notify parent about editing state (if needed)
+    useEffect(() => {
+        if (onEditingChange) onEditingChange(isEditing);
+    }, [isEditing, onEditingChange]);
+
+    const handleSafeClose = () => {
+        if (isEditing) {
+            if (confirm('有未保存的更改，确定要关闭吗？')) {
+                onClose();
+            }
+        } else {
+            onClose();
+        }
+    };
 
     // Global keyboard navigation
     useEffect(() => {
         if (!open) return;
         const handleKeyDownNav = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') {
+                handleSafeClose();
+                return;
+            }
 
             // Ignore arrow keys if user is typing in an input, textarea, or contenteditable (like Tiptap)
             const activeTag = document.activeElement?.tagName.toLowerCase();
@@ -54,7 +75,7 @@ export default function PaperDetailModal({
         };
         window.addEventListener('keydown', handleKeyDownNav);
         return () => window.removeEventListener('keydown', handleKeyDownNav);
-    }, [open, onClose, hasPrev, hasNext, onPrev, onNext]);
+    }, [open, onClose, hasPrev, hasNext, onPrev, onNext, isEditing]);
 
     // DB Update Handler
     const handleUpdateField = async (field: keyof PaperDetail, value: any) => {
@@ -105,7 +126,7 @@ export default function PaperDetailModal({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={onClose}
+                        onClick={handleSafeClose}
                         className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm print:hidden"
                     />
 
@@ -142,7 +163,7 @@ export default function PaperDetailModal({
                     >
                         {/* Close Button */}
                         <button
-                            onClick={onClose}
+                            onClick={handleSafeClose}
                             className="absolute top-6 right-6 z-20 p-2 rounded-full bg-stone-100 text-stone-400 hover:bg-stone-200 hover:text-stone-600 transition-colors print:hidden"
                         >
                             <X size={18} strokeWidth={2.5} />
@@ -197,6 +218,7 @@ export default function PaperDetailModal({
                             paper={paper}
                             editorRef={editorRef}
                             onUpdate={handleUpdateField}
+                            onEditingChange={setIsEditing}
                         />
                     </motion.div>
                 </div>

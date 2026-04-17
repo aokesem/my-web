@@ -310,6 +310,18 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         mutate();
     };
 
+    const handleClearDayOneOffs = async (dateKey: string) => {
+        const { error } = await supabase
+            .from('calendar_activities')
+            .delete()
+            .eq('date', dateKey)
+            .is('day_of_week', null);
+        
+        if (!error) {
+            mutate();
+        }
+    };
+
     // === 静止态的日历网格数据 ===
     const idleGrid = useMemo(() => {
         const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
@@ -452,7 +464,9 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         allActivities={allActivities}
                                         deadlineItems={deadlineItems}
                                         isAdmin={isAdmin}
+                                        selectedKey={selectedKey}
                                         onRemoveActivity={handleRemoveActivityById}
+                                        onClearDayOneOffs={handleClearDayOneOffs}
                                         onRefresh={mutate}
                                         onUpdateActivity={handleUpdateActivity}
                                         onJumpToDate={handleJumpToDate}

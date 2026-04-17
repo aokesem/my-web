@@ -16,9 +16,19 @@ export const ModernNode = ({ id, data, selected }: NodeProps) => {
         if (!isEditing) setEditText(data.label || '');
     }, [data.label, isEditing]);
 
+    // Auto-enter edit mode for newly created nodes
+    useEffect(() => {
+        if (data.isNew) {
+            setIsEditing(true);
+            // Clear the flag so it doesn't re-trigger
+            setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, isNew: false } } : n));
+        }
+    }, [data.isNew, id, setNodes]);
+
     useEffect(() => {
         if (isEditing && textareaRef.current) {
             textareaRef.current.focus();
+            textareaRef.current.select();
             // Trigger auto-resize
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';

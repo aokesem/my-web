@@ -14,10 +14,15 @@ interface SidebarInfoPanelProps {
     paper: PaperDetail;
     editorRef: React.RefObject<BlockEditorRef | null | any>;
     onUpdate: (field: keyof PaperDetail, value: any) => Promise<void>;
+    onEditingChange?: (isEditing: boolean) => void;
 }
 
-export function SidebarInfoPanel({ paper, editorRef, onUpdate }: SidebarInfoPanelProps) {
+export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange }: SidebarInfoPanelProps) {
     const [editingKeyContributions, setEditingKeyContributions] = useState(false);
+    // Notify parent about editing state
+    React.useEffect(() => {
+        if (onEditingChange) onEditingChange(editingKeyContributions);
+    }, [editingKeyContributions]);
     const [tempKeyContributions, setTempKeyContributions] = useState<string[]>(paper.key_contributions || []);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -273,19 +278,30 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate }: SidebarInfoPane
                 {editingKeyContributions ? (
                     <div className="space-y-3 bg-stone-50 rounded-xl border border-stone-200/60 p-4">
                         {tempKeyContributions.map((item, idx) => (
-                            <div key={idx} className="flex gap-2">
-                                <input
+                            <div key={idx} className="flex gap-2 items-start">
+                                <textarea
                                     value={item}
                                     onChange={e => {
                                         const newArr = [...tempKeyContributions];
                                         newArr[idx] = e.target.value;
                                         setTempKeyContributions(newArr);
+                                        // Auto-resize
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = e.target.scrollHeight + 'px';
                                     }}
-                                    className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-700 focus:outline-hidden focus:ring-1 focus:ring-stone-300"
+                                    ref={(el) => {
+                                        // Auto-resize on mount
+                                        if (el) {
+                                            el.style.height = 'auto';
+                                            el.style.height = el.scrollHeight + 'px';
+                                        }
+                                    }}
+                                    rows={1}
+                                    className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-700 focus:outline-hidden focus:ring-1 focus:ring-stone-300 resize-none overflow-hidden"
                                 />
                                 <button
                                     onClick={() => setTempKeyContributions(tempKeyContributions.filter((_, i) => i !== idx))}
-                                    className="text-stone-300 hover:text-red-400 p-1"
+                                    className="text-stone-300 hover:text-red-400 p-1 mt-0.5"
                                 >
                                     <X size={14} />
                                 </button>

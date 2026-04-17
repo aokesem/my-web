@@ -50,6 +50,10 @@ export const MindMapBoard = () => {
 
     // Tool States
     const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('pan');
+    const [autoLayoutMode, setAutoLayoutMode] = useState(false);
+    const [autoLayoutDirection, setAutoLayoutDirection] = useState<'LR' | 'TB'>('LR');
+    const prevNodeCountRef = useRef(0);
+    const prevEdgeCountRef = useRef(0);
 
     // Initial Data Fetch
     const [initialDataLoaded, setInitialDataLoaded] = useState(false);
@@ -142,6 +146,8 @@ export const MindMapBoard = () => {
                 if (loadedNodes.length > 0) {
                     setNodes(loadedNodes);
                     setEdges(loadedEdges);
+                    prevNodeCountRef.current = loadedNodes.length;
+                    prevEdgeCountRef.current = loadedEdges.length;
                 } else {
                     // Fallback to initial mock if empty (optional, for demo)
                     // setNodes(INITIAL_NODES); 
@@ -273,8 +279,8 @@ export const MindMapBoard = () => {
         });
     }, []);
 
-    const onLayout = useCallback((direction: string) => {
-        saveToHistory();
+    const onLayout = useCallback((direction: string, options?: { skipFitView?: boolean, skipHistory?: boolean }) => {
+        if (!options?.skipHistory) saveToHistory();
         const layoutedNodes = getLayoutedElements(nodes, edges, direction);
 
         // Update nodes with new positions AND layout direction for handle switching
@@ -290,12 +296,24 @@ export const MindMapBoard = () => {
             updatedNodes.forEach(node => {
                 updateNodeInternals(node.id);
             });
-
-            if (reactFlowInstance) {
-                reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
-            }
         });
-    }, [nodes, edges, getLayoutedElements, setNodes, saveToHistory, reactFlowInstance, updateNodeInternals]);
+    }, [nodes, edges, getLayoutedElements, setNodes, saveToHistory, updateNodeInternals]);
+
+    // Auto-layout: re-run layout when nodes/edges are added while mode is active
+    useEffect(() => {
+        if (!autoLayoutMode || !initialDataLoaded) return;
+        const nodeCount = nodes.length;
+        const edgeCount = edges.length;
+
+        if (nodeCount !== prevNodeCountRef.current || edgeCount !== prevEdgeCountRef.current) {
+            // Only auto-layout when items are added, not removed (to avoid layout on delete)
+            if (nodeCount > prevNodeCountRef.current || edgeCount > prevEdgeCountRef.current) {
+                onLayout(autoLayoutDirection, { skipFitView: true, skipHistory: true });
+            }
+            prevNodeCountRef.current = nodeCount;
+            prevEdgeCountRef.current = edgeCount;
+        }
+    }, [nodes.length, edges.length, autoLayoutMode, autoLayoutDirection, initialDataLoaded, onLayout]);
 
     const onConnect = useCallback((params: Connection) => {
         saveToHistory();
@@ -315,7 +333,7 @@ export const MindMapBoard = () => {
             id,
             type: 'modern',
             position,
-            data: { label: '灵感片段...', colorId: 'white' },
+            data: { label: '灵感片段...', colorId: 'white', isNew: true },
         };
         setNodes(nds => nds.concat(newNode));
     }, [reactFlowInstance, setNodes, saveToHistory]);
@@ -351,7 +369,7 @@ export const MindMapBoard = () => {
             id,
             type: 'modern',
             position: { x: selectedNode.position.x, y: selectedNode.position.y + 150 },
-            data: { label: '新子节点', colorId: selectedNode.data?.colorId || 'white' },
+            data: { label: '新子节点', colorId: selectedNode.data?.colorId || 'white', isNew: true },
         };
         const newEdge: Edge = {
             id: `e-${selectedNode.id}-${id}`,
@@ -383,7 +401,7 @@ export const MindMapBoard = () => {
             type: 'modern',
             // Position slightly below the selected node
             position: { x: selectedNode.position.x, y: selectedNode.position.y + 100 },
-            data: { label: '新兄弟节点', colorId: selectedNode.data?.colorId || 'white' },
+            data: { label: '新兄弟节点', colorId: selectedNode.data?.colorId || 'white', isNew: true },
         };
 
         if (parentId) {
@@ -716,19 +734,35 @@ export const MindMapBoard = () => {
             </div>
 
             <div className="absolute top-8 right-8 z-50 flex items-center gap-6 no-export">
-                {/* Layout Switches (Top Right) */}
-                <div className="flex bg-white/80 backdrop-blur-md rounded-2xl p-1 border border-stone-200/60 shadow-sm">
+                {/* Layout Mode Toggles (Top Right) */}
+                <div className="flex bg-white/80 backdrop-blur-md rounded-2xl p-1 border border-stone-200/60 shadow-sm items-center gap-1">
                     <button
-                        onClick={() => onLayout('TB')}
-                        className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-all"
-                        title="Tree Layout (Top-Down)"
+                        onClick={() => {
+                            if (autoLayoutMode && autoLayoutDirection === 'TB') {
+                                setAutoLayoutMode(false);
+                            } else {
+                                setAutoLayoutDirection('TB');
+                                setAutoLayoutMode(true);
+                                onLayout('TB');
+                            }
+                        }}
+                        className={`p-2 rounded-xl transition-all ${autoLayoutMode && autoLayoutDirection === 'TB' ? 'bg-sky-100 text-sky-600 shadow-sm' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100'}`}
+                        title={autoLayoutMode && autoLayoutDirection === 'TB' ? 'Auto-Layout ON (Top-Down) — Click to disable' : 'Enable Auto-Layout (Top-Down)'}
                     >
                         <GitGraph size={18} strokeWidth={1.5} />
                     </button>
                     <button
-                        onClick={() => onLayout('LR')}
-                        className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-all"
-                        title="Flow Layout (Left-Right)"
+                        onClick={() => {
+                            if (autoLayoutMode && autoLayoutDirection === 'LR') {
+                                setAutoLayoutMode(false);
+                            } else {
+                                setAutoLayoutDirection('LR');
+                                setAutoLayoutMode(true);
+                                onLayout('LR');
+                            }
+                        }}
+                        className={`p-2 rounded-xl transition-all ${autoLayoutMode && autoLayoutDirection === 'LR' ? 'bg-sky-100 text-sky-600 shadow-sm' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100'}`}
+                        title={autoLayoutMode && autoLayoutDirection === 'LR' ? 'Auto-Layout ON (Left-Right) — Click to disable' : 'Enable Auto-Layout (Left-Right)'}
                     >
                         <Route size={18} strokeWidth={1.5} />
                     </button>
@@ -807,6 +841,7 @@ export const MindMapBoard = () => {
                     minZoom={0.2}
                     maxZoom={2}
                     deleteKeyCode={null}
+                    nodesDraggable={!autoLayoutMode}
                     selectionOnDrag={interactionMode === 'select'}
                     panOnDrag={interactionMode === 'pan'}
                     selectionMode={interactionMode === 'select' ? /** SelectionMode.Full */ undefined : undefined}
