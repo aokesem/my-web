@@ -54,8 +54,9 @@ export default function NotebookCard({ module }: ModuleProps) {
                     {/* Outer rotating ring */}
                     <motion.div
                         className="absolute inset-0"
-                        animate={{ rotate: 360 }}
+                        animate={{ rotate: [0, 360] }}
                         transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+                        style={{ willChange: 'transform' }}
                     >
                         <svg viewBox="0 0 144 144" className="w-full h-full">
                             <motion.circle
@@ -88,8 +89,9 @@ export default function NotebookCard({ module }: ModuleProps) {
                     {/* Inner counter-rotating ring */}
                     <motion.div
                         className="absolute inset-4"
-                        animate={{ rotate: -360 }}
+                        animate={{ rotate: [0, -360] }}
                         transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
+                        style={{ willChange: 'transform' }}
                     >
                         <svg viewBox="0 0 112 112" className="w-full h-full">
                             <motion.circle

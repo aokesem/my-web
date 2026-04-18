@@ -315,7 +315,8 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
             .from('calendar_activities')
             .delete()
             .eq('date', dateKey)
-            .is('day_of_week', null);
+            .is('day_of_week', null)
+            .not('start_time', 'is', null); // 关键：仅清空周历有时间安排的活动，保留月历全天记录
         
         if (!error) {
             mutate();
@@ -418,6 +419,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         calendarData={calendarData}
                                         deadlineTimepoints={deadlineTimepoints}
                                         deadlineItems={deadlineItems}
+                                        deadlineCategories={deadlineCategories}
                                         allActivities={allActivities}
                                         isAdmin={isAdmin}
                                         onClose={onToggle}

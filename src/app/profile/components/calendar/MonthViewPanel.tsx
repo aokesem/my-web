@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
-import { DayStatus, DayData, Deadline, DeadlineItem, DeadlineTimepoint, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS, Activity } from './types';
+import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS, Activity } from './types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface MonthViewPanelProps {
@@ -12,6 +12,7 @@ interface MonthViewPanelProps {
     calendarData: Record<string, DayData>;
     deadlineTimepoints: DeadlineTimepoint[];
     deadlineItems: DeadlineItem[];
+    deadlineCategories: DeadlineCategory[];
     allActivities: Activity[];
     isAdmin: boolean;
     onClose: () => void;
@@ -36,6 +37,7 @@ export default function MonthViewPanel({
     calendarData,
     deadlineTimepoints,
     deadlineItems,
+    deadlineCategories,
     allActivities,
     isAdmin,
     onClose,
@@ -57,6 +59,7 @@ export default function MonthViewPanel({
 
     const [newActivity, setNewActivity] = useState('');
     const [newDuration, setNewDuration] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
     const [newLinkedItemId, setNewLinkedItemId] = useState<number | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
@@ -102,6 +105,7 @@ export default function MonthViewPanel({
         await onAddActivity(newActivity, newDuration, newLinkedItemId);
         setNewActivity('');
         setNewDuration('');
+        setSelectedCategoryId(null);
         setNewLinkedItemId(null);
     };
 
@@ -388,17 +392,38 @@ export default function MonthViewPanel({
                                         <Plus size={16} />
                                     </button>
                                 </div>
-                                {/* 关联条目选择器 */}
-                                <select
-                                    value={newLinkedItemId ?? ''}
-                                    onChange={e => setNewLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors"
-                                >
-                                    <option value="">关联条目 (可选)</option>
-                                    {deadlineItems.map(item => (
-                                        <option key={item.id} value={item.id}>{item.title}</option>
-                                    ))}
-                                </select>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {/* 分类选择 */}
+                                    <select
+                                        value={selectedCategoryId ?? ''}
+                                        onChange={e => {
+                                            const catId = e.target.value ? parseInt(e.target.value) : null;
+                                            setSelectedCategoryId(catId);
+                                            setNewLinkedItemId(null);
+                                        }}
+                                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors"
+                                    >
+                                        <option value="">选择分类 (可选)</option>
+                                        {(deadlineCategories || []).map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* 关联条目选择器 */}
+                                    <select
+                                        value={newLinkedItemId ?? ''}
+                                        onChange={e => setNewLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
+                                        disabled={!selectedCategoryId}
+                                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors disabled:opacity-50"
+                                    >
+                                        <option value="">选择具体条目...</option>
+                                        {deadlineItems
+                                            .filter(item => item.category_id === selectedCategoryId)
+                                            .map(item => (
+                                                <option key={item.id} value={item.id}>{item.title}</option>
+                                            ))}
+                                    </select>
+                                </div>
                             </div>
                         )}
                     </div>

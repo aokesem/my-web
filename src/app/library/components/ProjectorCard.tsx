@@ -28,8 +28,9 @@ export default function ProjectorCard({ module }: ModuleProps) {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.15]">
                 <motion.div
                     className="relative w-[300px] h-[300px]"
-                    animate={{ rotate: 360 }}
+                    animate={{ rotate: [0, 360] }}
                     transition={{ repeat: Infinity, duration: 60, ease: "linear" }}
+                    style={{ willChange: 'transform' }}
                 >
                     <svg viewBox="0 0 200 200" className="w-full h-full text-indigo-900">
                         {/* Circles */}

@@ -47,6 +47,7 @@ export default function DeadlinePanel({
 
     // 视图模式
     const [viewMode, setViewMode] = useState<'categories' | 'schedule'>('categories');
+    const [quickAddCatId, setQuickAddCatId] = useState<number | null>(null);
     const [quickAddItemTp, setQuickAddItemTp] = useState<number | null>(null);
     const [quickAddLabel, setQuickAddLabel] = useState('');
     const [quickAddDate, setQuickAddDate] = useState('');
@@ -112,6 +113,8 @@ export default function DeadlinePanel({
         await onAddTimepoint(quickAddItemTp, quickAddLabel.trim(), quickAddDate);
         setQuickAddLabel('');
         setQuickAddDate('');
+        setQuickAddItemTp(null);
+        setQuickAddCatId(null);
     };
 
     const activeItems = useMemo(() => items.filter(i => !i.is_archived), [items]);
@@ -433,14 +436,30 @@ export default function DeadlinePanel({
                                 <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">快捷安排</span>
                                 <Clock size={12} className="text-rose-300" />
                             </div>
-                            <select
-                                value={quickAddItemTp || ''}
-                                onChange={e => setQuickAddItemTp(e.target.value ? parseInt(e.target.value) : null)}
-                                className="w-full bg-white border border-rose-100 rounded-lg px-2 py-2 text-xs text-slate-700 focus:outline-none focus:border-rose-300 shadow-sm"
-                            >
-                                <option value="">选择项目...</option>
-                                {activeItems.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
-                            </select>
+                            <div className="grid grid-cols-2 gap-2">
+                                <select
+                                    value={quickAddCatId || ''}
+                                    onChange={e => {
+                                        setQuickAddCatId(e.target.value ? parseInt(e.target.value) : null);
+                                        setQuickAddItemTp(null);
+                                    }}
+                                    className="w-full bg-white border border-rose-100 rounded-lg px-2 py-2 text-[10px] text-slate-700 focus:outline-none focus:border-rose-300 shadow-sm"
+                                >
+                                    <option value="">选择分类...</option>
+                                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                                </select>
+                                <select
+                                    value={quickAddItemTp || ''}
+                                    onChange={e => setQuickAddItemTp(e.target.value ? parseInt(e.target.value) : null)}
+                                    disabled={!quickAddCatId}
+                                    className="w-full bg-white border border-rose-100 rounded-lg px-2 py-2 text-[10px] text-slate-700 focus:outline-none focus:border-rose-300 shadow-sm disabled:opacity-50"
+                                >
+                                    <option value="">选择项目...</option>
+                                    {activeItems
+                                        .filter(item => item.category_id === quickAddCatId)
+                                        .map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+                                </select>
+                            </div>
                             <div className="flex gap-1.5 h-9">
                                 <input
                                     value={quickAddLabel}

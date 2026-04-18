@@ -140,11 +140,21 @@ export default function CategoryDetailPage() {
     // Edit Mode State
     const [user, setUser] = useState<any>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [editForm, setEditForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
+    const [editForm, setEditForm] = useState<{ name: string, content: string, group_name: string, sort_order: number }>({
+        name: '',
+        content: '',
+        group_name: '',
+        sort_order: 0
+    });
 
     // Add Mode State
     const [isAdding, setIsAdding] = useState(false);
-    const [addForm, setAddForm] = useState<{ name: string, content: string }>({ name: '', content: '' });
+    const [addForm, setAddForm] = useState<{ name: string, content: string, group_name: string, sort_order: number }>({
+        name: '',
+        content: '',
+        group_name: '',
+        sort_order: 0
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [expandedPromptIds, setExpandedPromptIds] = useState<Set<number>>(new Set());
 
@@ -180,6 +190,16 @@ export default function CategoryDetailPage() {
     const category = pageData.category;
     const prompts = pageData.prompts;
 
+    // --- Data Grouping Logic ---
+    const groupedPrompts = (prompts || []).reduce((acc: { [key: string]: any[] }, prompt: any) => {
+        const group = prompt.group_name || '未分类';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(prompt);
+        return acc;
+    }, {});
+
+    const groupNames = Object.keys(groupedPrompts);
+
     const handleCopy = (id: number, content: string) => {
         navigator.clipboard.writeText(content);
         setCopiedId(id);
@@ -188,12 +208,17 @@ export default function CategoryDetailPage() {
 
     const startEditing = (prompt: any) => {
         setEditingId(prompt.id);
-        setEditForm({ name: prompt.name, content: prompt.content });
+        setEditForm({
+            name: prompt.name,
+            content: prompt.content,
+            group_name: prompt.group_name || '',
+            sort_order: prompt.sort_order || 0
+        });
     };
 
     const cancelEditing = () => {
         setEditingId(null);
-        setEditForm({ name: '', content: '' });
+        setEditForm({ name: '', content: '', group_name: '', sort_order: 0 });
     };
 
     const saveEditing = async (id: number) => {
@@ -203,6 +228,8 @@ export default function CategoryDetailPage() {
                 .update({
                     name: editForm.name,
                     content: editForm.content,
+                    group_name: editForm.group_name,
+                    sort_order: editForm.sort_order,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id);
@@ -232,7 +259,8 @@ export default function CategoryDetailPage() {
                     category_id: categoryId,
                     name: addForm.name,
                     content: addForm.content,
-                    sort_order: prompts.length > 0 ? Math.max(...prompts.map((p: any) => p.sort_order || 0)) + 1 : 1
+                    group_name: addForm.group_name,
+                    sort_order: addForm.sort_order || (prompts.length > 0 ? Math.max(...prompts.map((p: any) => p.sort_order || 0)) + 1 : 1)
                 }]);
 
             if (error) throw error;
@@ -240,7 +268,7 @@ export default function CategoryDetailPage() {
             mutate();
             toast.success('Prompt created successfully');
             setIsAdding(false);
-            setAddForm({ name: '', content: '' });
+            setAddForm({ name: '', content: '', group_name: '', sort_order: 0 });
         } catch (error) {
             console.error('Creation failed:', error);
             toast.error('Failed to create prompt');
@@ -319,20 +347,29 @@ export default function CategoryDetailPage() {
                                 <span className="tracking-wide whitespace-nowrap">{category.title}</span>
                             </div>
 
-                            {/* Prompt links */}
-                            <div className="border-t border-stone-100/60 pt-2 space-y-0.5">
-                                {prompts.map((prompt, idx) => (
-                                    <a
-                                        key={prompt.id}
-                                        href={`#prompt-${prompt.id}`}
-                                        className="group/item flex items-center gap-2.5 px-2 py-2 text-[15px] text-stone-500 hover:text-orange-600 rounded-lg transition-all hover:bg-orange-50/50 whitespace-nowrap"
-                                        title={prompt.name}
-                                    >
-                                        <span className="w-6 text-[13px] font-mono text-stone-300 group-hover/item:text-orange-400 transition-colors shrink-0">
-                                            {String(idx + 1).padStart(2, '0')}
-                                        </span>
-                                        <span className="truncate max-w-[170px]">{prompt.name}</span>
-                                    </a>
+                            {/* Prompt links - Grouped Navigation */}
+                            <div className="border-t border-stone-100/60 pt-2 space-y-4">
+                                {groupNames.map((groupName) => (
+                                    <div key={groupName} className="space-y-1">
+                                        <div className="px-2 py-1 text-[11px] font-mono font-bold text-stone-500 uppercase tracking-[0.2em] border-l-2 border-orange-200 ml-1 bg-orange-50/30">
+                                            {groupName}
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            {groupedPrompts[groupName].map((prompt: any, idx: number) => (
+                                                <a
+                                                    key={prompt.id}
+                                                    href={`#prompt-${prompt.id}`}
+                                                    className="group/item flex items-center gap-2.5 px-2 py-1.5 text-[14px] text-stone-500 hover:text-orange-600 rounded-lg transition-all hover:bg-orange-50/50 whitespace-nowrap"
+                                                    title={prompt.name}
+                                                >
+                                                    <span className="w-5 text-[11px] font-mono text-stone-300 group-hover/item:text-orange-400 transition-colors shrink-0">
+                                                        {String(idx + 1).padStart(2, '0')}
+                                                    </span>
+                                                    <span className="truncate max-w-[150px]">{prompt.name}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -399,13 +436,33 @@ export default function CategoryDetailPage() {
                             </div>
 
                             <div className="space-y-6">
+                                <div className="grid grid-cols-4 gap-4">
+                                    <div className="col-span-3 space-y-2">
+                                        <Label className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">Prompt_Title</Label>
+                                        <Input
+                                            value={addForm.name}
+                                            onChange={e => setAddForm({ ...addForm, name: e.target.value })}
+                                            placeholder="e.g. 代码文档生成器"
+                                            className="font-serif text-lg bg-stone-50/50"
+                                        />
+                                    </div>
+                                    <div className="col-span-1 space-y-2">
+                                        <Label className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">Sort_Order</Label>
+                                        <Input
+                                            type="number"
+                                            value={addForm.sort_order}
+                                            onChange={e => setAddForm({ ...addForm, sort_order: parseInt(e.target.value) || 0 })}
+                                            className="font-mono bg-stone-50/50"
+                                        />
+                                    </div>
+                                </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">Prompt_Title</Label>
+                                    <Label className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">Group_Name</Label>
                                     <Input
-                                        value={addForm.name}
-                                        onChange={e => setAddForm({ ...addForm, name: e.target.value })}
-                                        placeholder="e.g. 代码文档生成器"
-                                        className="font-serif text-lg bg-stone-50/50"
+                                        value={addForm.group_name}
+                                        onChange={e => setAddForm({ ...addForm, group_name: e.target.value })}
+                                        placeholder="e.g. 编程、设计、通用"
+                                        className="bg-stone-50/50"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -432,106 +489,141 @@ export default function CategoryDetailPage() {
                         </motion.section>
                     )}
 
-                    {prompts.length > 0 ? (
-                        prompts.map((prompt) => (
-                            <motion.section
-                                key={prompt.id}
-                                id={`prompt-${prompt.id}`}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="group relative scroll-mt-8"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    {editingId === prompt.id ? (
-                                        <div className="flex-1 mr-4">
-                                            <Input
-                                                value={editForm.name}
-                                                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                                                className="font-serif font-bold text-lg bg-white/80"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <h2 className="text-xl font-serif font-bold text-stone-700 flex items-center gap-3">
-                                            <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
-                                            {prompt.name}
-                                        </h2>
-                                    )}
-
-                                    <div className="flex items-center gap-2">
-                                        {user && editingId !== prompt.id && (
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    onClick={() => startEditing(prompt)}
-                                                    className="p-1.5 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
-                                                    title="Edit Prompt"
-                                                >
-                                                    <Pencil size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeletePrompt(prompt.id)}
-                                                    className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                                    title="Delete Prompt"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                        )}
-                                        {/* Copy Button (only show if not editing) */}
-                                        {editingId !== prompt.id && (
-                                            <button
-                                                onClick={() => handleCopy(prompt.id, prompt.content)}
-                                                className={`
-                                                    flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all
-                                                    ${copiedId === prompt.id
-                                                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200'
-                                                        : 'bg-white text-stone-400 border border-stone-200 hover:border-orange-300 hover:text-orange-500 shadow-sm'}
-                                                `}
-                                            >
-                                                {copiedId === prompt.id ? <Check size={12} /> : <Copy size={12} />}
-                                                {copiedId === prompt.id ? 'Copied' : 'Copy_Prompt'}
-                                            </button>
-                                        )}
-                                    </div>
+                    {groupNames.length > 0 ? (
+                        groupNames.map((groupName) => (
+                            <div key={groupName} className="space-y-8">
+                                {/* Group Header */}
+                                <div className="flex items-center gap-4 py-2">
+                                    <h3 className="text-sm font-mono font-bold text-orange-500 uppercase tracking-[0.3em] bg-orange-50/50 px-4 py-1.5 rounded-full border border-orange-100">
+                                        {groupName}
+                                    </h3>
+                                    <div className="flex-1 h-px bg-linear-to-r from-orange-100 to-transparent" />
                                 </div>
 
-                                {editingId === prompt.id ? (
-                                    <div className="relative rounded-2xl bg-white border border-orange-200 shadow-lg p-6">
-                                        <Textarea
-                                            value={editForm.content}
-                                            onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
-                                            onPaste={e => handleHtmlTablePaste(e, e.currentTarget, (val) => setEditForm(prev => ({ ...prev, content: val })))}
-                                            className="min-h-[400px] font-sans text-[15px] leading-relaxed bg-stone-50/50 mb-4 border-stone-200 focus:border-orange-200 focus:ring-orange-100"
-                                            placeholder="Markdown content..."
-                                        />
-                                        <div className="flex justify-end gap-3">
-                                            <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-stone-500 hover:text-stone-800">
-                                                Cancel
-                                            </Button>
-                                            <Button size="sm" onClick={() => saveEditing(prompt.id)} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
-                                                <Save size={14} /> Save Changes
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="relative rounded-2xl bg-white/70 backdrop-blur-sm border border-stone-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] transition-all overflow-hidden">
-                                        {/* Decoration Lines */}
-                                        <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
+                                <div className="grid grid-cols-1 gap-12 pl-4 border-l border-stone-100">
+                                    {groupedPrompts[groupName].map((prompt: any) => (
+                                        <motion.section
+                                            key={prompt.id}
+                                            id={`prompt-${prompt.id}`}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            className="group relative scroll-mt-8"
+                                        >
+                                            <div className="flex items-center justify-between mb-4">
+                                                {editingId === prompt.id ? (
+                                                    <div className="flex-1 flex gap-4 mr-4">
+                                                        <div className="flex-4">
+                                                            <Input
+                                                                value={editForm.name}
+                                                                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                                                className="font-serif font-bold text-lg bg-white/80"
+                                                                placeholder="Title"
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <Input
+                                                                type="number"
+                                                                value={editForm.sort_order}
+                                                                onChange={(e) => setEditForm(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
+                                                                className="font-mono bg-white/80"
+                                                                title="Sort Order"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <h2 className="text-xl font-serif font-bold text-stone-700 flex items-center gap-3">
+                                                        <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
+                                                        {prompt.name}
+                                                    </h2>
+                                                )}
 
-                                        <PromptContent
-                                            content={prompt.content}
-                                            id={prompt.id}
-                                            isExpanded={expandedPromptIds.has(prompt.id)}
-                                            onToggle={toggleExpand}
-                                        />
+                                                <div className="flex items-center gap-2">
+                                                    {user && editingId !== prompt.id && (
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                onClick={() => startEditing(prompt)}
+                                                                className="p-1.5 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                                                                title="Edit Prompt"
+                                                            >
+                                                                <Pencil size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeletePrompt(prompt.id)}
+                                                                className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                                title="Delete Prompt"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {/* Copy Button (only show if not editing) */}
+                                                    {editingId !== prompt.id && (
+                                                        <button
+                                                            onClick={() => handleCopy(prompt.id, prompt.content)}
+                                                            className={`
+                                                                flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all
+                                                                ${copiedId === prompt.id
+                                                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200'
+                                                                    : 'bg-white text-stone-400 border border-stone-200 hover:border-orange-300 hover:text-orange-500 shadow-sm'}
+                                                            `}
+                                                        >
+                                                            {copiedId === prompt.id ? <Check size={12} /> : <Copy size={12} />}
+                                                            {copiedId === prompt.id ? 'Copied' : 'Copy_Prompt'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
 
-                                        {/* Bottom Tech Bar */}
-                                        <div className="px-8 py-3 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center text-[9px] font-mono text-stone-300">
-                                            <span>ENCODING: UTF-8</span>
-                                            <span>STATUS: ACTIVE</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </motion.section>
+                                            {editingId === prompt.id ? (
+                                                <div className="relative rounded-2xl bg-white border border-orange-200 shadow-lg p-6 space-y-4">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[9px] font-mono text-stone-400 uppercase tracking-widest">Group Name</Label>
+                                                        <Input
+                                                            value={editForm.group_name}
+                                                            onChange={(e) => setEditForm(prev => ({ ...prev, group_name: e.target.value }))}
+                                                            className="bg-stone-50/30 border-stone-200"
+                                                            placeholder="e.g. 编程、设计"
+                                                        />
+                                                    </div>
+                                                    <Textarea
+                                                        value={editForm.content}
+                                                        onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
+                                                        onPaste={e => handleHtmlTablePaste(e, e.currentTarget, (val) => setEditForm(prev => ({ ...prev, content: val })))}
+                                                        className="min-h-[400px] font-sans text-[15px] leading-relaxed bg-stone-50/50 mb-4 border-stone-200 focus:border-orange-200 focus:ring-orange-100"
+                                                        placeholder="Markdown content..."
+                                                    />
+                                                    <div className="flex justify-end gap-3">
+                                                        <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-stone-500 hover:text-stone-800">
+                                                            Cancel
+                                                        </Button>
+                                                        <Button size="sm" onClick={() => saveEditing(prompt.id)} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
+                                                            <Save size={14} /> Save Changes
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="relative rounded-2xl bg-white/70 backdrop-blur-sm border border-stone-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] transition-all overflow-hidden">
+                                                    {/* Decoration Lines */}
+                                                    <div className="absolute top-0 bottom-0 left-8 w-px bg-stone-100/50 hidden md:block" />
+
+                                                    <PromptContent
+                                                        content={prompt.content}
+                                                        id={prompt.id}
+                                                        isExpanded={expandedPromptIds.has(prompt.id)}
+                                                        onToggle={toggleExpand}
+                                                    />
+
+                                                    {/* Bottom Tech Bar */}
+                                                    <div className="px-8 py-3 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center text-[9px] font-mono text-stone-300">
+                                                        <span>ENCODING: UTF-8</span>
+                                                        <span>STATUS: ACTIVE</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </motion.section>
+                                    ))}
+                                </div>
+                            </div>
                         ))
                     ) : (
                         <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-stone-200 rounded-3xl opacity-40">
