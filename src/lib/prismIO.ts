@@ -156,39 +156,63 @@ async function getSafeChapterTitle(courseId: string, originalTitle: string): Pro
  * 导入单个章节
  */
 export async function importChapterFromJson(courseId: string, chapterData: any) {
-    // 1. 确定标题 (冲突处理)
+    // 1. 基础合法性校验
+    if (!chapterData || !chapterData.title) {
+        throw new Error("导入失败：JSON 文件缺少标题字段");
+    }
+
+    // 2. 确定标题 (冲突处理：同名则加后缀)
     const finalTitle = await getSafeChapterTitle(courseId, chapterData.title);
 
-    // 2. 插入章节
+    // 3. 计算追加排序 (获取当前最大排序号并 +1)
+    const { data: countData } = await supabase
+        .from('prism_course_chapters')
+        .select('sort_order')
+        .eq('course_id', courseId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+    
+    const nextSortOrder = countData && countData.length > 0 
+        ? countData[0].sort_order + 1 
+        : 0;
+
+    // 4. 插入章节
     const { data: newChapter, error: chError } = await supabase
         .from('prism_course_chapters')
         .insert([{
             course_id: courseId,
             title: finalTitle,
-            notes: chapterData.notes_json,
-            sort_order: chapterData.sort_order
+            notes: chapterData.notes_json || null,
+            sort_order: nextSortOrder
         }])
         .select()
         .single();
 
     if (chError) throw chError;
 
-    // 3. 插入关联公式
-    if (chapterData.formulas && chapterData.formulas.length > 0) {
-        const formulasToInsert = chapterData.formulas.map((f: any) => ({
-            course_id: courseId,
-            chapter_id: newChapter.id,
-            name: f.name,
-            latex: f.latex,
-            description: f.description,
-            sort_order: f.sort_order
-        }));
-        
-        const { error: fError } = await supabase
-            .from('prism_course_formulas')
-            .insert(formulasToInsert);
-        
-        if (fError) throw fError;
+    // 5. 插入关联公式 (带回退机制)
+    try {
+        if (chapterData.formulas && chapterData.formulas.length > 0) {
+            const formulasToInsert = chapterData.formulas.map((f: any, idx: number) => ({
+                course_id: courseId,
+                chapter_id: newChapter.id,
+                name: f.name || "未命名公式",
+                latex: f.latex || "",
+                description: f.description,
+                sort_order: idx // 公式内部排序重置为 0, 1, 2...
+            }));
+            
+            const { error: fError } = await supabase
+                .from('prism_course_formulas')
+                .insert(formulasToInsert);
+            
+            if (fError) throw fError;
+        }
+    } catch (err: any) {
+        // 如果公式插入失败，尝试回退（删除刚刚创建的章节）
+        console.error("Formula import failed, rolling back chapter...", err);
+        await supabase.from('prism_course_chapters').delete().eq('id', newChapter.id);
+        throw new Error(`公式导入失败，已回退章节创建: ${err.message}`);
     }
 
     return finalTitle;
