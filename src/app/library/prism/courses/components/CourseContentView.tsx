@@ -252,7 +252,7 @@ export function CourseContentView({
                                     >
                                         <BlockEditor
                                             ref={editorRef}
-                                            key={`view-${chapter!.id}`}
+                                            key={`view-${chapter!.id}-${chapter!.notes?.length}`}
                                             value={chapter!.notes!}
                                             editable={false}
                                             imageBucket="course_images"

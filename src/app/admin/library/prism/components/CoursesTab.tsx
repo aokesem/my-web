@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, BookText } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, BookText, Download, Upload, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { exportCourseToZip, importChapterFromJson } from "@/lib/prismIO";
+import JSZip from "jszip";
 import {
     Dialog,
     DialogContent,
@@ -15,6 +14,9 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // ============================================================
 // TYPES
@@ -57,6 +59,7 @@ const EMPTY_FORM = {
 export default function CoursesTab() {
     const [courses, setCourses] = useState<CourseItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [importing, setImporting] = useState(false);
 
     // Dialog state
     const [isOpen, setIsOpen] = useState(false);
@@ -79,6 +82,109 @@ export default function CoursesTab() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handleExport = async (course: CourseItem) => {
+        try {
+            toast.info(`正在准备导出课程「${course.name}」...`);
+            await exportCourseToZip(course);
+            toast.success("导出成功");
+        } catch (e: any) {
+            toast.error("导出失败: " + e.message);
+        }
+    };
+
+    const handleImportChapter = async (courseId: string) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            setImporting(true);
+            try {
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const json = JSON.parse(event.target?.result as string);
+                        const finalTitle = await importChapterFromJson(courseId, json);
+                        toast.success(`章节「${finalTitle}」已导入并插入课程`);
+                    } catch (err: any) {
+                        toast.error("解析或导入失败: " + err.message);
+                    } finally {
+                        setImporting(false);
+                    }
+                };
+                reader.readAsText(file);
+            } catch (e: any) {
+                toast.error("读取文件失败");
+                setImporting(false);
+            }
+        };
+        input.click();
+    };
+
+    const handleImportFullCourse = async () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".zip";
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            setImporting(true);
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const manifestFile = zip.file("manifest.json");
+                if (!manifestFile) throw new Error("无效的备份包：缺少 manifest.json");
+
+                const manifest = JSON.parse(await manifestFile.async("string"));
+                
+                // 1. 创建新课程 (增量插入)
+                const { data: newCourse, error: cError } = await supabase
+                    .from("prism_courses")
+                    .insert([{
+                        name: `${manifest.name}_Imported_${new Date().toLocaleDateString()}`,
+                        name_en: manifest.name_en,
+                        description: manifest.description,
+                        icon: manifest.icon,
+                        color: manifest.color,
+                        sort_order: courses.length
+                    }])
+                    .select()
+                    .single();
+                
+                if (cError) throw cError;
+
+                // 2. 批量导入章节
+                const chaptersFolder = zip.folder("chapters");
+                if (chaptersFolder) {
+                    const chapterFiles: string[] = [];
+                    chaptersFolder.forEach((relativePath) => {
+                        if (relativePath.endsWith(".json")) chapterFiles.push(relativePath);
+                    });
+
+                    toast.info(`正在导入 ${chapterFiles.length} 个章节...`);
+                    
+                    for (const fileName of chapterFiles.sort()) {
+                        const content = await chaptersFolder.file(fileName)?.async("string");
+                        if (content) {
+                            const chData = JSON.parse(content);
+                            await importChapterFromJson(newCourse.id, chData);
+                        }
+                    }
+                }
+
+                toast.success(`课程「${manifest.name}」完整导入成功`);
+                fetchData();
+            } catch (err: any) {
+                toast.error("全量导入失败: " + err.message);
+            } finally {
+                setImporting(false);
+            }
+        };
+        input.click();
+    };
 
     const handleOpen = (item?: CourseItem) => {
         if (item) {

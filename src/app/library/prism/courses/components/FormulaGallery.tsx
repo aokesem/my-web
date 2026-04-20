@@ -40,6 +40,12 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
     const [tempDesc, setTempDesc] = useState(formula.description || '');
     const [saving, setSaving] = useState(false);
 
+    // 判断是否为长公式：根据源码长度或是否包含特定换行/大型环境
+    const isLongFormula = useMemo(() => {
+        const raw = formula.latex;
+        return raw.length > 50 || raw.includes('\\begin{aligned}') || raw.includes('\\\\');
+    }, [formula.latex]);
+
     const renderedLatex = useMemo(() => {
         try {
             const cleaned = stripLatexDelimiters(formula.latex);
@@ -61,7 +67,7 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
 
     if (editing) {
         return (
-            <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-3 shadow-sm">
+            <div className={`bg-white rounded-xl border border-stone-200 p-4 space-y-3 shadow-sm ${isLongFormula ? 'md:col-span-2' : ''}`}>
                 <input
                     value={tempName}
                     onChange={e => setTempName(e.target.value)}
@@ -99,7 +105,7 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
     }
 
     return (
-        <div id={`formula-${formula.id}`} className="group bg-white/80 rounded-xl border border-stone-200/60 p-4 hover:border-stone-300 hover:shadow-sm transition-all cursor-default relative">
+        <div id={`formula-${formula.id}`} className={`group bg-white/80 rounded-xl border border-stone-200/60 p-4 hover:border-stone-300 hover:shadow-sm transition-all cursor-default relative ${isLongFormula ? 'md:col-span-2' : ''}`}>
             <button
                 onClick={() => {
                     setTempName(formula.name);
@@ -115,7 +121,7 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
                 {formula.name}
             </div>
             <div
-                className="text-center py-2 overflow-x-auto"
+                className="text-center py-2 overflow-x-auto overflow-y-hidden custom-scrollbar-thin"
                 dangerouslySetInnerHTML={{ __html: renderedLatex }}
             />
             {formula.description && (
