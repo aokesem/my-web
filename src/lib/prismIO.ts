@@ -217,3 +217,228 @@ export async function importChapterFromJson(courseId: string, chapterData: any) 
 
     return finalTitle;
 }
+
+// ============================================================
+// PAPER MODULE IO
+// ============================================================
+
+/**
+ * 辅助：根据 ID 列表获取字典名称
+ */
+async function getNamesByIds(table: string, ids: string[]): Promise<string[]> {
+    if (!ids || ids.length === 0) return [];
+    const { data } = await supabase.from(table).select('name').in('id', ids);
+    return data?.map(d => d.name) || [];
+}
+
+/**
+ * 辅助：根据名称获取或创建字典 ID
+ */
+async function getOrCreateDictId(table: string, name: string): Promise<string> {
+    const { data: existing } = await supabase.from(table).select('id').eq('name', name).maybeSingle();
+    if (existing) return existing.id;
+
+    const { data: created, error } = await supabase
+        .from(table)
+        .insert([{ name, sort_order: 0 }])
+        .select()
+        .single();
+    
+    if (error) throw error;
+    return created.id;
+}
+
+/**
+ * 导出单篇或全部论文为 ZIP
+ */
+export async function exportPapersToZip(papers: any[]) {
+    if (!papers || papers.length === 0) return;
+
+    const zip = new JSZip();
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 16).replace('T', '_');
+    
+    const rootFolderName = papers.length > 1 ? `papers_backup_${timestamp}` : "paper_export";
+    const papersFolder = zip.folder(rootFolderName);
+    if (!papersFolder) return;
+
+    // --- 性能优化：批量获取所有相关联数据 ---
+    const paperIds = papers.map(p => p.id);
+    
+    const [
+        { data: allRelProj },
+        { data: allRelDir },
+        { data: allRelType },
+        { data: allFigs },
+        { data: allProjects },
+        { data: allDirections },
+        { data: allTypes }
+    ] = await Promise.all([
+        supabase.from("prism_paper_projects").select("paper_id, project_id").in("paper_id", paperIds),
+        supabase.from("prism_paper_directions").select("paper_id, direction_id").in("paper_id", paperIds),
+        supabase.from("prism_paper_types").select("paper_id, type_id").in("paper_id", paperIds),
+        supabase.from("prism_paper_figures").select("*").in("paper_id", paperIds).order("sort_order"),
+        supabase.from("prism_projects").select("id, name"),
+        supabase.from("prism_directions").select("id, name"),
+        supabase.from("prism_types").select("id, name")
+    ]);
+
+    // 构建 ID 到名称的映射表
+    const projMap = new Map(allProjects?.map(i => [i.id, i.name]));
+    const dirMap = new Map(allDirections?.map(i => [i.id, i.name]));
+    const typeMap = new Map(allTypes?.map(i => [i.id, i.name]));
+
+    for (const paper of papers) {
+        // 在内存中过滤属于当前论文的数据
+        const projectNames = (allRelProj || [])
+            .filter(r => r.paper_id === paper.id)
+            .map(r => projMap.get(r.project_id))
+            .filter(Boolean) as string[];
+
+        const directionNames = (allRelDir || [])
+            .filter(r => r.paper_id === paper.id)
+            .map(r => dirMap.get(r.direction_id))
+            .filter(Boolean) as string[];
+
+        const typeNames = (allRelType || [])
+            .filter(r => r.paper_id === paper.id)
+            .map(r => typeMap.get(r.type_id))
+            .filter(Boolean) as string[];
+
+        const figs = (allFigs || []).filter(f => f.paper_id === paper.id);
+
+        // 构造结构化 JSON
+        const paperData = {
+            ...paper,
+            projects: projectNames,
+            directions: directionNames,
+            types: typeNames,
+            figures: figs.map(f => ({ url: f.url, description: f.description }))
+        };
+        delete paperData.id;
+
+        // 生成 Markdown 预览
+        let md = `# ${paper.title}\n\n`;
+        md += `> ${paper.nickname || 'No Nickname'} | ${paper.year || 'N/A'} | Rating: ${paper.rating}\n\n`;
+        md += `**Authors:** ${paper.authors || '-'}\n\n`;
+        md += `**URL:** ${paper.url || '-'}\n\n`;
+        md += `## Summary\n${paper.summary || 'No summary.'}\n\n`;
+        md += `## Key Contributions\n${(paper.key_contributions || []).map((c: string) => `- ${c}`).join('\n')}\n\n`;
+        
+        if (figs.length > 0) {
+            md += `## Figures\n\n`;
+            figs.forEach((f: any) => {
+                md += `![${f.description || 'Figure'}](${f.url})\n\n_${f.description || ''}_\n\n`;
+            });
+        }
+        
+        md += `## Notes\n${paper.notes || 'No notes.'}\n`;
+
+        const subFolderName = `${paper.year || '0000'}_${(paper.nickname || paper.title).slice(0, 30).replace(/[\\/:*?"<>|]/g, '_')}`;
+        const paperSubFolder = papersFolder.folder(subFolderName);
+        if (paperSubFolder) {
+            paperSubFolder.file("paper.json", JSON.stringify(paperData, null, 2));
+            paperSubFolder.file("reading_note.md", md);
+        }
+    }
+
+    const content = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement("a");
+    link.href = url;
+    const downloadName = papers.length > 1 
+        ? `Prism_Papers_Full_Backup_${timestamp}.zip` 
+        : `Paper_Export_${papers[0].nickname || 'doc'}.zip`;
+    link.download = downloadName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * 检查论文名冲突并生成新名称
+ */
+async function getSafePaperTitle(originalTitle: string): Promise<string> {
+    const { data } = await supabase.from('prism_papers').select('title');
+    const existingTitles = new Set(data?.map(p => p.title) || []);
+    
+    if (!existingTitles.has(originalTitle)) return originalTitle;
+    
+    let counter = 1;
+    let newTitle = `${originalTitle}_${counter.toString().padStart(2, '0')}`;
+    while (existingTitles.has(newTitle)) {
+        counter++;
+        newTitle = `${originalTitle}_${counter.toString().padStart(2, '0')}`;
+    }
+    return newTitle;
+}
+
+/**
+ * 导入单篇论文
+ */
+export async function importPaperFromJson(paperData: any) {
+    // 1. 基础校验 (增加防御性类型检查)
+    if (!paperData || !paperData.title) {
+        throw new Error("导入失败：JSON 文件缺少标题字段");
+    }
+
+    // 2. 论文查重与后缀处理
+    const finalTitle = await getSafePaperTitle(paperData.title);
+
+    // 3. 准备主记录
+    const payload = { ...paperData, title: finalTitle };
+    const projects = Array.isArray(payload.projects) ? payload.projects : [];
+    const directions = Array.isArray(payload.directions) ? payload.directions : [];
+    const types = Array.isArray(payload.types) ? payload.types : [];
+    const figures = Array.isArray(payload.figures) ? payload.figures : [];
+    
+    // 清除关联字段，避免主表插入失败
+    delete payload.projects;
+    delete payload.directions;
+    delete payload.types;
+    delete payload.figures;
+    delete payload.id;
+
+    // 4. 插入主表
+    const { data: newPaper, error: pError } = await supabase
+        .from("prism_papers")
+        .insert([payload])
+        .select()
+        .single();
+    
+    if (pError) throw pError;
+
+    // 5. 建立关联 (带回退逻辑)
+    try {
+        const [pIds, dIds, tIds] = await Promise.all([
+            Promise.all(projects.map((name: string) => getOrCreateDictId('prism_projects', name))),
+            Promise.all(directions.map((name: string) => getOrCreateDictId('prism_directions', name))),
+            Promise.all(types.map((name: string) => getOrCreateDictId('prism_types', name)))
+        ]);
+
+        const pid = newPaper.id;
+        const relInserts = [
+            ...pIds.map(id => supabase.from("prism_paper_projects").insert({ paper_id: pid, project_id: id })),
+            ...dIds.map(id => supabase.from("prism_paper_directions").insert({ paper_id: pid, direction_id: id })),
+            ...tIds.map(id => supabase.from("prism_paper_types").insert({ paper_id: pid, type_id: id })),
+            ...figures.map((f: any, i: number) => supabase.from("prism_paper_figures").insert({ 
+                paper_id: pid, 
+                url: f.url, 
+                description: f.description, 
+                sort_order: i 
+            }))
+        ];
+
+        const results = await Promise.all(relInserts);
+        const firstError = results.find(r => r.error);
+        if (firstError) throw firstError.error;
+
+    } catch (err: any) {
+        // 回退
+        await supabase.from("prism_papers").delete().eq("id", newPaper.id);
+        throw new Error(`建立论文关联失败，已回退: ${err.message}`);
+    }
+
+    return finalTitle;
+}

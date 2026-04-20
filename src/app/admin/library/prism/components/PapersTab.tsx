@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Save, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Save, X, FileText, Image as ImageIcon, Download, Upload, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { exportPapersToZip, importPaperFromJson } from "@/lib/prismIO";
+import JSZip from "jszip";
 
 // ==========================================
 // Papers Tab
@@ -17,6 +19,7 @@ import { ImageUpload } from "@/components/ui/image-upload";
 export default function PapersTab() {
     const [papers, setPapers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [importing, setImporting] = useState(false);
 
     // Dictionary Data for multi-select
     const [projectsDict, setProjectsDict] = useState<any[]>([]);
@@ -58,6 +61,119 @@ export default function PapersTab() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    // --- IO Actions ---
+
+    const handleExportAll = async () => {
+        if (papers.length === 0) return;
+        if (!window.confirm(`确定要导出全部 ${papers.length} 篇论文的完整备份吗？\n这可能需要一点时间来聚合数据。`)) return;
+
+        setImporting(true);
+        try {
+            toast.info("正在聚合全量论文数据...");
+            const { data: fullPapers } = await supabase.from("prism_papers").select("*");
+            if (fullPapers) {
+                await exportPapersToZip(fullPapers);
+                toast.success("全量论文导出成功");
+            }
+        } catch (e: any) {
+            toast.error("导出失败: " + e.message);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleExportSingle = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setImporting(true);
+        try {
+            const { data: pData } = await supabase.from("prism_papers").select("*").eq("id", id).single();
+            if (pData) {
+                await exportPapersToZip([pData]);
+                toast.success("单篇论文导出成功");
+            }
+        } catch (e: any) {
+            toast.error("导出失败: " + e.message);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleImportSingleJson = async () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            setImporting(true);
+            try {
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const json = JSON.parse(event.target?.result as string);
+                        const finalTitle = await importPaperFromJson(json);
+                        toast.success(`论文「${finalTitle}」已作为新记录导入`);
+                        fetchData();
+                    } catch (err: any) {
+                        toast.error("解析或导入失败: " + err.message);
+                    } finally {
+                        setImporting(false);
+                    }
+                };
+                reader.readAsText(file);
+            } catch (e: any) {
+                toast.error("读取文件失败");
+                setImporting(false);
+            }
+        };
+        input.click();
+    };
+
+    const handleImportZip = async () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".zip";
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            setImporting(true);
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const paperFolders: string[] = [];
+                
+                zip.folder("papers")?.forEach((relativePath) => {
+                    if (relativePath.endsWith("paper.json")) {
+                        paperFolders.push(relativePath);
+                    }
+                });
+
+                if (paperFolders.length === 0) throw new Error("ZIP 包中未找到有效的论文数据");
+
+                toast.info(`正在导入 ${paperFolders.length} 篇论文...`);
+                let successCount = 0;
+
+                for (const path of paperFolders) {
+                    const content = await zip.file(`papers/${path}`)?.async("string");
+                    if (content) {
+                        const paperData = JSON.parse(content);
+                        await importPaperFromJson(paperData);
+                        successCount++;
+                    }
+                }
+
+                toast.success(`成功导入 ${successCount} 篇论文，关联的项目/方向已同步`);
+                fetchData();
+            } catch (err: any) {
+                toast.error("导入失败: " + err.message);
+            } finally {
+                setImporting(false);
+            }
+        };
+        input.click();
+    };
 
     // --- Actions ---
 
@@ -223,11 +339,49 @@ export default function PapersTab() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
             {/* 左侧：列表 */}
             <div className="lg:col-span-1 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col h-full overflow-hidden">
-                <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
-                    <h3 className="font-semibold text-white">所有论文 ({papers.length})</h3>
-                    <Button size="sm" variant="outline" className="h-8 w-8 p-0 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-white" onClick={handleCreate}>
-                        <Plus size={14} />
-                    </Button>
+                <div className="p-4 border-b border-zinc-800 flex flex-col gap-3 bg-zinc-950/50">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-semibold text-white">所有论文 ({papers.length})</h3>
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-white" onClick={handleCreate} disabled={importing}>
+                            <Plus size={14} />
+                        </Button>
+                    </div>
+
+                    {/* IO Controls Area */}
+                    <div className="space-y-2 pt-1">
+                        <Button
+                            size="sm"
+                            className="w-full gap-2 bg-blue-600/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600/20 transition-all font-bold h-9"
+                            onClick={handleExportAll}
+                            disabled={importing || papers.length === 0}
+                        >
+                            <Download size={14} />
+                            导出全库论文备份 (.zip)
+                        </Button>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-[10px] font-mono border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400"
+                                onClick={handleImportZip}
+                                disabled={importing}
+                            >
+                                {importing ? <Loader2 size={10} className="animate-spin mr-1" /> : <Upload size={10} className="mr-1" />} 
+                                导入 ZIP
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-[10px] font-mono border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-amber-400"
+                                onClick={handleImportSingleJson}
+                                disabled={importing}
+                            >
+                                <FileJson size={10} className="mr-1" /> 
+                                导入单篇
+                            </Button>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
                     {loading && !isEditing ? (
@@ -245,7 +399,19 @@ export default function PapersTab() {
                                     <span className="text-xs text-zinc-500 opacity-60">[{p.year}]</span>
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-red-400" onClick={(e) => handleDelete(p.id, e)}><Trash2 size={12} /></Button>
+                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-zinc-500 hover:text-blue-400"
+                                    title="导出单篇论文 ZIP"
+                                    onClick={(e) => handleExportSingle(p.id, e)}
+                                    disabled={importing}
+                                >
+                                    <Download size={11} />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 hover:text-red-400" onClick={(e) => handleDelete(p.id, e)}><Trash2 size={11} /></Button>
+                            </div>
                         </div>
                     ))}
                 </div>
