@@ -189,6 +189,17 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
         return allPapers.filter((p: PaperDetail) => p.projects?.includes(activeProject.name));
     }, [activeProject, allPapers]);
 
+    const filteredPapers = useMemo(() => {
+        if (!activeProject) return [];
+        if (!activeTimeRange) return relatedPapers;
+
+        return relatedPapers.filter(p => {
+            if (!p.created_at) return false;
+            const time = new Date(p.created_at).getTime();
+            return time >= activeTimeRange.start && time < activeTimeRange.end;
+        });
+    }, [activeProject, relatedPapers, activeTimeRange]);
+
     const filteredInsights = useMemo(() => {
         if (!activeProject) return [];
         if (!activeTimeRange) return activeProject.insights;
@@ -243,7 +254,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
         const groups: Record<string, PaperDetail[]> = {};
         const uncategorized: PaperDetail[] = [];
 
-        relatedPapers.forEach(p => {
+        filteredPapers.forEach(p => {
             let categories: string[] = [];
             if (paperGroupMode === 'direction') categories = p.directions;
             else if (paperGroupMode === 'type') categories = p.types;
@@ -261,7 +272,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
         const result = Object.entries(groups).map(([cat, papers]) => ({ category: cat, papers }));
         if (uncategorized.length > 0) result.push({ category: '未分类', papers: uncategorized });
         return result.sort((a, b) => b.papers.length - a.papers.length);
-    }, [relatedPapers, paperGroupMode]);
+    }, [filteredPapers, paperGroupMode]);
 
     if (!activeProject) {
         return <div className="flex-1 flex items-center justify-center text-stone-400 font-mono text-sm py-20">NO PROJECTS FOUND</div>;
@@ -284,7 +295,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
 
                 <div className="flex-1 flex overflow-x-auto custom-scrollbar-h bg-stone-50/10">
                     <PapersColumn 
-                        relatedPapers={relatedPapers}
+                        relatedPapers={filteredPapers}
                         paperGroupMode={paperGroupMode}
                         setPaperGroupMode={setPaperGroupMode}
                         isAddingPaper={isAddingPaper}

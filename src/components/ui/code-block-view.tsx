@@ -1,14 +1,20 @@
 "use client";
 
 import React, { useState } from 'react';
+import type { Editor } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
 import { Trash2 } from 'lucide-react';
+
+interface CodeBlockViewProps {
+    deleteNode: () => void;
+    editor?: Editor | null;
+}
 
 /**
  * Custom NodeView for CodeBlockLowlight.
  * Adds a hover-visible delete button.
  */
-export function CodeBlockView({ deleteNode, editor }: any) {
+export function CodeBlockView({ deleteNode, editor }: CodeBlockViewProps) {
     const [hovered, setHovered] = useState(false);
 
     const handleDelete = () => {
@@ -35,9 +41,12 @@ export function CodeBlockView({ deleteNode, editor }: any) {
                 </button>
             )}
 
-            {/* Code Content */}
-            <pre className="rounded-xl bg-[#282c34] p-4 text-sm font-mono text-white custom-scrollbar overflow-x-auto">
-                <NodeViewContent as="div" />
+            {/* Code: pre > code only (phrasing inside pre); div inside pre is invalid HTML and breaks PM DOM sync */}
+            <pre className="rounded-xl bg-[#282c34] p-4 m-0 text-sm font-mono text-white custom-scrollbar overflow-x-auto">
+                <NodeViewContent<'code'>
+                    as="code"
+                    className="block w-full min-w-0 whitespace-pre bg-transparent p-0 text-inherit font-inherit outline-none"
+                />
             </pre>
         </NodeViewWrapper>
     );

@@ -5,7 +5,7 @@ import { ArrowLeft, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { LanguageSidebar } from "./components/LanguageSidebar";
 import { CodebaseColumns } from "./components/CodebaseColumns";
-import { CodebaseContent } from "./components/CodebaseContent";
+import { CodebaseContent, type CodebaseContentHandle } from "./components/CodebaseContent";
 import { useCodebaseLanguages, useCodebaseNodes } from "../hooks/useCodebaseData";
 import { BlockEditorRef } from "@/components/ui/block-editor";
 
@@ -16,22 +16,23 @@ export default function CodebasePage() {
     const [selectedPath, setSelectedPath] = useState<string[]>([]);
 
     const editorRef = useRef<BlockEditorRef>(null);
+    const contentGuardRef = useRef<CodebaseContentHandle | null>(null);
 
     // 2. Data
     const { languages, isLoading: isLoadingLanguages, mutate: mutateLanguages } = useCodebaseLanguages();
     const { nodes, isLoading: isLoadingNodes, mutate: mutateNodes } = useCodebaseNodes(selectedLanguageId);
 
-    const activeLanguage = languages.find((l) => l.id === selectedLanguageId);
-
     // 3. Handlers
     const handleSelectLanguage = (id: string) => {
         if (id !== selectedLanguageId) {
+            if (contentGuardRef.current && !contentGuardRef.current.confirmLeaveIfNeeded()) return;
             setSelectedLanguageId(id);
             setSelectedPath([]); // Reset path when switching language
         }
     };
 
     const handleSelectPath = (level: number, nodeId: string) => {
+        if (contentGuardRef.current && !contentGuardRef.current.confirmLeaveIfNeeded()) return;
         // level corresponds to index: L1=0, L2=1, L3=2
         const newPath = selectedPath.slice(0, level); // cutoff deeper selections
         newPath[level] = nodeId;
@@ -44,6 +45,11 @@ export default function CodebasePage() {
             <div className="absolute top-6 left-6 z-20">
                 <Link
                     href="/library/prism"
+                    onClick={(e) => {
+                        if (contentGuardRef.current && !contentGuardRef.current.confirmLeaveIfNeeded()) {
+                            e.preventDefault();
+                        }
+                    }}
                     className="flex items-center justify-center p-2.5 rounded-xl bg-white/70 border border-stone-200/60 hover:bg-white hover:shadow-sm hover:border-stone-300 transition-all backdrop-blur-sm"
                 >
                     <ArrowLeft size={16} className="text-stone-400 group-hover:text-stone-600" />
@@ -77,10 +83,10 @@ export default function CodebasePage() {
                     {/* 4. Right Content Area */}
                     <div className="flex-1 h-full bg-white border-l border-stone-200/70 overflow-hidden relative">
                         <CodebaseContent
+                            ref={contentGuardRef}
                             nodes={nodes}
                             selectedPath={selectedPath}
                             languageId={selectedLanguageId}
-                            isLoading={isLoadingNodes}
                             onDataChange={mutateNodes}
                             editorRef={editorRef}
                         />

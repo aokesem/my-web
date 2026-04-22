@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
-import { useEditor, EditorContent, EditorContext, Editor, ReactNodeViewRenderer } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, ReactNodeViewRenderer } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -10,7 +10,6 @@ import { SlashCommand, suggestionOptions } from './slash-command';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { supabase } from '@/lib/supabaseClient';
 import { compressImage } from '@/lib/imageUtils';
-import { toast } from 'sonner';
 import { common, createLowlight } from 'lowlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { CodeBlockView } from './code-block-view';
@@ -55,8 +54,8 @@ const HeadingWithId = Heading.extend({
 });
 
 export interface BlockEditorProps {
-    value?: string | Record<string, any>;
-    onChange?: (json: Record<string, any>) => void;
+    value?: string | Record<string, unknown>;
+    onChange?: (json: Record<string, unknown>) => void;
     onSave?: () => void;
     editable?: boolean;
     placeholder?: string;
@@ -102,12 +101,12 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
     };
 
     // Helper to safely parse JSON or treat as Markdown
-    const parseInitialContent = (val: string | Record<string, any>) => {
+    const parseInitialContent = (val: string | Record<string, unknown>) => {
         if (typeof val === 'string') {
             if (val.trim().startsWith('{')) {
                 try {
-                    return JSON.parse(val);
-                } catch (e) {
+                    return JSON.parse(val) as Record<string, unknown>;
+                } catch {
                     return val; // Invalid JSON, treat as markdown
                 }
             }
@@ -213,6 +212,25 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                             return false;
                         }
                     }
+                }
+                // Tab: insert two spaces; Shift+Tab: remove up to two spaces before cursor (code-editor-like)
+                if (event.key === 'Tab') {
+                    const ed = editor;
+                    if (!ed?.isEditable) return false;
+                    event.preventDefault();
+                    const { from } = ed.state.selection;
+                    if (event.shiftKey) {
+                        const one = from >= 1 ? ed.state.doc.textBetween(from - 1, from) : '';
+                        const two = from >= 2 ? ed.state.doc.textBetween(from - 2, from - 1) : '';
+                        if (from >= 2 && two === ' ' && one === ' ') {
+                            ed.chain().focus().deleteRange({ from: from - 2, to: from }).run();
+                        } else if (from >= 1 && one === ' ') {
+                            ed.chain().focus().deleteRange({ from: from - 1, to: from }).run();
+                        }
+                    } else {
+                        ed.chain().focus().insertContent('  ').run();
+                    }
+                    return true;
                 }
                 return false;
             },
