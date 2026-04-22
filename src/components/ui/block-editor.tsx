@@ -100,19 +100,20 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
         }
     };
 
-    // Helper to safely parse JSON or treat as Markdown
+    // TipTap 初始内容：{…} 视为 ProseMirror JSON；以 < 开头视为 getHTML 遗留；其余按 Markdown/纯文本
     const parseInitialContent = (val: string | Record<string, unknown>) => {
         if (typeof val === 'string') {
-            if (val.trim().startsWith('{')) {
+            const t = val.trim();
+            if (t.startsWith('{')) {
                 try {
                     return JSON.parse(val) as Record<string, unknown>;
                 } catch {
-                    return val; // Invalid JSON, treat as markdown
+                    return val;
                 }
             }
-            return val; // Markdown
+            return val;
         }
-        return val; // JSON object
+        return val;
     };
 
     const editor = useEditor({
@@ -128,7 +129,7 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                 },
             }).configure({
                 lowlight,
-                defaultLanguage: 'javascript',
+                defaultLanguage: 'python',
             }),
             HeadingWithId.configure({
                 levels: [1, 2, 3, 4, 5, 6],

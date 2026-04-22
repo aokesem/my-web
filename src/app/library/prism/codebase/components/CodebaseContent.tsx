@@ -69,9 +69,9 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
 
     const handleSave = useCallback(async () => {
         if (!targetNode || !editorRef.current || !editorRef.current.editor) return;
-        const htmlContent = editorRef.current.editor.getHTML();
+        const notesJson = JSON.stringify(editorRef.current.editor.getJSON());
 
-        const { error } = await supabase.from("prism_codebase_nodes").update({ notes: htmlContent }).eq("id", targetNode.id);
+        const { error } = await supabase.from("prism_codebase_nodes").update({ notes: notesJson }).eq("id", targetNode.id);
 
         if (error) {
             toast.error("保存失败: " + error.message);
