@@ -305,7 +305,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         mutate(); // refetch
     };
 
-    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string, duration?: number | null }) => {
+    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string, duration?: number | null, deadline_item_id?: number | null }) => {
         await supabase.from('calendar_activities').update(updates).eq('id', actId);
         mutate();
     };
@@ -465,6 +465,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                     <WeekActivityListPanel
                                         allActivities={allActivities}
                                         deadlineItems={deadlineItems}
+                                        deadlineCategories={deadlineCategories}
                                         isAdmin={isAdmin}
                                         selectedKey={selectedKey}
                                         onRemoveActivity={handleRemoveActivityById}

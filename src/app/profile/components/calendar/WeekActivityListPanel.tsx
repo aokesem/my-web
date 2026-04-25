@@ -2,18 +2,19 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ListTodo, Trash2, Pencil, Check } from 'lucide-react';
-import { Activity, DeadlineItem, WEEKDAYS, formatDateKey } from './types';
+import { Activity, DeadlineItem, DeadlineCategory, WEEKDAYS, formatDateKey } from './types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface WeekActivityListPanelProps {
     allActivities: Activity[];
     deadlineItems: DeadlineItem[];
+    deadlineCategories: DeadlineCategory[];
     isAdmin: boolean;
     selectedKey?: string;
     onRemoveActivity: (id: number) => Promise<void>;
     onClearDayOneOffs?: (dateKey: string) => Promise<void>;
     onRefresh: () => void;
-    onUpdateActivity: (id: number, updates: { content?: string, color?: string }) => Promise<void>;
+    onUpdateActivity: (id: number, updates: { content?: string, color?: string, deadline_item_id?: number | null }) => Promise<void>;
     onJumpToDate?: (dateStr: string) => void;
 }
 
@@ -29,11 +30,13 @@ const COLORS = [
 const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export default function WeekActivityListPanel({
-    allActivities, deadlineItems, isAdmin, selectedKey, onRemoveActivity, onClearDayOneOffs, onRefresh, onUpdateActivity, onJumpToDate
+    allActivities, deadlineItems, deadlineCategories, isAdmin, selectedKey, onRemoveActivity, onClearDayOneOffs, onRefresh, onUpdateActivity, onJumpToDate
 }: WeekActivityListPanelProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
     const [editColor, setEditColor] = useState('bg-blue-500');
+    const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
+    const [editLinkedItemId, setEditLinkedItemId] = useState<number | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
@@ -67,13 +70,32 @@ export default function WeekActivityListPanel({
         setEditingId(act.id);
         setEditValue(act.content);
         setEditColor(act.color || 'bg-blue-500');
+
+        // 回填分类和条目
+        if (act.deadline_item_id) {
+            const item = deadlineItems.find(i => i.id === act.deadline_item_id);
+            if (item) {
+                setEditCategoryId(item.category_id);
+                setEditLinkedItemId(act.deadline_item_id);
+            } else {
+                setEditCategoryId(null);
+                setEditLinkedItemId(null);
+            }
+        } else {
+            setEditCategoryId(null);
+            setEditLinkedItemId(null);
+        }
     };
 
     const confirmEdit = async () => {
         if (editingId === null) return;
         const trimmed = editValue.trim();
         if (trimmed) {
-            await onUpdateActivity(editingId, { content: trimmed, color: editColor });
+            await onUpdateActivity(editingId, { 
+                content: trimmed, 
+                color: editColor,
+                deadline_item_id: editLinkedItemId
+            });
         }
         setEditingId(null);
     };
@@ -180,6 +202,39 @@ export default function WeekActivityListPanel({
                                                     className={`w-4 h-4 rounded-md ${c.class} transition-all ${editColor === c.class ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-60 hover:opacity-100'}`}
                                                 />
                                             ))}
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 mt-1">
+                                            <select
+                                                value={editCategoryId ?? ''}
+                                                onMouseDown={e => e.stopPropagation()}
+                                                onChange={e => {
+                                                    const catId = e.target.value ? parseInt(e.target.value) : null;
+                                                    setEditCategoryId(catId);
+                                                    setEditLinkedItemId(null);
+                                                }}
+                                                className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all"
+                                            >
+                                                <option value="">修改分类 (可选)</option>
+                                                {(deadlineCategories || []).map(cat => (
+                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                ))}
+                                            </select>
+
+                                            <select
+                                                value={editLinkedItemId ?? ''}
+                                                onMouseDown={e => e.stopPropagation()}
+                                                onChange={e => setEditLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
+                                                disabled={!editCategoryId}
+                                                className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all disabled:opacity-50"
+                                            >
+                                                <option value="">修改具体条目...</option>
+                                                {deadlineItems
+                                                    .filter(item => item.category_id === editCategoryId)
+                                                    .map(item => (
+                                                        <option key={item.id} value={item.id}>{item.title}</option>
+                                                    ))}
+                                            </select>
                                         </div>
                                     </div>
                                 ) : (

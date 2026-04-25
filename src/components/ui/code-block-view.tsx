@@ -76,6 +76,7 @@ export function CodeBlockView({ deleteNode, editor, node, updateAttributes }: Co
             <pre className="rounded-xl bg-[#282c34] p-4 m-0 text-sm font-mono text-white custom-scrollbar overflow-x-auto">
                 <NodeViewContent<'code'>
                     as="code"
+                    spellCheck={false}
                     className="block w-full min-w-0 whitespace-pre bg-transparent p-0 text-inherit font-inherit outline-none"
                 />
             </pre>

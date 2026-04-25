@@ -25,7 +25,7 @@ interface MonthViewPanelProps {
     onAddActivity: (content: string, duration: string, deadlineItemId?: number | null) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
     onRefresh: () => void;
-    onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null }) => Promise<void>;
+    onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null, deadline_item_id?: number | null }) => Promise<void>;
     onCommentChange: (comment: string) => void;
     onCommentBlur: () => void;
 }
@@ -64,6 +64,8 @@ export default function MonthViewPanel({
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editDuration, setEditDuration] = useState('');
+    const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
+    const [editLinkedItemId, setEditLinkedItemId] = useState<number | null>(null);
 
     const gridCells: Array<{ day: number | null }> = [];
     for (let i = 0; i < startOffset; i++) gridCells.push({ day: null });
@@ -113,13 +115,29 @@ export default function MonthViewPanel({
         setEditingId(act.id);
         setEditContent(act.content);
         setEditDuration(act.duration?.toString() || '');
+        
+        // 回填分类和条目
+        if (act.deadline_item_id) {
+            const item = deadlineItems.find(i => i.id === act.deadline_item_id);
+            if (item) {
+                setEditCategoryId(item.category_id);
+                setEditLinkedItemId(act.deadline_item_id);
+            } else {
+                setEditCategoryId(null);
+                setEditLinkedItemId(null);
+            }
+        } else {
+            setEditCategoryId(null);
+            setEditLinkedItemId(null);
+        }
     };
 
     const handleEditSave = async () => {
         if (!editingId || !editContent.trim()) return;
         await onUpdateActivity(editingId, {
             content: editContent.trim(),
-            duration: editDuration ? parseFloat(editDuration) : null
+            duration: editDuration ? parseFloat(editDuration) : null,
+            deadline_item_id: editLinkedItemId
         });
         setEditingId(null);
     };
@@ -296,26 +314,59 @@ export default function MonthViewPanel({
                                     <div key={act.id} className="flex items-center gap-3 bg-slate-50/80 rounded-lg px-4 py-2.5 group animate-in fade-in slide-in-from-left-2 duration-300">
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
                                         {editingId === act.id ? (
-                                            <div className="flex-1 flex items-center gap-2">
-                                                <input
-                                                    value={editContent}
-                                                    onChange={e => setEditContent(e.target.value)}
-                                                    className="flex-1 bg-white border border-blue-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                                                    autoFocus
-                                                />
-                                                <input
-                                                    value={editDuration}
-                                                    onChange={e => setEditDuration(e.target.value)}
-                                                    placeholder="h"
-                                                    className="w-12 bg-white border border-blue-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                                                />
-                                                <div className="flex items-center gap-1 ml-1">
-                                                    <button onClick={handleEditSave} className="p-1 text-emerald-500 hover:bg-emerald-50 rounded transition-colors">
-                                                        <Check size={14} />
-                                                    </button>
-                                                    <button onClick={() => setEditingId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded transition-colors">
-                                                        <RotateCcw size={14} />
-                                                    </button>
+                                            <div className="flex-1 flex flex-col gap-2 bg-white border border-blue-100 rounded-lg p-2 shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        value={editContent}
+                                                        onChange={e => setEditContent(e.target.value)}
+                                                        className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all"
+                                                        autoFocus
+                                                    />
+                                                    <input
+                                                        value={editDuration}
+                                                        onChange={e => setEditDuration(e.target.value)}
+                                                        placeholder="h"
+                                                        className="w-12 bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all"
+                                                    />
+                                                    <div className="flex items-center gap-1 ml-1">
+                                                        <button onClick={handleEditSave} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded transition-colors" title="保存">
+                                                            <Check size={16} />
+                                                        </button>
+                                                        <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded transition-colors" title="取消">
+                                                            <RotateCcw size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select
+                                                        value={editCategoryId ?? ''}
+                                                        onChange={e => {
+                                                            const catId = e.target.value ? parseInt(e.target.value) : null;
+                                                            setEditCategoryId(catId);
+                                                            setEditLinkedItemId(null);
+                                                        }}
+                                                        className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all"
+                                                    >
+                                                        <option value="">修改分类 (可选)</option>
+                                                        {(deadlineCategories || []).map(cat => (
+                                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                        ))}
+                                                    </select>
+
+                                                    <select
+                                                        value={editLinkedItemId ?? ''}
+                                                        onChange={e => setEditLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
+                                                        disabled={!editCategoryId}
+                                                        className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all disabled:opacity-50"
+                                                    >
+                                                        <option value="">修改具体条目...</option>
+                                                        {deadlineItems
+                                                            .filter(item => item.category_id === editCategoryId)
+                                                            .map(item => (
+                                                                <option key={item.id} value={item.id}>{item.title}</option>
+                                                            ))}
+                                                    </select>
                                                 </div>
                                             </div>
                                         ) : (

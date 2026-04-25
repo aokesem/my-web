@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 export default function QuotesPage() {
     const [quotes, setQuotes] = useState<any[]>([]);
     const [newText, setNewText] = useState("");
+    const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
     const [editingId, setEditingId] = useState<number | null>(null); // [新增] 编辑状态
 
     const fetchQuotes = async () => {
@@ -26,7 +27,10 @@ export default function QuotesPage() {
 
         if (editingId) {
             // 更新模式
-            const { error } = await supabase.from('profile_quotes').update({ text: newText }).eq('id', editingId);
+            const { error } = await supabase.from('profile_quotes').update({ 
+                text: newText,
+                recorded_at: newDate
+            }).eq('id', editingId);
             if (!error) {
                 toast.success("Quote updated");
                 cancelEdit();
@@ -34,9 +38,13 @@ export default function QuotesPage() {
             }
         } else {
             // 新增模式
-            const { error } = await supabase.from('profile_quotes').insert({ text: newText });
+            const { error } = await supabase.from('profile_quotes').insert({ 
+                text: newText,
+                recorded_at: newDate
+            });
             if (!error) {
                 setNewText("");
+                setNewDate(new Date().toISOString().split('T')[0]);
                 toast.success("Quote added");
                 fetchQuotes();
             }
@@ -47,12 +55,14 @@ export default function QuotesPage() {
     const startEdit = (quote: any) => {
         setEditingId(quote.id);
         setNewText(quote.text);
+        setNewDate(quote.recorded_at || new Date().toISOString().split('T')[0]);
     };
 
     // [新增] 取消编辑
     const cancelEdit = () => {
         setEditingId(null);
         setNewText("");
+        setNewDate(new Date().toISOString().split('T')[0]);
     };
 
     const deleteQuote = async (id: number) => {
@@ -78,7 +88,14 @@ export default function QuotesPage() {
                     value={newText}
                     onChange={e => setNewText(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSave()}
-                    className="bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-zinc-700"
+                    className="flex-1 bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-zinc-700"
+                />
+                
+                <Input
+                    type="date"
+                    value={newDate}
+                    onChange={e => setNewDate(e.target.value)}
+                    className="w-[180px] bg-zinc-900 border-zinc-800 text-zinc-200 focus-visible:ring-zinc-700"
                 />
 
                 {/* [修改] 按钮组 */}
@@ -98,6 +115,7 @@ export default function QuotesPage() {
                         <TableRow className="bg-zinc-900/50 hover:bg-zinc-900/50 border-zinc-800">
                             <TableHead className="w-[80px] text-zinc-500">ID</TableHead>
                             <TableHead className="text-zinc-400">Text</TableHead>
+                            <TableHead className="w-[120px] text-zinc-400">Date</TableHead>
                             <TableHead className="text-right text-zinc-500">Action</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -106,6 +124,7 @@ export default function QuotesPage() {
                             <TableRow key={q.id} className={`border-zinc-800 hover:bg-zinc-900/30 ${editingId === q.id ? 'bg-zinc-900/80' : ''}`}>
                                 <TableCell className="font-mono text-zinc-600">{q.id}</TableCell>
                                 <TableCell className="font-medium text-zinc-300">{q.text}</TableCell>
+                                <TableCell className="font-mono text-[12px] text-zinc-500">{q.recorded_at || '-'}</TableCell>
                                 <TableCell className="text-right space-x-2">
                                     <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={() => startEdit(q)}>
                                         <Pencil size={14} />

@@ -126,7 +126,7 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
     const hasChildren = (id: string) => allNodes.some(n => n.parent_id === id);
 
     return (
-        <div className={`flex-1 flex flex-col border-r border-stone-200/60 bg-white transition-opacity ${isEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+        <div className={`flex-1 flex flex-col border-r border-stone-200/60 bg-white transition-opacity ${level === 2 ? 'min-w-[130px]' : ''} ${isEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
             {/* Header */}
             <div className={`h-11 flex items-center justify-between px-3 border-b border-stone-200/50 shrink-0 ${level === 0 ? 'bg-stone-100/50 pt-2' : ''}`}>
                 <span className="text-[10px] font-mono font-bold tracking-wider text-stone-400 capitalize">
@@ -164,7 +164,7 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex items-center gap-2 overflow-hidden">
+                                    <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
                                         {childrenCount > 0 ? (
                                             <Folder size={14} className={isSelected ? 'text-purple-500' : 'text-stone-400'} />
                                         ) : (
@@ -173,8 +173,8 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
                                         <span className={`text-xs truncate ${isSelected ? 'font-medium' : ''}`}>{item.title}</span>
                                     </div>
 
-                                    <div className="flex items-center gap-0.5">
-                                        <div className="opacity-0 group-hover:opacity-100 flex items-center transition-opacity">
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Button size="icon" variant="ghost" className="h-5 w-5 text-stone-400 hover:text-stone-700" onClick={(e) => { e.stopPropagation(); setIsEditing(item.id); setEditTitle(item.title); }}><Edit2 size={10} /></Button>
                                             <Button size="icon" variant="ghost" className="h-5 w-5 text-stone-400 hover:text-red-500" onClick={(e) => handleDelete(item.id, e)}><Trash2 size={10} /></Button>
                                         </div>
