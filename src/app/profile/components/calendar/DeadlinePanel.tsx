@@ -385,24 +385,82 @@ export default function DeadlinePanel({
                                 const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                 const isUrgent = daysLeft >= 0 && daysLeft <= 3;
                                 const isPastDue = daysLeft < 0;
+                                const isEditing = editingTpId === tp.id;
 
                                 return (
                                     <div key={tp.id} className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all group">
-                                        <div className={`w-8 h-8 rounded-lg flex flex-col items-center justify-center shrink-0 font-mono ${isPastDue ? 'bg-slate-200 text-slate-500' : isUrgent ? 'bg-rose-100 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
-                                            <span className="text-[14px] font-black leading-none">{isPastDue ? '!' : daysLeft}</span>
-                                            <span className="text-[7px] font-bold">DAYS</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="mb-0.5">
-                                                <div className="text-[11px] text-slate-400 font-medium truncate">
-                                                    #{item?.title || "未关联项目"}
-                                                </div>
-                                                <div className="text-[15px] font-bold text-slate-800 leading-tight truncate">
-                                                    {tp.label || "未命名阶段"}
+                                        {isEditing ? (
+                                            <div className="flex-1 flex flex-col gap-2">
+                                                <input 
+                                                    value={editTpLabel} 
+                                                    onChange={e => setEditTpLabel(e.target.value)} 
+                                                    placeholder="阶段标签" 
+                                                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="date" 
+                                                        value={editTpDate} 
+                                                        onChange={e => setEditTpDate(e.target.value)} 
+                                                        className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400"
+                                                    />
+                                                    <button 
+                                                        onClick={() => { onUpdateTimepoint(tp.id, { label: editTpLabel, date: editTpDate }); setEditingTpId(null); }} 
+                                                        className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded transition-colors"
+                                                    >
+                                                        <Check size={16} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setEditingTpId(null)} 
+                                                        className="p-1.5 text-slate-400 hover:bg-slate-100 rounded transition-colors"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="text-[11px] font-mono text-slate-400">{tp.date.slice(5).replace('-', '/')}</div>
-                                        </div>
+                                        ) : (
+                                            <>
+                                                <div className={`w-8 h-8 rounded-lg flex flex-col items-center justify-center shrink-0 font-mono ${isPastDue ? 'bg-slate-200 text-slate-500' : isUrgent ? 'bg-rose-100 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
+                                                    <span className="text-[14px] font-black leading-none">{isPastDue ? '!' : daysLeft}</span>
+                                                    <span className="text-[7px] font-bold">DAYS</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="mb-0.5">
+                                                        <div className="text-[11px] text-slate-400 font-medium truncate">
+                                                            #{item?.title || "未关联项目"}
+                                                        </div>
+                                                        <div className="text-[15px] font-bold text-slate-800 leading-tight truncate">
+                                                            {tp.label || "未命名阶段"}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-[11px] font-mono text-slate-400">{tp.date.slice(5).replace('-', '/')}</div>
+                                                </div>
+                                                {isAdmin && (
+                                                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-all">
+                                                        <button 
+                                                            onClick={() => { setEditingTpId(tp.id); setEditTpLabel(tp.label); setEditTpDate(tp.date); }}
+                                                            className="p-1.5 text-slate-300 hover:text-blue-500 rounded-md hover:bg-white shadow-sm transition-all"
+                                                            title="编辑阶段"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <SafeDeleteDialog 
+                                                            table="deadline_timepoints" 
+                                                            recordId={tp.id} 
+                                                            title="确定要永久删除该时间点吗？" 
+                                                            onSuccess={onRefresh}
+                                                        >
+                                                            <button 
+                                                                className="p-1.5 text-slate-300 hover:text-rose-500 rounded-md hover:bg-white shadow-sm transition-all"
+                                                                title="删除阶段"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </SafeDeleteDialog>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 );
                             });
