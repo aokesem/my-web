@@ -8,7 +8,8 @@ import {
     Box,
     FileText,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    MapPin
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -35,6 +36,34 @@ interface ToolItem {
     url: string;
 }
 
+interface PlaceRow {
+    id: number;
+    name: string;
+    sort_order: number;
+}
+
+interface PlaceImageRow {
+    id: number;
+    place_id: number;
+    image_path: string;
+    sort_order: number;
+}
+
+interface PlaceVisitRow {
+    place_id: number;
+    date: string;
+    start_time: string | null;
+}
+
+interface PlaceItem {
+    id: number;
+    name: string;
+    sortOrder: number;
+    images: string[];
+    visitCount: number;
+    latestVisitDate: string | null;
+}
+
 interface ToolboxWidgetProps {
     isActive: boolean;
     onToggle: () => void;
@@ -43,9 +72,12 @@ interface ToolboxWidgetProps {
 export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps) {
     const [startIndex, setStartIndex] = useState(0);
     const VISIBLE_COUNT = 5;
+    const [activeTab, setActiveTab] = useState<'tools' | 'places'>('tools');
 
     // [修改] 状态管理
     const [tools, setTools] = useState<ToolItem[]>([]);
+    const [places, setPlaces] = useState<PlaceItem[]>([]);
+    const [placeImageIndices, setPlaceImageIndices] = useState<Record<number, number>>({});
 
     // [新增] 获取数据
     useEffect(() => {
@@ -69,7 +101,42 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                 setTools(mappedTools);
             }
         };
+        const fetchPlaces = async () => {
+            const [placesRes, imagesRes, visitsRes] = await Promise.all([
+                supabase.from('profile_places').select('*').order('sort_order', { ascending: true }),
+                supabase.from('profile_place_images').select('*').order('sort_order', { ascending: true }),
+                supabase.from('calendar_activities').select('place_id,date,start_time').not('place_id', 'is', null),
+            ]);
+
+            const placeRows = (placesRes.data || []) as PlaceRow[];
+            const imageRows = (imagesRes.data || []) as PlaceImageRow[];
+            const visitRows = (visitsRes.data || []) as PlaceVisitRow[];
+
+            const mappedPlaces: PlaceItem[] = placeRows.map((place) => {
+                const images = imageRows
+                    .filter(img => img.place_id === place.id)
+                    .sort((a, b) => a.sort_order - b.sort_order)
+                    .map(img => img.image_path);
+
+                const visits = visitRows
+                    .filter(v => v.place_id === place.id && v.start_time === null && !!v.date);
+                const uniqueDates = Array.from(new Set(visits.map(v => v.date)));
+                uniqueDates.sort((a, b) => b.localeCompare(a));
+
+                return {
+                    id: place.id,
+                    name: place.name,
+                    sortOrder: place.sort_order,
+                    images,
+                    visitCount: uniqueDates.length,
+                    latestVisitDate: uniqueDates.length > 0 ? uniqueDates[0] : null,
+                };
+            });
+
+            setPlaces(mappedPlaces);
+        };
         fetchTools();
+        fetchPlaces();
     }, []);
 
     const handleNext = (e: React.MouseEvent) => {
@@ -84,6 +151,24 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
         if (startIndex > 0) {
             setStartIndex(prev => prev - 1);
         }
+    };
+
+    const nextPlaceImage = (e: React.MouseEvent, placeId: number, total: number) => {
+        e.stopPropagation();
+        if (total <= 1) return;
+        setPlaceImageIndices((prev) => ({
+            ...prev,
+            [placeId]: ((prev[placeId] || 0) + 1) % total,
+        }));
+    };
+
+    const prevPlaceImage = (e: React.MouseEvent, placeId: number, total: number) => {
+        e.stopPropagation();
+        if (total <= 1) return;
+        setPlaceImageIndices((prev) => ({
+            ...prev,
+            [placeId]: ((prev[placeId] || 0) - 1 + total) % total,
+        }));
     };
 
     return (
@@ -120,7 +205,20 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
 
                 <div className="flex items-center gap-4">
                     {isActive && (
-                        <span className="text-[10px] font-mono font-black text-slate-300 tracking-widest uppercase hidden md:inline">Personal_Records_Vault</span>
+                        <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100/80 border border-slate-200">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setActiveTab('tools'); }}
+                                className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider transition-colors ${activeTab === 'tools' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                工具
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setActiveTab('places'); }}
+                                className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider transition-colors ${activeTab === 'places' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                地点
+                            </button>
+                        </div>
                     )}
                     <button
                         onClick={(e) => { e.stopPropagation(); onToggle(); }}
@@ -199,59 +297,131 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                         >
                             <div className="max-w-6xl mx-auto">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {tools.map((tool) => (
-                                        <div
-                                            key={tool.id}
-                                            className="group/card relative flex flex-col sm:flex-row gap-6 bg-white/40 border border-slate-100 rounded-2xl p-6 hover:bg-white hover:shadow-xl transition-all duration-300 overflow-hidden"
-                                        >
-                                            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover/card:opacity-[0.08] transition-opacity">
-                                                <FileText size={80} />
-                                            </div>
-
-                                            <div className="flex flex-col items-center gap-4 shrink-0">
-                                                <div className="w-20 h-20 rounded-2xl bg-white shadow-md border border-slate-50 flex items-center justify-center p-3 relative">
-                                                    <img src={tool.colorfulIcon} alt={tool.name} className="w-full h-full object-contain" />
-                                                </div>
-                                                {tool.url ? (
-                                                    <a
-                                                        href={tool.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] bg-blue-50 px-3 py-1 rounded-full border border-blue-100/50"
-                                                    >
-                                                        Access <ExternalLink size={10} />
-                                                    </a>
-                                                ) : (
-                                                    <span
-                                                        className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-100/50 border border-slate-200/50 uppercase tracking-[0.2em] px-3 py-1 rounded-full cursor-not-allowed select-none"
-                                                    >
-                                                        No Link <ExternalLink size={10} />
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div className="flex-1 min-w-0 pt-1">
-                                                <div className="flex items-baseline gap-2 mb-2">
-                                                    <h3 className="text-lg font-black text-slate-800 tracking-tight">{tool.name}</h3>
-                                                    <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest">{tool.tagline}</span>
-                                                </div>
-                                                <div className="relative">
-                                                    <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-100/60 rounded-full" />
-                                                    <p className="pl-4 text-xs text-slate-500 leading-relaxed font-medium">
-                                                        {tool.usage}
-                                                    </p>
+                                    {activeTab === 'tools' ? (
+                                        tools.map((tool) => (
+                                            <div
+                                                key={tool.id}
+                                                className="group/card relative flex flex-col sm:flex-row gap-6 bg-white/40 border border-slate-100 rounded-2xl p-6 hover:bg-white hover:shadow-xl transition-all duration-300 overflow-hidden"
+                                            >
+                                                <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover/card:opacity-[0.08] transition-opacity">
+                                                    <FileText size={80} />
                                                 </div>
 
-                                                <div className="mt-4 pt-3 border-t border-slate-100/50 flex items-center justify-between">
-                                                    <span className="text-[9px] font-mono text-slate-300 font-bold uppercase">Archive_Status: ACTIVE</span>
-                                                    <div className="flex gap-1">
-                                                        {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-slate-200" />)}
+                                                <div className="flex flex-col items-center gap-4 shrink-0">
+                                                    <div className="w-20 h-20 rounded-2xl bg-white shadow-md border border-slate-50 flex items-center justify-center p-3 relative">
+                                                        <img src={tool.colorfulIcon} alt={tool.name} className="w-full h-full object-contain" />
+                                                    </div>
+                                                    {tool.url ? (
+                                                        <a
+                                                            href={tool.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] bg-blue-50 px-3 py-1 rounded-full border border-blue-100/50"
+                                                        >
+                                                            Access <ExternalLink size={10} />
+                                                        </a>
+                                                    ) : (
+                                                        <span
+                                                            className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-100/50 border border-slate-200/50 uppercase tracking-[0.2em] px-3 py-1 rounded-full cursor-not-allowed select-none"
+                                                        >
+                                                            No Link <ExternalLink size={10} />
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0 pt-1">
+                                                    <div className="flex items-baseline gap-2 mb-2">
+                                                        <h3 className="text-lg font-black text-slate-800 tracking-tight">{tool.name}</h3>
+                                                        <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest">{tool.tagline}</span>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-100/60 rounded-full" />
+                                                        <p className="pl-4 text-xs text-slate-500 leading-relaxed font-medium">
+                                                            {tool.usage}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="mt-4 pt-3 border-t border-slate-100/50 flex items-center justify-between">
+                                                        <span className="text-[9px] font-mono text-slate-300 font-bold uppercase">Archive_Status: ACTIVE</span>
+                                                        <div className="flex gap-1">
+                                                            {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-slate-200" />)}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        ))
+                                    ) : places.length > 0 ? (
+                                        places.map((place) => (
+                                            <div
+                                                key={place.id}
+                                                className="group/card relative flex flex-col sm:flex-row gap-4 bg-white/40 border border-slate-100 rounded-2xl p-5 min-h-[250px] hover:bg-white hover:shadow-xl transition-all duration-300 overflow-hidden"
+                                            >
+                                                <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover/card:opacity-[0.08] transition-opacity">
+                                                    <MapPin size={80} />
+                                                </div>
+
+                                                <div className="w-full sm:w-[60%] group/image">
+                                                    <div className="w-full h-[230px] rounded-2xl bg-white shadow-md border border-slate-50 flex items-center justify-center overflow-hidden relative">
+                                                        {place.images.length > 0 ? (
+                                                            <img
+                                                                src={place.images[placeImageIndices[place.id] || 0]}
+                                                                alt={place.name}
+                                                                className="w-full h-full object-cover bg-slate-50"
+                                                            />
+                                                        ) : (
+                                                            <div className="text-[10px] font-mono text-slate-300 uppercase">No Image</div>
+                                                        )}
+                                                        {place.images.length > 1 && (
+                                                            <>
+                                                                <button
+                                                                    onClick={(e) => prevPlaceImage(e, place.id, place.images.length)}
+                                                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/45 text-white hover:bg-black/65 transition-all opacity-0 group-hover/image:opacity-100 pointer-events-none group-hover/image:pointer-events-auto"
+                                                                    title="上一张"
+                                                                >
+                                                                    <ChevronLeft size={14} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => nextPlaceImage(e, place.id, place.images.length)}
+                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/45 text-white hover:bg-black/65 transition-all opacity-0 group-hover/image:opacity-100 pointer-events-none group-hover/image:pointer-events-auto"
+                                                                    title="下一张"
+                                                                >
+                                                                    <ChevronRight size={14} />
+                                                                </button>
+                                                                <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-mono">
+                                                                    {(placeImageIndices[place.id] || 0) + 1}/{place.images.length}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="w-full sm:w-[40%] min-w-0 pt-1 flex flex-col">
+                                                    <div className="flex items-baseline gap-2 mb-2">
+                                                        <h3 className="text-lg font-black text-slate-800 tracking-tight">{place.name}</h3>
+                                                        <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest">Place</span>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-3 mt-auto pb-1">
+                                                        <div className="bg-blue-50/70 border border-blue-100 rounded-lg px-3 py-2">
+                                                            <div className="text-[9px] font-mono uppercase text-slate-400 mb-1">Visit Count</div>
+                                                            <div className="text-xl font-black text-blue-600 leading-none">{place.visitCount}</div>
+                                                        </div>
+                                                        <div className="bg-slate-50/70 border border-slate-100 rounded-lg px-3 py-2">
+                                                            <div className="text-[9px] font-mono uppercase text-slate-400 mb-1">Latest Visit</div>
+                                                            <div className="text-sm font-bold text-slate-600 leading-none">
+                                                                {place.latestVisitDate ? place.latestVisitDate : '暂无'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-1 md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-white/40 p-10 text-center">
+                                            <p className="text-sm text-slate-400 font-medium">暂无地点记录</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         </motion.div>

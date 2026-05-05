@@ -14,7 +14,7 @@ interface WeekActivityListPanelProps {
     onRemoveActivity: (id: number) => Promise<void>;
     onClearDayOneOffs?: (dateKey: string) => Promise<void>;
     onRefresh: () => void;
-    onUpdateActivity: (id: number, updates: { content?: string, color?: string, deadline_item_id?: number | null }) => Promise<void>;
+    onUpdateActivity: (id: number, updates: { content?: string, color?: string, deadline_item_id?: number | null, place_id?: number | null }) => Promise<void>;
     onJumpToDate?: (dateStr: string) => void;
 }
 

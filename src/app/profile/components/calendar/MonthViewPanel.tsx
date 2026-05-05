@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw } from 'lucide-react';
-import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS, Activity } from './types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw, MapPin } from 'lucide-react';
+import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, RoutineLog, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS, Activity } from './types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
 interface MonthViewPanelProps {
@@ -25,9 +25,12 @@ interface MonthViewPanelProps {
     onAddActivity: (content: string, duration: string, deadlineItemId?: number | null) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
     onRefresh: () => void;
-    onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null, deadline_item_id?: number | null }) => Promise<void>;
+    onUpdateActivity: (id: number, updates: { content?: string, duration?: number | null, deadline_item_id?: number | null, place_id?: number | null }) => Promise<void>;
     onCommentChange: (comment: string) => void;
     onCommentBlur: () => void;
+    routineLog?: RoutineLog;
+    onRoutineChange: (field: 'wake_time' | 'sleep_time', value: string) => Promise<void>;
+    places: Array<{ id: number; name: string }>;
 }
 
 export default function MonthViewPanel({
@@ -52,7 +55,10 @@ export default function MonthViewPanel({
     onRefresh,
     onUpdateActivity,
     onCommentChange,
-    onCommentBlur
+    onCommentBlur,
+    routineLog,
+    onRoutineChange,
+    places
 }: MonthViewPanelProps) {
     const today = useMemo(() => new Date(), []);
     const { startOffset, daysInMonth } = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
@@ -66,6 +72,9 @@ export default function MonthViewPanel({
     const [editDuration, setEditDuration] = useState('');
     const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
     const [editLinkedItemId, setEditLinkedItemId] = useState<number | null>(null);
+    const [placePickerForId, setPlacePickerForId] = useState<number | null>(null);
+    const [wakeTimeInput, setWakeTimeInput] = useState('');
+    const [sleepTimeInput, setSleepTimeInput] = useState('');
 
     const gridCells: Array<{ day: number | null }> = [];
     for (let i = 0; i < startOffset; i++) gridCells.push({ day: null });
@@ -91,6 +100,46 @@ export default function MonthViewPanel({
             item: deadlineItems.find(i => i.id === d.item_id)
         })).filter(d => d.item !== undefined);
     }, [deadlineTimepoints, deadlineItems, selectedKey]);
+
+    useEffect(() => {
+        setWakeTimeInput(routineLog?.wake_time ? routineLog.wake_time.slice(0, 5) : '');
+        setSleepTimeInput(routineLog?.sleep_time ? routineLog.sleep_time.slice(0, 5) : '');
+    }, [routineLog?.wake_time, routineLog?.sleep_time, selectedKey]);
+
+    const hasRoutineRecord = !!(wakeTimeInput || sleepTimeInput);
+
+    const parseMinutes = (time: string): number | null => {
+        if (!time || !time.includes(':')) return null;
+        const [hStr, mStr] = time.split(':');
+        const h = parseInt(hStr, 10);
+        const m = parseInt(mStr, 10);
+        if (Number.isNaN(h) || Number.isNaN(m)) return null;
+        return h * 60 + m;
+    };
+
+    const routineVisual = useMemo(() => {
+        const AXIS_START = 7 * 60 + 30;   // 07:30
+        const AXIS_END = 25 * 60;         // 次日 01:00
+
+        const wake = parseMinutes(wakeTimeInput);
+        const sleep = parseMinutes(sleepTimeInput);
+        if (wake === null || sleep === null) {
+            return { ready: false, leftPct: 0, widthPct: 0, durationText: '' };
+        }
+
+        const sleepMapped = sleep < AXIS_START ? sleep + 24 * 60 : sleep;
+        const durationMin = sleepMapped - wake;
+        const safeDurationMin = durationMin > 0 ? durationMin : 0;
+        const durationText = `${Math.floor(safeDurationMin / 60)}h${String(safeDurationMin % 60).padStart(2, '0')}m`;
+
+        const clampedStart = Math.max(AXIS_START, Math.min(wake, AXIS_END));
+        const clampedEnd = Math.max(AXIS_START, Math.min(sleepMapped, AXIS_END));
+        const total = AXIS_END - AXIS_START;
+        const leftPct = ((clampedStart - AXIS_START) / total) * 100;
+        const widthPct = Math.max(0, ((clampedEnd - clampedStart) / total) * 100);
+
+        return { ready: true, leftPct, widthPct, durationText };
+    }, [wakeTimeInput, sleepTimeInput]);
 
     // 检查明天是否有单次任务规划
     const tomorrowWarning = useMemo(() => {
@@ -371,22 +420,59 @@ export default function MonthViewPanel({
                                             </div>
                                         ) : (
                                             <>
-                                                <span className="flex-1 text-[15px] text-slate-700 font-medium">{act.content}</span>
-                                                {act.deadline_item_id && (() => {
-                                                    const linkedItem = deadlineItems.find(i => i.id === act.deadline_item_id);
-                                                    return linkedItem ? (
-                                                        <span className="text-[10px] font-medium text-rose-400 bg-rose-50 px-1.5 py-0.5 rounded-full shrink-0">
-                                                            {linkedItem.title}
+                                                <span className="flex-1 min-w-0 text-[15px] text-slate-700 font-medium truncate">{act.content}</span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    {act.place_id && (() => {
+                                                        const linkedPlace = places.find(p => p.id === act.place_id);
+                                                        return linkedPlace ? (
+                                                            <span className="text-[10px] font-medium text-sky-500 bg-sky-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                                                {linkedPlace.name}
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
+                                                    {act.deadline_item_id && (() => {
+                                                        const linkedItem = deadlineItems.find(i => i.id === act.deadline_item_id);
+                                                        return linkedItem ? (
+                                                            <span className="text-[10px] font-medium text-rose-400 bg-rose-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                                                {linkedItem.title}
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
+                                                    {act.duration !== null && (
+                                                        <span className="text-[16px] font-mono text-black-400 whitespace-nowrap">
+                                                            {act.duration}h
                                                         </span>
-                                                    ) : null;
-                                                })()}
-                                                {act.duration !== null && (
-                                                    <span className="text-[16px] font-mono text-black-400">
-                                                        {act.duration}h
-                                                    </span>
-                                                )}
+                                                    )}
+                                                </div>
                                                 {isAdmin && (
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+                                                        {placePickerForId === act.id ? (
+                                                            <select
+                                                                value={act.place_id ?? ''}
+                                                                onChange={async (e) => {
+                                                                    const value = e.target.value ? parseInt(e.target.value, 10) : null;
+                                                                    await onUpdateActivity(act.id, { place_id: value });
+                                                                    setPlacePickerForId(null);
+                                                                }}
+                                                                className="h-7 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-600 focus:outline-none"
+                                                            >
+                                                                <option value="">无地点</option>
+                                                                {places.length === 0 && (
+                                                                    <option value="" disabled>暂无地点可选</option>
+                                                                )}
+                                                                {places.map(place => (
+                                                                    <option key={place.id} value={place.id}>{place.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => setPlacePickerForId(act.id)}
+                                                                className="text-slate-300 hover:text-sky-500 transition-all p-1"
+                                                                title="设置地点"
+                                                            >
+                                                                <MapPin size={14} />
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={() => handleEditStart(act)}
                                                             className="text-slate-300 hover:text-blue-400 transition-all p-1"
@@ -475,6 +561,77 @@ export default function MonthViewPanel({
                                             ))}
                                     </select>
                                 </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 作息记录 */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-1 h-4 bg-blue-400 rounded-full" />
+                            <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">作息记录</span>
+                        </div>
+                        {isAdmin ? (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                        <div className="text-[10px] text-slate-400 font-mono uppercase mb-1">起床</div>
+                                        <input
+                                            type="time"
+                                            value={wakeTimeInput}
+                                            onChange={(e) => setWakeTimeInput(e.target.value)}
+                                            onBlur={() => onRoutineChange('wake_time', wakeTimeInput)}
+                                            className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-blue-300"
+                                        />
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                        <div className="text-[10px] text-slate-400 font-mono uppercase mb-1">入睡</div>
+                                        <input
+                                            type="time"
+                                            value={sleepTimeInput}
+                                            onChange={(e) => setSleepTimeInput(e.target.value)}
+                                            onBlur={() => onRoutineChange('sleep_time', sleepTimeInput)}
+                                            className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-blue-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-3">
+                                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase mb-2">
+                                        <span>07:30</span>
+                                        <span>01:00</span>
+                                    </div>
+                                    <div className="relative h-4 rounded-full bg-slate-200/80 overflow-hidden">
+                                        {routineVisual.ready && routineVisual.widthPct > 0 && (
+                                            <div
+                                                className="absolute top-0 h-full bg-blue-500/80"
+                                                style={{ left: `${routineVisual.leftPct}%`, width: `${routineVisual.widthPct}%` }}
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="mt-2 text-[11px] text-slate-500">
+                                        {hasRoutineRecord ? (
+                                            routineVisual.ready ? (
+                                                <span>
+                                                    清醒时段：{wakeTimeInput || '--:--'} {'->'} {sleepTimeInput || '--:--'}（约 {routineVisual.durationText}）
+                                                </span>
+                                            ) : (
+                                                <span className="italic text-slate-400">信息不完整（仅记录了部分时间）</span>
+                                            )
+                                        ) : (
+                                            <span className="italic text-slate-400">未记录</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                                {hasRoutineRecord ? (
+                                    <div className="text-sm text-slate-600">
+                                        起床 {wakeTimeInput || '--:--'}，入睡 {sleepTimeInput || '--:--'}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-slate-300 italic">未记录</div>
+                                )}
                             </div>
                         )}
                     </div>

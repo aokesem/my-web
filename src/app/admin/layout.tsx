@@ -24,6 +24,7 @@ import {
     BookMarked,
     Utensils,
     Box,
+    MapPin,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -44,6 +45,7 @@ const ROOM_NAV_ITEMS = [
     { title: "爱好档案", href: "/admin/room/hobbies", icon: Cpu },
     { title: "时间线", href: "/admin/room/timeline", icon: GitCommitHorizontal },
     { title: "工具箱", href: "/admin/room/tools", icon: Wrench },
+    { title: "地点管理", href: "/admin/room/places", icon: MapPin },
     { title: "习惯配置", href: "/admin/room/habits", icon: ListTodo },
     { title: "日历管理", href: "/admin/calendar", icon: CalendarDays },
     { title: "任务森林", href: "/admin/playbook", icon: BookMarked },

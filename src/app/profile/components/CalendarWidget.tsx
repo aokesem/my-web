@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, formatDateKey, MONTH_ABBR } from './calendar/types';
+import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, RoutineLog, formatDateKey, MONTH_ABBR } from './calendar/types';
 import DeadlinePanel from './calendar/DeadlinePanel';
 import MonthViewPanel from './calendar/MonthViewPanel';
 import WeekViewPanel from './calendar/WeekViewPanel';
@@ -17,6 +17,11 @@ interface CalendarWidgetProps {
     isActive: boolean;
     onToggle: () => void;
     isAdmin?: boolean;
+}
+
+interface PlaceOption {
+    id: number;
+    name: string;
 }
 
 // === 静止态指示灯颜色 ===
@@ -53,12 +58,14 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     const [isWeeklyFullscreen, setIsWeeklyFullscreen] = useState(false);
 
     const { data: swrData, mutate } = useSWR('calendar_data', async () => {
-        const [daysRes, actsRes, catsRes, itemsRes, tpsRes] = await Promise.all([
+        const [daysRes, actsRes, catsRes, itemsRes, tpsRes, routinesRes, placesRes] = await Promise.all([
             supabase.from('calendar_days').select('*'),
             supabase.from('calendar_activities').select('*').order('created_at', { ascending: true }),
             supabase.from('deadline_categories').select('*').order('sort_order', { ascending: true }),
             supabase.from('deadline_items').select('*').order('sort_order', { ascending: true }),
             supabase.from('deadline_timepoints').select('*').order('date', { ascending: true }),
+            supabase.from('calendar_routine_logs').select('*'),
+            supabase.from('profile_places').select('id,name').order('sort_order', { ascending: true }),
         ]);
 
         const map: Record<string, DayData> = {};
@@ -70,22 +77,44 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         const allActs: any[] = [];
         if (actsRes.data) {
             for (const a of actsRes.data) {
-                const act = { id: a.id, content: a.content, duration: a.duration, start_time: a.start_time, end_time: a.end_time, color: a.color, day_of_week: a.day_of_week, recur_until: a.recur_until, date: a.date, deadline_item_id: a.deadline_item_id };
+                const act = { id: a.id, content: a.content, duration: a.duration, start_time: a.start_time, end_time: a.end_time, color: a.color, day_of_week: a.day_of_week, recur_until: a.recur_until, date: a.date, deadline_item_id: a.deadline_item_id, place_id: a.place_id };
                 allActs.push(act);
                 if (!map[a.date]) map[a.date] = { status: null, comment: '', activities: [] };
                 map[a.date].activities.push(act);
             }
         }
+        const routineMap: Record<string, RoutineLog> = {};
+        if (routinesRes.data) {
+            for (const r of routinesRes.data) {
+                routineMap[r.date] = {
+                    id: r.id,
+                    date: r.date,
+                    wake_time: r.wake_time,
+                    sleep_time: r.sleep_time,
+                    created_at: r.created_at,
+                    updated_at: r.updated_at,
+                };
+            }
+        }
+
         return {
             calendarData: map,
             deadlineCategories: (catsRes.data || []) as DeadlineCategory[],
             deadlineItems: (itemsRes.data || []) as DeadlineItem[],
             deadlineTimepoints: (tpsRes.data || []) as DeadlineTimepoint[],
             allActivities: allActs,
+            routineLogs: routineMap,
+            places: (placesRes.data || []) as PlaceOption[],
         };
-    }, { fallbackData: { calendarData: {}, deadlineCategories: [], deadlineItems: [], deadlineTimepoints: [], allActivities: [] } });
+    }, { fallbackData: { calendarData: {}, deadlineCategories: [], deadlineItems: [], deadlineTimepoints: [], allActivities: [], routineLogs: {}, places: [] } });
 
-    const { calendarData, deadlineCategories, deadlineItems, deadlineTimepoints, allActivities } = swrData;
+    const { calendarData, deadlineCategories, deadlineItems, deadlineTimepoints, allActivities, routineLogs, places } = swrData;
+
+    React.useEffect(() => {
+        if (isActive) {
+            mutate();
+        }
+    }, [isActive, mutate]);
 
     // 将 timepoints 转为旧 Deadline 格式，供月历/周历红点标注等使用（过渡兼容）
     const deadlines: Deadline[] = useMemo(() => {
@@ -169,6 +198,37 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     };
 
     const handleCommentBlur = () => upsertDayField(selectedKey, 'comment', selectedData.comment);
+
+    const upsertRoutineField = async (dateKey: string, field: 'wake_time' | 'sleep_time', value: string | null) => {
+        const normalized = value && value.length === 5 ? `${value}:00` : value;
+        mutate((prev: any) => ({
+            ...prev,
+            routineLogs: {
+                ...prev.routineLogs,
+                [dateKey]: {
+                    ...(prev.routineLogs[dateKey] || { id: 0, date: dateKey, wake_time: null, sleep_time: null }),
+                    [field]: normalized,
+                    date: dateKey,
+                }
+            }
+        }), false);
+
+        const existing = await supabase.from('calendar_routine_logs').select('id').eq('date', dateKey).single();
+        if (existing.data) {
+            await supabase
+                .from('calendar_routine_logs')
+                .update({ [field]: normalized, updated_at: new Date().toISOString() })
+                .eq('date', dateKey);
+        } else {
+            await supabase
+                .from('calendar_routine_logs')
+                .insert({ date: dateKey, [field]: normalized });
+        }
+    };
+
+    const handleRoutineChange = async (field: 'wake_time' | 'sleep_time', value: string) => {
+        await upsertRoutineField(selectedKey, field, value.trim() ? value : null);
+    };
 
     // === 新 Deadline 三级操作 ===
     // -- 分类操作 --
@@ -305,7 +365,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         mutate(); // refetch
     };
 
-    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string, duration?: number | null, deadline_item_id?: number | null }) => {
+    const handleUpdateActivity = async (actId: number, updates: { content?: string, color?: string, duration?: number | null, deadline_item_id?: number | null, place_id?: number | null }) => {
         await supabase.from('calendar_activities').update(updates).eq('id', actId);
         mutate();
     };
@@ -435,6 +495,9 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         onUpdateActivity={handleUpdateActivity}
                                         onCommentChange={handleCommentChange}
                                         onCommentBlur={handleCommentBlur}
+                                        routineLog={routineLogs[selectedKey]}
+                                        onRoutineChange={handleRoutineChange}
+                                        places={places}
                                     />
                                     <DashboardPanel
                                         calendarData={calendarData}

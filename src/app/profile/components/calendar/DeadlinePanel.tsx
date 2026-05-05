@@ -84,6 +84,11 @@ export default function DeadlinePanel({
             .reduce((sum, a) => sum + (a.duration || 0), 0);
     };
 
+    const getCategoryDuration = (catId: number) => {
+        const catItems = items.filter(i => i.category_id === catId);
+        return catItems.reduce((sum, item) => sum + getItemDuration(item.id), 0);
+    };
+
     // 分类新增
     const handleAddCat = async () => {
         if (!newCatName.trim()) return;
@@ -179,6 +184,14 @@ export default function DeadlinePanel({
                                             ) : (
                                                 <>
                                                     <span className="flex-1 text-[12px] font-bold text-slate-500 uppercase tracking-wider">{cat.name}</span>
+                                                    {(() => {
+                                                        const catDuration = getCategoryDuration(cat.id);
+                                                        return catDuration > 0 ? (
+                                                            <span className="text-[10px] font-mono text-blue-500 bg-blue-50/50 px-1.5 py-0.5 rounded-full shrink-0 mr-1">
+                                                                {catDuration.toFixed(1)}h
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
                                                     <span className="text-[11px] text-slate-300 font-mono">{catItems.length}</span>
                                                     {isAdmin && (
                                                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">

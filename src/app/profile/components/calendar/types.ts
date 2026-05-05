@@ -11,12 +11,22 @@ export interface Activity {
     recur_until?: string | null;   // 'YYYY-MM-DD' 重复截止日期
     date?: string;
     deadline_item_id?: number | null; // 关联的 deadline 条目
+    place_id?: number | null; // 关联地点
 }
 
 export interface DayData {
     status: DayStatus;
     comment: string;
     activities: Activity[];
+}
+
+export interface RoutineLog {
+    id: number;
+    date: string; // 'YYYY-MM-DD'
+    wake_time: string | null; // 'HH:mm:ss'
+    sleep_time: string | null; // 'HH:mm:ss'
+    created_at?: string;
+    updated_at?: string;
 }
 
 // === 新 Deadline 三级层次 ===
