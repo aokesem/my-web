@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Archive, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,12 @@ export default function HorizonView({ tasks }: HorizonViewProps) {
         return `${yyyy}-${mm}-${dd}`;
     })();
 
-    const tasksWithDeadline = tasks.filter(t => t.deadline);
+    /** 与 Board 左侧「进行中 ▶」一致：仅展示 status === in_progress 且带 deadline 的任务 */
+    const { horizonTasks, withDeadline } = useMemo(() => {
+        const wd = tasks.filter(t => t.deadline);
+        const ht = tasks.filter(t => t.deadline && t.status === 'in_progress');
+        return { horizonTasks: ht, withDeadline: wd };
+    }, [tasks]);
 
     return (
         <motion.div
@@ -52,13 +57,26 @@ export default function HorizonView({ tasks }: HorizonViewProps) {
             className="h-full flex flex-col p-8 overflow-y-auto subtle-scrollbar"
         >
             <div className="space-y-12 max-w-6xl mx-auto w-full">
-                {tasksWithDeadline.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                {horizonTasks.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-300 px-4">
                         <Archive size={48} className="opacity-20 mb-4" />
-                        <p className="text-sm font-mono tracking-widest uppercase">No Long-term Goals Set with Deadlines</p>
+                        {withDeadline.length === 0 ? (
+                            <p className="text-sm font-mono tracking-widest uppercase text-center">
+                                No Long-term Goals Set with Deadlines
+                            </p>
+                        ) : (
+                            <>
+                                <p className="text-sm font-bold text-slate-500 text-center tracking-tight">
+                                    暂无进行中的长期任务
+                                </p>
+                                <p className="text-xs text-slate-400 mt-3 max-w-md text-center leading-relaxed">
+                                    在 Board 中将带 Deadline 的任务切换为进行中（左侧 ▶）后，会在此显示 Horizon 时间轴。
+                                </p>
+                            </>
+                        )}
                     </div>
                 )}
-                {tasksWithDeadline.map(task => {
+                {horizonTasks.map(task => {
                     const progress = calculateProgress(task.startDate, task.deadline);
                     const config = CATEGORY_CONFIG[task.category];
                     const milestones = task.milestones ?? [];
