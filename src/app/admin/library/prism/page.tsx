@@ -31,13 +31,13 @@ export default function PrismAdminPage() {
                     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "projects" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
                     onClick={() => setActiveTab("projects")}
                 >
-                    项目体系管理
+                    项目管理
                 </button>
                 <button
                     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "tags" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
                     onClick={() => setActiveTab("tags")}
                 >
-                    研究方向与性质标签
+                    论文方向与性质标签
                 </button>
                 <button
                     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "courses" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
@@ -49,7 +49,7 @@ export default function PrismAdminPage() {
                     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "directions" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
                     onClick={() => setActiveTab("directions")}
                 >
-                    研究方向管理
+                    研究背景与当前问题
                 </button>
             </div>
 

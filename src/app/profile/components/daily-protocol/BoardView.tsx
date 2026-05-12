@@ -213,7 +213,7 @@ export default function BoardView({
                                                         </div>
                                                         <div className="flex opacity-0 group-hover/card:opacity-100 transition-all duration-300 gap-1.5 shrink-0">
                                                             <button onClick={(e) => onStartEditing(task, e)} className="text-slate-400 hover:bg-slate-200 p-1.5 rounded"><Pencil size={14} /></button>
-                                                            <button onClick={(e) => onArchiveTask(task.id, e)} className="text-slate-400 hover:bg-rose-100 hover:text-rose-500 p-1.5 rounded"><Archive size={14} /></button>
+                                                            <button type="button" title="永久删除" onClick={(e) => onArchiveTask(task.id, e)} className="text-slate-400 hover:bg-rose-100 hover:text-rose-500 p-1.5 rounded"><Archive size={14} /></button>
                                                         </div>
                                                     </div>
                                                 )}

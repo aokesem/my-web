@@ -91,9 +91,28 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
     const archiveTask = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!isAdmin) return toast.warning("只有本人才能修改状态");
+        if (!confirm('确定要永久删除该任务吗？任务及其里程碑将从数据库中删除，无法恢复。')) return;
+
         setTasks(prev => prev.filter(t => t.id !== id));
-        const { error } = await supabase.from('profile_tasks').update({ status: 'archived' }).eq('id', id);
-        if (error) console.error("Archive failed:", error);
+        if (editingTaskId === id) setEditingTaskId(null);
+
+        const { error: msError } = await supabase.from('profile_task_milestones').delete().eq('task_id', id);
+        if (msError) {
+            console.error('Delete milestones failed:', msError);
+            await mutate();
+            toast.error(msError.message || '删除里程碑失败，请重试');
+            return;
+        }
+
+        const { error } = await supabase.from('profile_tasks').delete().eq('id', id);
+        if (error) {
+            console.error('Delete task failed:', error);
+            await mutate();
+            toast.error(error.message || '删除任务失败，请重试');
+            return;
+        }
+
+        toast.success('已删除');
     };
 
     // === 添加任务 ===
