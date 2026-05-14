@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { supabase } from '@/lib/supabaseClient';
-import { PaperDetail, ProjectData, ProjectCategory, ProjectInsight, ProjectOutcome, ProjectTimelineEvent } from '../types';
+import { PaperDetail, ProjectData, ProjectCategory, ProjectInsight, ProjectTimelineEvent } from '../types';
 
 // ==========================================
 // API FETCHERS
@@ -86,26 +86,23 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
         supabase.from('prism_projects').select('*').order('sort_order'),
         supabase.from('prism_project_timeline').select('*').order('sort_order'),
         supabase.from('prism_project_insights').select('*').order('sort_order'),
-        supabase.from('prism_project_outcomes').select('*').order('sort_order'),
         supabase.from('prism_insight_papers').select('*'),
-        supabase.from('prism_outcome_papers').select('*'),
+        supabase.from('prism_insight_survey_items').select('*'),
     ]);
 
     const [
         { data: projects, error: pErr },
         { data: timeline, error: tErr },
         { data: insights, error: iErr },
-        { data: outcomes, error: oErr },
         { data: insightPapers, error: ipErr },
-        { data: outcomePapers, error: opErr },
+        { data: insightSurveyRows, error: isErr },
     ] = results;
 
     if (pErr) throw pErr;
     if (tErr) throw tErr;
     if (iErr) throw iErr;
-    if (oErr) throw oErr;
     if (ipErr) throw ipErr;
-    if (opErr) throw opErr;
+    if (isErr) throw isErr;
 
     return projects.map((proj: any) => {
         const pTimeline = timeline
@@ -117,19 +114,18 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             }));
 
         const pInsightsData = insights.filter((i: any) => i.project_id === proj.id);
-        const pOutcomesData = outcomes.filter((o: any) => o.project_id === proj.id);
 
         // Map junction data
-        const insightIdToPapers = new Map();
+        const insightIdToPapers = new Map<string, string[]>();
         insightPapers.forEach((ip: any) => {
             if (!insightIdToPapers.has(ip.insight_id)) insightIdToPapers.set(ip.insight_id, []);
-            insightIdToPapers.get(ip.insight_id).push(ip.paper_id);
+            insightIdToPapers.get(ip.insight_id)!.push(ip.paper_id);
         });
 
-        const outcomeIdToPapers = new Map();
-        outcomePapers.forEach((op: any) => {
-            if (!outcomeIdToPapers.has(op.outcome_id)) outcomeIdToPapers.set(op.outcome_id, []);
-            outcomeIdToPapers.get(op.outcome_id).push(op.paper_id);
+        const insightIdToSurveyIds = new Map<string, string[]>();
+        (insightSurveyRows || []).forEach((row: any) => {
+            if (!insightIdToSurveyIds.has(row.insight_id)) insightIdToSurveyIds.set(row.insight_id, []);
+            insightIdToSurveyIds.get(row.insight_id)!.push(row.survey_item_id);
         });
 
         // 分组启示
@@ -138,21 +134,11 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             category: cat as string,
             items: pInsightsData.filter((i: any) => i.category === cat).map((i: any) => ({
                 id: i.id,
+                title: i.title ?? `启示-${String(i.id).replace(/-/g, '')}`,
                 content: i.content,
                 paper_ids: insightIdToPapers.get(i.id) || [],
+                survey_ids: insightIdToSurveyIds.get(i.id) || [],
                 created_at: i.created_at
-            }))
-        }));
-
-        // 分组现有成果
-        const outCats = Array.from(new Set(pOutcomesData.map((o: any) => o.category)));
-        const pOutcomes: ProjectCategory<ProjectOutcome>[] = outCats.map(cat => ({
-            category: cat as string,
-            items: pOutcomesData.filter((o: any) => o.category === cat).map((o: any) => ({
-                id: o.id,
-                content: o.content,
-                paper_ids: outcomeIdToPapers.get(o.id) || [],
-                created_at: o.created_at
             }))
         }));
 
@@ -161,7 +147,6 @@ const fetchProjects = async (): Promise<ProjectData[]> => {
             name: proj.name,
             timeline: pTimeline,
             insights: pInsights,
-            outcomes: pOutcomes
         };
     });
 };

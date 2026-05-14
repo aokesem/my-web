@@ -185,7 +185,8 @@ export default function LibraryPapersPage() {
     const [activeTab, setActiveTab] = useState('projects');
     const [sortBy, setSortBy] = useState<SortKey>('created_at');
     const [sortDesc, setSortDesc] = useState(true);
-    const [readDepthFilter, setReadDepthFilter] = useState<'all' | '精读' | '粗读'>('all');
+    /** 全部论文列表：按所属项目筛选（多项目论文满足任一选中项目即显示） */
+    const [projectFilterId, setProjectFilterId] = useState<'all' | string>('all');
     const [currentPage, setCurrentPage] = useState(1);
 
     // Modal State
@@ -195,9 +196,11 @@ export default function LibraryPapersPage() {
     const sortedPapers = useMemo(() => {
         let papers = [...allPapers];
 
-        // Filter
-        if (readDepthFilter !== 'all') {
-            papers = papers.filter(p => p.read_depth === readDepthFilter);
+        if (projectFilterId !== 'all') {
+            const proj = allProjects.find((p) => p.id === projectFilterId);
+            if (proj) {
+                papers = papers.filter((p) => p.projects?.includes(proj.name));
+            }
         }
 
         // Sort
@@ -219,7 +222,7 @@ export default function LibraryPapersPage() {
         });
 
         return papers;
-    }, [allPapers, sortBy, sortDesc, readDepthFilter]);
+    }, [allPapers, allProjects, projectFilterId, sortBy, sortDesc]);
 
     // Pagination
     const totalPages = Math.ceil(sortedPapers.length / ITEMS_PER_PAGE);
@@ -238,8 +241,8 @@ export default function LibraryPapersPage() {
         setCurrentPage(1);
     };
 
-    const handleFilterChange = (val: 'all' | '精读' | '粗读') => {
-        setReadDepthFilter(val);
+    const handleProjectFilterChange = (val: 'all' | string) => {
+        setProjectFilterId(val);
         setCurrentPage(1);
     };
 
@@ -346,20 +349,35 @@ export default function LibraryPapersPage() {
                                     <div className="h-4 w-px bg-stone-300"></div>
 
                                     {/* Filter */}
-                                    <div className="flex items-center gap-1 bg-stone-100 p-1 py-0.5 rounded-lg border border-stone-200/60">
-                                        {(['all', '精读', '粗读'] as const).map(f => (
-                                            <button
-                                                key={f}
-                                                onClick={() => handleFilterChange(f)}
-                                                className={`
+                                    <div className="flex items-center gap-1 bg-stone-100 p-1 py-0.5 rounded-lg border border-stone-200/60 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleProjectFilterChange('all')}
+                                            className={`
                                         px-3 py-1 rounded text-[11px] font-mono transition-all duration-200
-                                        ${readDepthFilter === f
+                                        ${projectFilterId === 'all'
                                                         ? 'bg-white text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] font-bold'
                                                         : 'text-stone-400 hover:text-stone-600'
                                                     }
                                     `}
+                                        >
+                                            全部项目
+                                        </button>
+                                        {allProjects.map((proj) => (
+                                            <button
+                                                key={proj.id}
+                                                type="button"
+                                                onClick={() => handleProjectFilterChange(proj.id)}
+                                                className={`
+                                        px-3 py-1 rounded text-[11px] font-mono transition-all duration-200 max-w-[140px] truncate
+                                        ${projectFilterId === proj.id
+                                                        ? 'bg-white text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] font-bold'
+                                                        : 'text-stone-400 hover:text-stone-600'
+                                                    }
+                                    `}
+                                                title={proj.name}
                                             >
-                                                {f === 'all' ? '全部' : f}
+                                                {proj.name}
                                             </button>
                                         ))}
                                     </div>
@@ -395,7 +413,7 @@ export default function LibraryPapersPage() {
                             <div className="max-w-7xl mx-auto">
                                 <AnimatePresence mode="wait">
                                     <motion.div
-                                        key={`${sortBy}-${sortDesc}-${currentPage}`}
+                                        key={`${sortBy}-${sortDesc}-${currentPage}-${projectFilterId}`}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}

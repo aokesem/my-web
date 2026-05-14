@@ -232,7 +232,11 @@ export default function AnimeArchive() {
                                                         : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0'
                                                 }`}
                                             >
-                                                <Image src={item.cover} alt={item.title} fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover" priority={idx < 5} unoptimized />
+                                                {item.cover ? (
+                                                    <Image src={item.cover} alt={item.title} fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover" priority={idx < 5} unoptimized />
+                                                ) : (
+                                                    <div className="absolute inset-0 bg-white/[0.06]" role="img" aria-label={item.title} />
+                                                )}
                                                 <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-80" />
                                             </div>
 

@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { Restaurant, Category } from '../types';
 import { FilterPill, RatingStars, Pagination } from './DietCommon';
 
+const trimmedUrl = (u: string | undefined | null) => (typeof u === 'string' && u.trim() !== '' ? u.trim() : null);
+
 export const RestaurantDetail = ({
     restaurant,
     onClose,
@@ -38,16 +40,23 @@ export const RestaurantDetail = ({
             </button>
 
             <div className="flex gap-2 p-4 overflow-x-auto no-scrollbar">
-                {restaurant.images.map((img, i) => (
+                {restaurant.images.map((img, i) => {
+                    const src = trimmedUrl(img);
+                    return (
                     <div key={i} className={`relative shrink-0 rounded-2xl overflow-hidden bg-stone-200 ${i === 0 ? 'w-72 h-48' : 'w-48 h-48'}`}>
-                        <Image src={img} alt={`${restaurant.name} ${i + 1}`} fill sizes="300px" className="object-cover" />
+                        {src ? (
+                            <Image src={src} alt={`${restaurant.name} ${i + 1}`} fill sizes="300px" className="object-cover" />
+                        ) : (
+                            <div className="absolute inset-0 bg-stone-300/60" role="img" aria-label={`${restaurant.name} ${i + 1}`} />
+                        )}
                         {i === 0 && (
                             <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/80 text-[10px] font-bold text-stone-600">
                                 封面
                             </div>
                         )}
                     </div>
-                ))}
+                    );
+                })}
             </div>
 
             <div className="px-8 pb-2">
@@ -81,7 +90,14 @@ export const RestaurantDetail = ({
                         className="group relative cursor-pointer block focus:outline-none"
                     >
                         <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-200 mb-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-2 ring-transparent group-hover:ring-amber-300 transition-all duration-300 hover:shadow-lg">
-                            <Image src={dish.image} alt={dish.name} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                            {(() => {
+                                const src = trimmedUrl(dish.image);
+                                return src ? (
+                                    <Image src={src} alt={dish.name} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                                ) : (
+                                    <div className="absolute inset-0 bg-stone-300/60" role="img" aria-label={dish.name} />
+                                );
+                            })()}
                             <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 justify-end">
                                 <CookingPot size={16} className="text-white drop-shadow-md" />
                             </div>
@@ -93,7 +109,14 @@ export const RestaurantDetail = ({
                 ) : (
                     <div key={dish.id} className="group">
                         <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-200 mb-2 shadow-sm">
-                            <Image src={dish.image} alt={dish.name} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                            {(() => {
+                                const src = trimmedUrl(dish.image);
+                                return src ? (
+                                    <Image src={src} alt={dish.name} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                                ) : (
+                                    <div className="absolute inset-0 bg-stone-300/60" role="img" aria-label={dish.name} />
+                                );
+                            })()}
                         </div>
                         <p className="text-sm font-medium text-stone-700 text-center">{dish.name}</p>
                     </div>
@@ -216,13 +239,20 @@ export const RestaurantsTab = ({
                         >
                             <div className="flex items-stretch">
                                 <div className="relative w-1/3 min-w-[320px] max-w-[440px] shrink-0 overflow-hidden bg-stone-200">
-                                    <Image
-                                        src={restaurant.images[0]}
-                                        alt={restaurant.name}
-                                        fill
-                                        sizes="400px"
-                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
+                                    {(() => {
+                                        const src = restaurant.images.map(trimmedUrl).find((u): u is string => u !== null);
+                                        return src ? (
+                                            <Image
+                                                src={src}
+                                                alt={restaurant.name}
+                                                fill
+                                                sizes="400px"
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 bg-stone-300/60" role="img" aria-label={restaurant.name} />
+                                        );
+                                    })()}
                                 </div>
 
                                 <div className="flex-1 p-6 flex flex-col justify-between">

@@ -24,7 +24,7 @@ const SECTIONS = [
         id: 'papers',
         title: '论文库',
         subtitle: 'PAPERS',
-        description: '论文的多维分类与深度笔记，支持按项目、方向和性质三种视角审视。',
+        description: '论文的多维分类与深度笔记；项目视图下按方向、性质与议程组织，全部论文支持按项目筛选。',
         count: '12 Papers',
         href: '/library/prism/papers',
         icon: FileText,

@@ -25,15 +25,12 @@ export interface ProjectTimelineEvent {
 
 export interface ProjectInsight {
     id: string;
+    /** 项目内唯一，用于列表展示与综合条引用 */
+    title: string;
     content: string;
     paper_ids: string[];
-    created_at?: string;
-}
-
-export interface ProjectOutcome {
-    id: string;
-    content: string;
-    paper_ids: string[];
+    /** 关联的调查方向（议程版本子条 id） */
+    survey_ids: string[];
     created_at?: string;
 }
 
@@ -47,7 +44,49 @@ export interface ProjectData {
     name: string;
     timeline: ProjectTimelineEvent[];
     insights: ProjectCategory<ProjectInsight>[];
-    outcomes: ProjectCategory<ProjectOutcome>[];
+}
+
+/** 项目 Tab 左栏「研究问题与背景」议程版本（三块正文拆为子表，按子条 `created_at` 进时间线） */
+export interface ProjectAgendaVersion {
+    id: string;
+    project_id: string;
+    label: string | null;
+    sort_order: number;
+    created_at: string;
+}
+
+export interface ProjectAgendaDriveItem {
+    id: string;
+    agenda_version_id: string;
+    title: string;
+    content: string;
+    sort_order: number;
+    created_at: string;
+}
+
+export interface ProjectAgendaSurveyItem {
+    id: string;
+    agenda_version_id: string;
+    title: string;
+    content: string;
+    sort_order: number;
+    created_at: string;
+}
+
+export interface ProjectAgendaSynthesisItem {
+    id: string;
+    agenda_version_id: string;
+    content: string;
+    sort_order: number;
+    created_at: string;
+    /** 关联的启示 id（来自 prism_synthesis_insight_refs） */
+    insight_ref_ids: string[];
+}
+
+export interface ProjectAgendaItemsBundle {
+    drive: ProjectAgendaDriveItem[];
+    survey: ProjectAgendaSurveyItem[];
+    synthesis: ProjectAgendaSynthesisItem[];
 }
 
 // ============================================================

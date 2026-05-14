@@ -6,8 +6,8 @@ import { PaperDetail } from '../../types';
 
 interface PapersColumnProps {
     relatedPapers: PaperDetail[];
-    paperGroupMode: 'direction' | 'type' | 'depth';
-    setPaperGroupMode: (mode: 'direction' | 'type' | 'depth') => void;
+    paperGroupMode: 'direction' | 'type';
+    setPaperGroupMode: (mode: 'direction' | 'type') => void;
     isAddingPaper: boolean;
     setIsAddingPaper: (val: boolean) => void;
     addPaperDirection: string | null;
@@ -37,7 +37,7 @@ export function PapersColumn({
 }: PapersColumnProps) {
     return (
         <BoardColumn
-            title="关联论文 (素材)"
+            title="关联论文"
             icon={FileText}
             color="cyan"
             count={relatedPapers.length}
@@ -45,12 +45,11 @@ export function PapersColumn({
                 <div className="flex items-center gap-1.5">
                     <select
                         value={paperGroupMode}
-                        onChange={(e) => setPaperGroupMode(e.target.value as any)}
+                        onChange={(e) => setPaperGroupMode(e.target.value as 'direction' | 'type')}
                         className="bg-white/50 border border-stone-200/60 text-stone-500 hover:text-stone-700 text-[13px] rounded px-1.5 py-0.5 outline-none font-mono focus:ring-1 focus:ring-cyan-200 transition-all cursor-pointer"
                     >
                         <option value="direction">按方向</option>
                         <option value="type">按性质</option>
-                        <option value="depth">按阅读</option>
                     </select>
                     <button
                         onClick={() => { setIsAddingPaper(!isAddingPaper); setAddPaperDirection(null); }}

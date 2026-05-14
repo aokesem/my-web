@@ -3,21 +3,23 @@ import React from 'react';
 interface BoardColumnProps {
     title: string;
     icon: any;
-    color: 'cyan' | 'amber' | 'emerald';
+    color: 'cyan' | 'amber' | 'emerald' | 'violet';
     count: number;
     action?: React.ReactNode;
     children: React.ReactNode;
+    className?: string;
 }
 
-export function BoardColumn({ title, icon: Icon, color, count, action, children }: BoardColumnProps) {
+export function BoardColumn({ title, icon: Icon, color, count, action, children, className = '' }: BoardColumnProps) {
     const colorStyles = {
         cyan: 'bg-cyan-50 text-cyan-500 border-cyan-100',
         amber: 'bg-amber-50 text-amber-500 border-amber-100',
         emerald: 'bg-emerald-50 text-emerald-500 border-emerald-100',
+        violet: 'bg-violet-50 text-violet-600 border-violet-100',
     };
 
     return (
-        <div className="flex-1 border-r border-stone-100 last:border-r-0 flex flex-col min-w-[260px]">
+        <div className={`min-h-0 h-full min-w-0 w-full border-r border-stone-100 last:border-r-0 flex flex-col ${className}`.trim()}>
             <div className="shrink-0 p-4 border-b border-stone-100 flex items-center justify-between bg-white/50">
                 <div className="flex items-center gap-2">
                     <div className={`p-1.5 rounded-md border ${colorStyles[color]}`}>

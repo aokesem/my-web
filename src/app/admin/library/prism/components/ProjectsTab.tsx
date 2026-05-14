@@ -14,7 +14,7 @@ export default function ProjectsTab() {
     const [projects, setProjects] = useState<any[]>([]);
     const [selectedProject, setSelectedProject] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeSubTab, setActiveSubTab] = useState<"info" | "timeline" | "insights" | "outcomes">("info");
+    const [activeSubTab, setActiveSubTab] = useState<"info" | "timeline" | "agenda" | "insights">("info");
 
     const fetchProjects = async () => {
         setLoading(true);
@@ -139,8 +139,8 @@ export default function ProjectsTab() {
                             {[
                                 { id: "info", label: "项目信息" },
                                 { id: "timeline", label: "时间轴 (Timeline)" },
+                                { id: "agenda", label: "研究议程版本" },
                                 { id: "insights", label: "启示 (Insights)" },
-                                { id: "outcomes", label: "现有成果 (Outcomes)" }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
@@ -169,8 +169,18 @@ export default function ProjectsTab() {
                             )}
 
                             {activeSubTab === "timeline" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_timeline" fields={["date", "content"]} sortBy="sort_order" />}
-                            {activeSubTab === "insights" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_insights" fields={["category", "content"]} sortBy="sort_order" showCreatedAt={true} />}
-                            {activeSubTab === "outcomes" && selectedProject?.id && <SubModuleManager projectId={selectedProject.id} table="prism_project_outcomes" fields={["category", "content"]} sortBy="sort_order" showCreatedAt={true} />}
+                            {activeSubTab === "agenda" && selectedProject?.id && (
+                                <AgendaVersionsPanel projectId={selectedProject.id} projectName={selectedProject.name} />
+                            )}
+                            {activeSubTab === "insights" && selectedProject?.id && (
+                                <SubModuleManager
+                                    projectId={selectedProject.id}
+                                    table="prism_project_insights"
+                                    fields={["category", "title", "content"]}
+                                    sortBy="sort_order"
+                                    showCreatedAt={true}
+                                />
+                            )}
                         </div>
                     </>
                 )}
@@ -179,7 +189,219 @@ export default function ProjectsTab() {
     );
 }
 
-// 可复用的子模块管理器组件（用于 Timeline, Insights, Outcomes）
+/** 管理 prism_project_agenda_versions：Library 端仅切换版本，新建/删/改时间与标题在此完成 */
+function AgendaVersionsPanel({ projectId, projectName }: { projectId: string; projectName: string }) {
+    const [versions, setVersions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState<any | null>(null);
+    const [form, setForm] = useState({ label: "", sort_order: 0, created_at: "" });
+
+    const toLocalInput = (d: Date) =>
+        new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+    const fetchVersions = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from("prism_project_agenda_versions")
+            .select("id, project_id, label, sort_order, created_at")
+            .eq("project_id", projectId)
+            .order("created_at", { ascending: false });
+        if (error) toast.error(error.message);
+        else setVersions(data || []);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        void fetchVersions();
+    }, [projectId]);
+
+    const startCreate = () => {
+        setForm({
+            label: `议程 ${new Date().toLocaleDateString()}`,
+            sort_order: versions.length,
+            created_at: toLocalInput(new Date()),
+        });
+        setEditing({ isNew: true });
+    };
+
+    const startEdit = (v: any) => {
+        setForm({
+            label: v.label ?? "",
+            sort_order: v.sort_order ?? 0,
+            created_at: v.created_at ? toLocalInput(new Date(v.created_at)) : "",
+        });
+        setEditing(v);
+    };
+
+    const handleSave = async () => {
+        if (!editing) return;
+        const label = form.label.trim() || null;
+        const sort_order = Number(form.sort_order) || 0;
+        const createdIso = form.created_at ? new Date(form.created_at).toISOString() : undefined;
+
+        if (editing.isNew) {
+            const insertRow: Record<string, unknown> = {
+                project_id: projectId,
+                label,
+                sort_order,
+            };
+            if (createdIso) insertRow.created_at = createdIso;
+            const { error } = await supabase.from("prism_project_agenda_versions").insert([insertRow]);
+            if (error) toast.error(error.message);
+            else {
+                toast.success("已新建议程版本");
+                setEditing(null);
+                void fetchVersions();
+            }
+            return;
+        }
+
+        const updateRow: Record<string, unknown> = { label, sort_order };
+        if (createdIso) updateRow.created_at = createdIso;
+        const { error } = await supabase.from("prism_project_agenda_versions").update(updateRow).eq("id", editing.id);
+        if (error) toast.error(error.message);
+        else {
+            toast.success("已更新");
+            setEditing(null);
+            void fetchVersions();
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (
+            !window.confirm(
+                "删除该议程版本将级联删除其下所有驱动/调查/综合分条及综合条对启示的引用，确定？"
+            )
+        )
+            return;
+        const { error } = await supabase.from("prism_project_agenda_versions").delete().eq("id", id);
+        if (error) toast.error(error.message);
+        else {
+            toast.success("已删除");
+            void fetchVersions();
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center p-10">
+                <Loader2 className="animate-spin text-zinc-500" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4 max-w-3xl">
+            <p className="text-sm text-zinc-400 leading-relaxed">
+                项目「<span className="text-zinc-200 font-medium">{projectName}</span>
+                」的研究议程按版本管理。Library 端仅可选择版本并编辑各版本下的分条，不在此表直接编辑正文。
+            </p>
+            <div className="flex justify-end">
+                <Button
+                    size="sm"
+                    onClick={startCreate}
+                    disabled={!!editing}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
+                >
+                    <Plus size={14} className="mr-1" /> 新建版本
+                </Button>
+            </div>
+
+            {editing && (
+                <div className="bg-zinc-950/50 border border-zinc-800 rounded-xl p-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                            <Label className="text-zinc-400">版本标题（可选）</Label>
+                            <Input
+                                value={form.label}
+                                onChange={(e) => setForm({ ...form, label: e.target.value })}
+                                className="bg-zinc-950 border-zinc-800 mt-1"
+                                placeholder="如：开题后、导师会后…"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-zinc-400">Sort order</Label>
+                            <Input
+                                type="number"
+                                value={form.sort_order}
+                                onChange={(e) =>
+                                    setForm({ ...form, sort_order: parseInt(e.target.value, 10) || 0 })
+                                }
+                                className="bg-zinc-950 border-zinc-800 mt-1"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-zinc-400">创建时间（参与 Library 时间线）</Label>
+                            <Input
+                                type="datetime-local"
+                                value={form.created_at}
+                                onChange={(e) => setForm({ ...form, created_at: e.target.value })}
+                                className="bg-zinc-950 border-zinc-800 mt-1 font-mono text-sm text-zinc-300"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+                        <Button variant="outline" size="sm" onClick={() => setEditing(null)} className="border-zinc-800 text-zinc-300">
+                            取消
+                        </Button>
+                        <Button size="sm" onClick={() => void handleSave()} className="bg-orange-600 hover:bg-orange-700 text-white">
+                            保存
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-2">
+                {versions.length === 0 && !editing && (
+                    <p className="text-zinc-500 text-sm py-6 border border-dashed border-zinc-800 rounded-lg text-center">
+                        暂无议程版本。点击「新建版本」以在 Library 中可选。
+                    </p>
+                )}
+                {versions.map((v) => (
+                    <div
+                        key={v.id}
+                        className="group flex items-start justify-between gap-4 bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:border-zinc-700"
+                    >
+                        <div className="min-w-0 space-y-1">
+                            <div className="text-sm font-semibold text-zinc-100 truncate">
+                                {v.label?.trim() || "（无标题）"}
+                            </div>
+                            <div className="text-xs font-mono text-zinc-500">
+                                sort {v.sort_order} ·{" "}
+                                {v.created_at
+                                    ? new Date(v.created_at).toLocaleString()
+                                    : "—"}
+                            </div>
+                            <div className="text-[10px] font-mono text-zinc-600 truncate">{v.id}</div>
+                        </div>
+                        <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-zinc-400 hover:text-white"
+                                onClick={() => startEdit(v)}
+                                disabled={!!editing}
+                            >
+                                <Pencil size={14} />
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-zinc-400 hover:text-red-400"
+                                onClick={() => void handleDelete(v.id)}
+                                disabled={!!editing}
+                            >
+                                <Trash2 size={14} />
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// 可复用的子模块管理器组件（用于 Timeline、Insights 等）
 function SubModuleManager({ projectId, table, fields, sortBy, showCreatedAt = false }: { projectId: string; table: string; fields: string[]; sortBy: string; showCreatedAt?: boolean }) {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -241,7 +463,12 @@ function SubModuleManager({ projectId, table, fields, sortBy, showCreatedAt = fa
     const handleSave = async () => {
         if (!editingItem) return;
         const payload = { ...form, project_id: projectId };
-        
+
+        if (table === "prism_project_insights" && !(String(payload.title || "").trim())) {
+            toast.error("启示标题不能为空");
+            return;
+        }
+
         if (showCreatedAt) {
             if (payload.created_at) {
                 payload.created_at = new Date(payload.created_at).toISOString();
