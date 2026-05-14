@@ -10,7 +10,6 @@ export function useInfoSourceData(type: string) {
     const [mockCategories, setCategories] = useState<InfoCategory[]>([]);
     const [mockItems, setItems] = useState<InfoItem[]>([]);
     const [mockBookmarks, setBookmarks] = useState<InfoBookmark[]>([]);
-    const [expandedGroups, setExpandedGroups] = useState<number[]>([]);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -27,7 +26,6 @@ export function useInfoSourceData(type: string) {
 
             if (groupRes.data) {
                 setGroups(groupRes.data);
-                setExpandedGroups(groupRes.data.map(g => g.id));
             }
             if (sourceRes.data) setSources(sourceRes.data);
             if (catRes.data) setCategories(catRes.data);
@@ -107,39 +105,6 @@ export function useInfoSourceData(type: string) {
         }
     };
 
-    const handleReorderSources = async (groupId: number | null, newOrder: InfoSource[]) => {
-        const updatedOrder = newOrder.map((source, index) => ({
-            ...source,
-            sort_order: index
-        }));
-
-        setSources(prev => {
-            const others = prev.filter(s => s.group_id !== groupId);
-            return [...others, ...updatedOrder];
-        });
-        
-        const updates = updatedOrder.map(source => ({
-            id: source.id,
-            group_id: source.group_id,
-            name: source.name,
-            image_url: source.image_url,
-            sort_order: source.sort_order
-        }));
-
-        try {
-            const { error } = await supabase.from('info_sources').upsert(updates);
-            if (error) throw error;
-        } catch (error) {
-            console.error("Failed to update sources order:", error);
-            toast.error("溯源排序保存失败");
-        }
-    };
-
-    const toggleGroup = (id: number, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setExpandedGroups(prev => prev.includes(id) ? prev.filter(gid => gid !== id) : [...prev, id]);
-    };
-
     return {
         isLoading,
         mockGroups,
@@ -154,9 +119,6 @@ export function useInfoSourceData(type: string) {
         fetchData,
         toggleStatus,
         toggleBookmarkStatus,
-        handleReorderGroups,
-        handleReorderSources,
-        expandedGroups,
-        toggleGroup
+        handleReorderGroups
     };
 }

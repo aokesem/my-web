@@ -9,8 +9,9 @@ interface InfoCardProps {
     theme: any;
     isStudy: boolean;
     displayImage?: string;
-    sourceName?: string;
-    sourceImg?: string;
+    /** 收藏夹（原 GROUP）名称，用于角标 */
+    folderName?: string;
+    folderImg?: string;
     categoryName?: string;
     isHighlighted: boolean;
     onToggleFav: (item: InfoItem) => void;
@@ -21,7 +22,7 @@ interface InfoCardProps {
 }
 
 export function InfoCard({
-    item, theme, isStudy, displayImage, sourceName, sourceImg, categoryName, isHighlighted, 
+    item, theme, isStudy, displayImage, folderName, folderImg, categoryName, isHighlighted, 
     onToggleFav, onToggleQueue, onEdit, onDeleteSuccess, onClick
 }: InfoCardProps) {
     return (
@@ -70,11 +71,11 @@ export function InfoCard({
                     </button>
                 </div>
 
-                {/* 来源标识 (仅当存在具体来源时显示) */}
-                {sourceName && (
+                {/* 收藏夹角标 */}
+                {folderName && (
                     <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-md bg-black/50 text-white border border-white/10">
-                        {sourceImg && <img src={sourceImg} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />}
-                        <span className="text-[10px] font-bold tracking-tight leading-none">{sourceName}</span>
+                        {folderImg && <img src={folderImg} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />}
+                        <span className="text-[10px] font-bold tracking-tight leading-none">{folderName}</span>
                     </div>
                 )}
 

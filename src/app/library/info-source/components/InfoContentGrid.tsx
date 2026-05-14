@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, Search } from 'lucide-react';
-import { InfoItem, InfoSource, InfoBookmark, InfoCategory } from '../types';
+import { InfoItem, InfoSource, InfoBookmark, InfoCategory, InfoSourceGroup, InfoSourceViewMode } from '../types';
 import { InfoCard } from './InfoCard';
 import { BookmarkCard } from './BookmarkCard';
 
@@ -8,10 +8,11 @@ interface InfoContentGridProps {
     isLoading: boolean;
     theme: any;
     isStudy: boolean;
-    viewMode: 'hub' | 'bookmarks';
+    viewMode: InfoSourceViewMode;
     allFilteredItems: InfoItem[];
     allFilteredBookmarks: InfoBookmark[];
     mockSources: InfoSource[];
+    mockGroups: InfoSourceGroup[];
     mockItems: InfoItem[];
     currentCategories: InfoCategory[];
     highlightedCardId: number | null;
@@ -21,7 +22,7 @@ interface InfoContentGridProps {
     handleEditBookmark: (bookmark: InfoBookmark) => void;
     fetchData: () => void;
     setSelectedParentItemId: (id: number | null) => void;
-    setViewMode: (mode: 'hub' | 'bookmarks') => void;
+    setViewMode: (mode: InfoSourceViewMode) => void;
 }
 
 export function InfoContentGrid({
@@ -32,6 +33,7 @@ export function InfoContentGrid({
     allFilteredItems,
     allFilteredBookmarks,
     mockSources,
+    mockGroups,
     mockItems,
     currentCategories,
     highlightedCardId,
@@ -47,7 +49,7 @@ export function InfoContentGrid({
         return (
             <div className="flex-1 overflow-y-auto px-10 py-8 relative scroll-smooth flex flex-col items-center justify-center opacity-50">
                 <Loader2 className={`animate-spin mb-4 ${theme.textMuted}`} size={40} />
-                <p className={`text-sm ${theme.textMuted}`}>正在接入信号网络 / SYNCING ...</p>
+                <p className={`text-sm ${theme.textMuted}`}>正在同步 / SYNCING…</p>
             </div>
         );
     }
@@ -55,12 +57,18 @@ export function InfoContentGrid({
     return (
         <div className="flex-1 overflow-y-auto px-10 py-8 relative scroll-smooth">
             <div className="max-w-7xl mx-auto pb-32">
-                {viewMode === 'hub' ? (
+                {viewMode === 'folders' ? (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {allFilteredItems.map((item) => {
-                                const sourceName = mockSources.find(s => s.id === item.source_id)?.name;
                                 const sourceImg = mockSources.find(s => s.id === item.source_id)?.image_url;
+                                const folderName = item.group_id
+                                    ? mockGroups.find(g => g.id === item.group_id)?.name
+                                    : (() => {
+                                        if (!item.source_id) return undefined;
+                                        const s = mockSources.find(src => src.id === item.source_id);
+                                        return s?.group_id ? mockGroups.find(g => g.id === s.group_id)?.name : undefined;
+                                    })();
                                 const isHighlighted = highlightedCardId === item.id;
                                 const displayImage = item.image_url || sourceImg || undefined;
                                 const categoryName = item.category_ids.length > 0 ? currentCategories.find(c => c.id === item.category_ids[0])?.name : undefined;
@@ -72,8 +80,8 @@ export function InfoContentGrid({
                                         theme={theme}
                                         isStudy={isStudy}
                                         displayImage={displayImage}
-                                        sourceName={sourceName}
-                                        sourceImg={sourceImg || undefined}
+                                        folderName={folderName}
+                                        folderImg={undefined}
                                         categoryName={categoryName}
                                         isHighlighted={isHighlighted}
                                         onToggleFav={(i: InfoItem) => toggleStatus(null, i.id, 'is_favorited')}
@@ -82,7 +90,7 @@ export function InfoContentGrid({
                                         onDeleteSuccess={fetchData}
                                         onClick={(item: InfoItem) => {
                                             setSelectedParentItemId(item.id);
-                                            setViewMode('bookmarks');
+                                            setViewMode('entries');
                                         }}
                                     />
                                 );
@@ -91,7 +99,7 @@ export function InfoContentGrid({
                         {allFilteredItems.length === 0 && (
                             <div className="w-full py-20 flex flex-col items-center justify-center opacity-50">
                                 <Search size={48} className={`mb-4 ${theme.textMuted}`} />
-                                <p className={`text-sm ${theme.textMuted}`}>没有找到对应的溯源卡片</p>
+                                <p className={`text-sm ${theme.textMuted} text-center`}>该筛选下没有主卡片 <span className="block font-mono text-[11px] mt-1">No hub cards</span></p>
                             </div>
                         )}
                     </>

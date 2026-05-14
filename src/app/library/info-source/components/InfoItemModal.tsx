@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, X, Loader2 } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { InfoSource, InfoCategory } from '../types';
+import { InfoSourceGroup, InfoCategory } from '../types';
 
 interface InfoItemModalProps {
     isOpen: boolean;
@@ -13,15 +13,14 @@ interface InfoItemModalProps {
     isSaving: boolean;
     handleSave: () => void;
     theme: any;
-    mockSources: InfoSource[];
-    mockGroups: any[];
+    mockGroups: InfoSourceGroup[];
     currentCategories: InfoCategory[];
     type: string;
 }
 
 export function InfoItemModal({
     isOpen, onClose, formMode, formData, setFormData,
-    isSaving, handleSave, theme, mockSources, mockGroups, currentCategories, type
+    isSaving, handleSave, theme, mockGroups, currentCategories, type
 }: InfoItemModalProps) {
     return (
         <AnimatePresence>
@@ -39,85 +38,57 @@ export function InfoItemModal({
                         className={`relative w-full max-w-lg p-8 rounded-3xl shadow-2xl ${theme.cardBg} border ${theme.border} z-10`}
                     >
                         {!isSaving && (
-                            <button onClick={onClose} className={`absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 ${theme.textMuted}`}>
+                            <button type="button" onClick={onClose} className={`absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 ${theme.textMuted}`}>
                                 <X size={20} />
                             </button>
                         )}
                         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                             {formMode === 'create' ? <Plus size={24} className={theme.primary} /> : <Edit size={24} className={theme.primary} />}
-                            {formMode === 'create' ? '录入新信息' : '修改核心参数'}
+                            {formMode === 'create' ? '新主卡片' : '编辑主卡片'} <span className="text-sm font-mono font-normal opacity-70">Hub card</span>
                         </h2>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>INFO_NAME / 标题标识*</label>
+                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>TITLE / 标题*</label>
                                 <input 
                                     type="text" 
                                     value={formData.name} 
                                     onChange={e => setFormData({...formData, name: e.target.value})}
-                                    placeholder="例如: React最新架构解析" 
+                                    placeholder="例如：某专题入口" 
                                     className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none focus:${theme.primaryBorder} focus:ring-1 focus:ring-current text-sm disabled:opacity-50`} 
                                     disabled={isSaving}
                                 />
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>SOURCE / 溯源基站</label>
-                                    <select 
-                                        value={formData.source_id}
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            setFormData({...formData, source_id: val, group_id: val ? '' : formData.group_id});
-                                        }}
-                                        className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
-                                        disabled={isSaving}
-                                    >
-                                        <option value="">未分类来源 (或直连大标签)</option>
-                                        {mockSources
-                                            .filter(s => !s.group_id || mockGroups.some(g => g.id === s.group_id))
-                                            .map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>CATEGORY / 从属矩阵</label>
-                                    <select 
-                                        value={formData.category_id}
-                                        onChange={e => setFormData({...formData, category_id: e.target.value})}
-                                        className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
-                                        disabled={isSaving}
-                                    >
-                                        <option value="">选择子类</option>
-                                        {currentCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                </div>
+
+                            <div>
+                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>FOLDER / 收藏夹 <span className="font-mono opacity-70">(GROUP)</span></label>
+                                <select 
+                                    value={formData.group_id}
+                                    onChange={e => setFormData({...formData, group_id: e.target.value})}
+                                    className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
+                                    disabled={isSaving}
+                                >
+                                    <option value="">未指定（将归入「未归档」筛选）</option>
+                                    {mockGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                </select>
                             </div>
 
-                            <AnimatePresence>
-                                {!formData.source_id && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                                        animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>GROUP / 所属聚合大标签*</label>
-                                        <select 
-                                            value={formData.group_id}
-                                            onChange={e => setFormData({...formData, group_id: e.target.value})}
-                                            className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
-                                            disabled={isSaving}
-                                        >
-                                            <option value="">请选择挂靠大类</option>
-                                            {mockGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                        </select>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                            <div>
+                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>CATEGORY / 功能专栏</label>
+                                <select 
+                                    value={formData.category_id}
+                                    onChange={e => setFormData({...formData, category_id: e.target.value})}
+                                    className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none text-sm disabled:opacity-50`}
+                                    disabled={isSaving}
+                                >
+                                    <option value="">未选择</option>
+                                    {currentCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
                             
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>DATA_URL / 直接超链接</label>
+                                    <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>URL / 链接</label>
                                     <input 
                                         type="text" 
                                         value={formData.url}
@@ -140,7 +111,7 @@ export function InfoItemModal({
                             </div>
                             
                             <div>
-                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>COVER / 附加配图</label>
+                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>COVER / 配图</label>
                                 <ImageUpload 
                                     value={formData.image_url}
                                     onChange={(url) => setFormData({...formData, image_url: url})}
@@ -150,11 +121,11 @@ export function InfoItemModal({
                             </div>
                             
                             <div>
-                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>NOTE / 扩展描述</label>
+                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>NOTE / 描述</label>
                                 <textarea 
                                     value={formData.description}
                                     onChange={e => setFormData({...formData, description: e.target.value})}
-                                    placeholder="记录核心价值或重点摘要..." 
+                                    placeholder="摘要或备忘…" 
                                     rows={2} 
                                     className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent outline-none focus:${theme.primaryBorder} focus:ring-1 focus:ring-current text-sm resize-none disabled:opacity-50`} 
                                     disabled={isSaving}
@@ -162,12 +133,12 @@ export function InfoItemModal({
                             </div>
                             
                             <div className="pt-4 flex justify-end gap-3 pointer-events-auto">
-                                <button onClick={onClose} disabled={isSaving} className={`px-6 py-2.5 rounded-xl text-sm font-bold border ${theme.border} ${theme.textMuted} hover:${theme.cardHover} transition-colors disabled:opacity-50`}>
+                                <button type="button" onClick={onClose} disabled={isSaving} className={`px-6 py-2.5 rounded-xl text-sm font-bold border ${theme.border} ${theme.textMuted} hover:${theme.cardHover} transition-colors disabled:opacity-50`}>
                                     取消
                                 </button>
-                                <button onClick={handleSave} disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md ${theme.activePill} hover:opacity-90 transition-opacity disabled:opacity-70`}>
+                                <button type="button" onClick={handleSave} disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md ${theme.activePill} hover:opacity-90 transition-opacity disabled:opacity-70`}>
                                     {isSaving && <Loader2 size={16} className="animate-spin" />}
-                                    {isSaving ? '传输中...' : '确认上传'}
+                                    {isSaving ? '保存中…' : '确认'}
                                 </button>
                             </div>
                         </div>

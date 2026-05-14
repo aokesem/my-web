@@ -96,7 +96,7 @@ function DriveRow({
             }`}
         >
             {!isEditing && !disabled && (
-                <div className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 opacity-0 pointer-events-none group-hover/agenda-row:opacity-100 group-hover/agenda-row:pointer-events-auto transition-opacity">
+                <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5 opacity-0 pointer-events-none group-hover/agenda-row:opacity-100 group-hover/agenda-row:pointer-events-auto transition-opacity">
                     <button
                         type="button"
                         onClick={enterEdit}
@@ -154,7 +154,7 @@ function DriveRow({
                     </div>
                 </div>
             ) : (
-                <div className="space-y-2 pr-1 pb-8">
+                <div className="space-y-2 pr-12">
                     <div className="text-base font-bold text-stone-900 leading-snug">
                         {item.title?.trim() ? item.title : <span className="text-stone-400 font-normal">（无小标题）</span>}
                     </div>
@@ -219,7 +219,7 @@ function SurveyRow({
             }`}
         >
             {!isEditing && !disabled && (
-                <div className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 opacity-0 pointer-events-none group-hover/agenda-row:opacity-100 group-hover/agenda-row:pointer-events-auto transition-opacity">
+                <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5 opacity-0 pointer-events-none group-hover/agenda-row:opacity-100 group-hover/agenda-row:pointer-events-auto transition-opacity">
                     <button
                         type="button"
                         onClick={enterEdit}
@@ -277,7 +277,7 @@ function SurveyRow({
                     </div>
                 </div>
             ) : (
-                <div className="space-y-2 pr-1 pb-8">
+                <div className="space-y-2 pr-12">
                     <div className="text-base font-bold text-stone-900 leading-snug">
                         {item.title?.trim() ? item.title : <span className="text-stone-400 font-normal">（无小标题）</span>}
                     </div>
@@ -355,7 +355,7 @@ function SynthesisRow({
             }`}
         >
             {!isEditing && !disabled && (
-                <div className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 opacity-0 pointer-events-none group-hover/agenda-row:opacity-100 group-hover/agenda-row:pointer-events-auto transition-opacity">
+                <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5 opacity-0 pointer-events-none group-hover/agenda-row:opacity-100 group-hover/agenda-row:pointer-events-auto transition-opacity">
                     <button
                         type="button"
                         onClick={enterEdit}
@@ -433,7 +433,7 @@ function SynthesisRow({
                     </div>
                 </div>
             ) : (
-                <div className="space-y-3 pr-1 pb-8">
+                <div className="space-y-3 pr-12">
                     <div className="text-base text-stone-700 leading-relaxed whitespace-pre-wrap min-h-[2.5rem]">
                         {item.content?.trim()
                             ? item.content

@@ -51,7 +51,8 @@ export default function InfoSourceListPage() {
     // 3. 弹窗表单状态层
     const modals = useInfoSourceModals(
         type, filters.viewMode, filters.selectedGroupId, filters.selectedSourceId, filters.selectedParentItemId,
-        data.setItems, data.setBookmarks
+        data.setItems, data.setBookmarks,
+        data.mockSources, data.mockItems
     );
 
     return (
@@ -70,11 +71,8 @@ export default function InfoSourceListPage() {
                 setSelectedGroupId={filters.setSelectedGroupId}
                 selectedSourceId={filters.selectedSourceId}
                 setSelectedSourceId={filters.setSelectedSourceId}
-                expandedGroups={data.expandedGroups}
-                toggleGroup={data.toggleGroup}
                 handleReorderGroups={data.handleReorderGroups}
-                handleReorderSources={data.handleReorderSources}
-                queuedItems={filters.viewMode === 'hub' ? filters.queuedItems : (filters.queuedBookmarks as any)}
+                queuedItems={filters.viewMode === 'folders' ? filters.queuedItems : (filters.queuedBookmarks as any)}
                 scrollToCard={filters.scrollToCard}
             />
 
@@ -106,6 +104,7 @@ export default function InfoSourceListPage() {
                     allFilteredItems={filters.allFilteredItems}
                     allFilteredBookmarks={filters.allFilteredBookmarks}
                     mockSources={data.mockSources}
+                    mockGroups={data.mockGroups}
                     mockItems={data.mockItems}
                     currentCategories={filters.currentCategories}
                     highlightedCardId={filters.highlightedCardId}
@@ -128,7 +127,6 @@ export default function InfoSourceListPage() {
                 isSaving={modals.isSaving}
                 handleSave={modals.handleSave}
                 theme={theme}
-                mockSources={data.mockSources}
                 mockGroups={data.mockGroups}
                 currentCategories={filters.currentCategories}
                 type={type}

@@ -1,5 +1,14 @@
 export type CategoryType = 'study' | 'life';
 
+/** 侧栏「未归入收藏夹」筛选用的哨兵 id（与真实 group id 不冲突） */
+export const INFO_UNGROUPED_FOLDER_ID = -1;
+
+/** 收藏夹主网格 vs 信息条目列表 */
+export type InfoSourceViewMode = 'folders' | 'entries';
+
+/** 侧栏：收藏夹导航 vs 待看队列 */
+export type InfoSidebarNavMode = 'folders' | 'queue';
+
 export interface InfoSourceGroup {
     id: number;
     category_type: CategoryType;

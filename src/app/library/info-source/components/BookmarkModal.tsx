@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, X, Loader2 } from 'lucide-react';
 import { InfoItem, InfoSource, InfoSourceGroup, InfoCategory } from '../types';
+import { itemBelongsToFolder } from '../lib/infoSourceFolders';
 
 interface BookmarkModalProps {
     isOpen: boolean;
@@ -44,7 +45,7 @@ export function BookmarkModal({
                         )}
                         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                             {formMode === 'create' ? <Plus size={24} className={theme.primary} /> : <Edit size={24} className={theme.primary} />}
-                            {formMode === 'create' ? '录入具体收藏 (Bookmark)' : '修改收藏信息'}
+                            {formMode === 'create' ? '新条目' : '编辑条目'} <span className="text-sm font-mono font-normal opacity-70">Entry</span>
                         </h2>
                         
                         <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1 -mx-1 hide-scrollbar">
@@ -86,46 +87,39 @@ export function BookmarkModal({
                                 </div>
                             </div>
                             
-                            {/* Hierarchy Selection */}
+                            {/* 收藏夹 + 可选关联主卡片 */}
                             <div className="pt-2 pb-1 border-t border-b border-black/5 dark:border-white/5 space-y-3">
-                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>归属层级映射 (可选)</label>
+                                <label className={`block text-xs font-bold mb-1.5 ${theme.textMuted}`}>FOLDER / 收藏夹 <span className="font-mono opacity-70">(optional)</span></label>
                                 
                                 <div>
                                     <select 
                                         value={formData.group_id}
-                                        onChange={e => setFormData({...formData, group_id: e.target.value, source_id: '', parent_item_id: ''})}
+                                        onChange={e => setFormData({...formData, group_id: e.target.value, parent_item_id: ''})}
                                         className={`w-full px-3 py-2 rounded-lg border ${theme.border} bg-transparent outline-none text-xs disabled:opacity-50`}
                                     >
-                                        <option value="">1. 挂靠大标签 (Group)</option>
+                                        <option value="">未指定收藏夹</option>
                                         {mockGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                                     </select>
                                 </div>
 
-                                {formData.group_id && (
-                                    <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}}>
-                                        <select 
-                                            value={formData.source_id}
-                                            onChange={e => setFormData({...formData, source_id: e.target.value, parent_item_id: ''})}
-                                            className={`w-full px-3 py-2 rounded-lg border ${theme.border} bg-transparent outline-none text-xs disabled:opacity-50 ml-2`}
-                                        >
-                                            <option value="">2. 挂靠溯源站 (Source)</option>
-                                            {mockSources.filter(s => s.group_id === parseInt(formData.group_id)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                    </motion.div>
-                                )}
-
-                                {formData.source_id && (
-                                    <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}}>
-                                        <select 
-                                            value={formData.parent_item_id}
-                                            onChange={e => setFormData({...formData, parent_item_id: e.target.value})}
-                                            className={`w-full px-3 py-2 rounded-lg border ${theme.border} bg-transparent outline-none text-xs disabled:opacity-50 ml-4`}
-                                        >
-                                            <option value="">3. 挂靠信息卡片 (Item)</option>
-                                            {mockItems.filter(i => i.source_id === parseInt(formData.source_id)).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                                        </select>
-                                    </motion.div>
-                                )}
+                                {formData.group_id && (() => {
+                                    const gid = parseInt(formData.group_id, 10);
+                                    const itemsInFolder = mockItems.filter(i => itemBelongsToFolder(i, gid, mockSources));
+                                    if (itemsInFolder.length === 0) return null;
+                                    return (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                                            <label className={`block text-[10px] font-bold mb-1 ${theme.textMuted}`}>LINK / 关联主卡片 <span className="font-mono">(optional)</span></label>
+                                            <select 
+                                                value={formData.parent_item_id}
+                                                onChange={e => setFormData({...formData, parent_item_id: e.target.value})}
+                                                className={`w-full px-3 py-2 rounded-lg border ${theme.border} bg-transparent outline-none text-xs disabled:opacity-50`}
+                                            >
+                                                <option value="">不关联</option>
+                                                {itemsInFolder.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                                            </select>
+                                        </motion.div>
+                                    );
+                                })()}
                             </div>
 
                             <div>

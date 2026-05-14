@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { InfoItem, InfoBookmark } from '../types';
+import { InfoItem, InfoBookmark, InfoSourceViewMode, InfoSource, INFO_UNGROUPED_FOLDER_ID } from '../types';
+import { resolveBookmarkFolderId } from '../lib/infoSourceFolders';
 
 export function useInfoSourceModals(
     type: string,
-    viewMode: 'hub' | 'bookmarks',
+    viewMode: InfoSourceViewMode,
     selectedGroupId: number | null,
     selectedSourceId: number | null,
     selectedParentItemId: number | null,
     setItems: React.Dispatch<React.SetStateAction<InfoItem[]>>,
-    setBookmarks: React.Dispatch<React.SetStateAction<InfoBookmark[]>>
+    setBookmarks: React.Dispatch<React.SetStateAction<InfoBookmark[]>>,
+    mockSources: InfoSource[],
+    mockItems: InfoItem[]
 ) {
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -28,13 +31,13 @@ export function useInfoSourceModals(
     });
 
     const handleCreate = () => {
-        if (viewMode === 'bookmarks') {
+        if (viewMode === 'entries') {
             setBookmarkFormMode('create');
             setEditingBookmark(null);
             setBookmarkFormData({ 
                 title: '', url: '', description: '', category_id: '', 
-                group_id: selectedGroupId?.toString() || '', 
-                source_id: selectedSourceId?.toString() || '', 
+                group_id: selectedGroupId != null && selectedGroupId !== INFO_UNGROUPED_FOLDER_ID ? selectedGroupId.toString() : '', 
+                source_id: '', 
                 parent_item_id: selectedParentItemId?.toString() || '' 
             });
             setIsBookmarkModalOpen(true);
@@ -43,8 +46,8 @@ export function useInfoSourceModals(
             setEditingItem(null);
             setFormData({ 
                 name: '', 
-                source_id: selectedSourceId?.toString() || '', 
-                group_id: selectedGroupId?.toString() || '', 
+                source_id: '', 
+                group_id: selectedGroupId != null && selectedGroupId !== INFO_UNGROUPED_FOLDER_ID ? selectedGroupId.toString() : '', 
                 category_id: '', url: '', description: '', image_url: '', info_date: '' 
             });
             setIsFormModalOpen(true);
@@ -54,12 +57,14 @@ export function useInfoSourceModals(
     const handleEditItem = (item: InfoItem) => {
         setFormMode('edit');
         setEditingItem(item);
+        const src = item.source_id ? mockSources.find(s => s.id === item.source_id) : undefined;
+        const resolvedGroup = item.group_id ?? src?.group_id;
         setFormData({
             name: item.name,
             description: item.description || '',
             url: item.url || '',
-            source_id: item.source_id ? item.source_id.toString() : '',
-            group_id: item.group_id ? item.group_id.toString() : '',
+            source_id: '',
+            group_id: resolvedGroup ? resolvedGroup.toString() : '',
             category_id: item.category_ids.length > 0 ? item.category_ids[0].toString() : '',
             image_url: item.image_url || '',
             info_date: item.info_date || ''
@@ -70,13 +75,18 @@ export function useInfoSourceModals(
     const handleEditBookmark = (bookmark: InfoBookmark) => {
         setBookmarkFormMode('edit');
         setEditingBookmark(bookmark);
+        const resolvedFolder = resolveBookmarkFolderId(bookmark, mockItems, mockSources);
+        let gid = bookmark.group_id ?? undefined;
+        if (gid == null) {
+            gid = resolvedFolder === INFO_UNGROUPED_FOLDER_ID ? undefined : resolvedFolder;
+        }
         setBookmarkFormData({
             title: bookmark.title,
             url: bookmark.url || '',
             description: bookmark.description || '',
             category_id: bookmark.category_id ? bookmark.category_id.toString() : '',
-            group_id: bookmark.group_id ? bookmark.group_id.toString() : '',
-            source_id: bookmark.source_id ? bookmark.source_id.toString() : '',
+            group_id: gid != null ? String(gid) : '',
+            source_id: '',
             parent_item_id: bookmark.parent_item_id ? bookmark.parent_item_id.toString() : ''
         });
         setIsBookmarkModalOpen(true);
@@ -93,7 +103,7 @@ export function useInfoSourceModals(
                 description: bookmarkFormData.description,
                 category_id: bookmarkFormData.category_id ? parseInt(bookmarkFormData.category_id) : null,
                 group_id: bookmarkFormData.group_id ? parseInt(bookmarkFormData.group_id) : null,
-                source_id: bookmarkFormData.source_id ? parseInt(bookmarkFormData.source_id) : null,
+                source_id: null,
                 parent_item_id: bookmarkFormData.parent_item_id ? parseInt(bookmarkFormData.parent_item_id) : null,
             };
 
@@ -123,8 +133,8 @@ export function useInfoSourceModals(
             const savePayload = {
                 category_type: type,
                 name: formData.name,
-                source_id: formData.source_id ? parseInt(formData.source_id) : null,
-                group_id: (!formData.source_id && formData.group_id) ? parseInt(formData.group_id) : null,
+                source_id: null,
+                group_id: formData.group_id ? parseInt(formData.group_id) : null,
                 url: formData.url,
                 description: formData.description,
                 image_url: formData.image_url,
