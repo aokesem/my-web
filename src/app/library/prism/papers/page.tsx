@@ -11,11 +11,13 @@ import {
     BookOpen,
     Eye,
     Star,
+    Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import PaperDetailModal from '../components/PaperDetailModal';
 import ProjectView from '../components/ProjectView';
 import DirectionView from '../components/DirectionView';
+import DataView from '../components/DataView';
 import { usePrismPapers, usePrismProjects } from '../hooks/usePrismData';
 import { PaperDetail, ProjectData } from '../types';
 
@@ -36,7 +38,7 @@ type Paper = PaperDetail;
 const TABS = [
     { id: 'projects', label: '项目', disabled: false },
     { id: 'directions', label: '方向', disabled: false },
-    { id: 'types', label: '性质', disabled: true },
+    { id: 'data', label: '数据', disabled: false },
     { id: 'all', label: '全部论文', disabled: false },
 ];
 
@@ -187,6 +189,7 @@ export default function LibraryPapersPage() {
     const [sortDesc, setSortDesc] = useState(true);
     /** 全部论文列表：按所属项目筛选（多项目论文满足任一选中项目即显示） */
     const [projectFilterId, setProjectFilterId] = useState<'all' | string>('all');
+    const [paperSearch, setPaperSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
 
     // Modal State
@@ -201,6 +204,15 @@ export default function LibraryPapersPage() {
             if (proj) {
                 papers = papers.filter((p) => p.projects?.includes(proj.name));
             }
+        }
+
+        const q = paperSearch.trim().toLowerCase();
+        if (q) {
+            papers = papers.filter(
+                (p) =>
+                    (p.title || '').toLowerCase().includes(q) ||
+                    (p.nickname || '').toLowerCase().includes(q),
+            );
         }
 
         // Sort
@@ -222,7 +234,7 @@ export default function LibraryPapersPage() {
         });
 
         return papers;
-    }, [allPapers, allProjects, projectFilterId, sortBy, sortDesc]);
+    }, [allPapers, allProjects, projectFilterId, paperSearch, sortBy, sortDesc]);
 
     // Pagination
     const totalPages = Math.ceil(sortedPapers.length / ITEMS_PER_PAGE);
@@ -243,6 +255,11 @@ export default function LibraryPapersPage() {
 
     const handleProjectFilterChange = (val: 'all' | string) => {
         setProjectFilterId(val);
+        setCurrentPage(1);
+    };
+
+    const handlePaperSearchChange = (val: string) => {
+        setPaperSearch(val);
         setCurrentPage(1);
     };
 
@@ -341,12 +358,23 @@ export default function LibraryPapersPage() {
                         {/* ===== TOOLBAR ===== */}
                         <div className="w-full px-10 pb-6 shrink-0">
                             <div className="max-w-7xl mx-auto flex items-center justify-between">
-                                <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-6 flex-wrap">
                                     <span className="text-sm text-stone-500">
                                         共 <span className="font-bold text-stone-700">{sortedPapers.length}</span> 篇论文
                                     </span>
 
-                                    <div className="h-4 w-px bg-stone-300"></div>
+                                    <div className="relative">
+                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+                                        <input
+                                            type="search"
+                                            value={paperSearch}
+                                            onChange={(e) => handlePaperSearchChange(e.target.value)}
+                                            placeholder="搜索标题或简称…"
+                                            className="pl-9 pr-3 py-1.5 w-[220px] rounded-lg border border-stone-200/80 bg-white text-sm text-stone-800 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-200"
+                                        />
+                                    </div>
+
+                                    <div className="h-4 w-px bg-stone-300 hidden sm:block"></div>
 
                                     {/* Filter */}
                                     <div className="flex items-center gap-1 bg-stone-100 p-1 py-0.5 rounded-lg border border-stone-200/60 flex-wrap">
@@ -413,7 +441,7 @@ export default function LibraryPapersPage() {
                             <div className="max-w-7xl mx-auto">
                                 <AnimatePresence mode="wait">
                                     <motion.div
-                                        key={`${sortBy}-${sortDesc}-${currentPage}-${projectFilterId}`}
+                                        key={`${sortBy}-${sortDesc}-${currentPage}-${projectFilterId}-${paperSearch}`}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}
@@ -486,9 +514,11 @@ export default function LibraryPapersPage() {
                 {!isLoading && activeTab === 'directions' && (
                 <DirectionView
                     projects={allProjects}
-                    allPapers={allPapers}
-                    onOpenPaper={(id) => setSelectedPaperId(id)}
                 />
+            )}
+
+                {!isLoading && activeTab === 'data' && (
+                <DataView papers={allPapers} />
             )}
 
             </div>

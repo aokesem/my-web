@@ -15,6 +15,29 @@ export interface PaperDetail {
     created_at: string;
     key_contributions?: string[];
     figures?: { url: string; description: string }[];
+    /** 论文数据模块：自由说明（对比对象、打分方式等） */
+    data_notes?: string;
+}
+
+export interface PrismDataset {
+    id: string;
+    name: string;
+    format_note: string;
+    sort_order: number;
+    created_at?: string;
+}
+
+export interface PrismMetric {
+    id: string;
+    name: string;
+    format_note: string;
+    sort_order: number;
+    created_at?: string;
+}
+
+export interface PaperDataLinks {
+    datasetIds: string[];
+    metricIds: string[];
 }
 
 export interface ProjectTimelineEvent {

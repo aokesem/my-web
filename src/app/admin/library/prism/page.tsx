@@ -5,9 +5,9 @@ import TagsTab from "./components/TagsTab";
 import ProjectsTab from "./components/ProjectsTab";
 import PapersTab from "./components/PapersTab";
 import CoursesTab from "./components/CoursesTab";
-import DirectionsTab from "./components/DirectionsTab";
+import InspirationNotesTab from "./components/InspirationNotesTab";
 
-type PaperLibraryTab = "papers" | "projects" | "tags" | "directions";
+type PaperLibraryTab = "papers" | "projects" | "tags" | "inspiration";
 
 export default function PrismAdminPage() {
     const [activeTab, setActiveTab] = useState<PaperLibraryTab>("papers");
@@ -23,7 +23,6 @@ export default function PrismAdminPage() {
                 </div>
             </div>
 
-            {/* —— 论文库 —— */}
             <section
                 className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 space-y-4"
                 aria-labelledby="prism-paper-library-heading"
@@ -33,7 +32,7 @@ export default function PrismAdminPage() {
                         <h2 id="prism-paper-library-heading" className="text-lg font-semibold text-zinc-100">
                             论文库
                         </h2>
-                        <p className="text-xs text-zinc-500 mt-1">论文、项目、方向/性质标签与研究问题背景</p>
+                        <p className="text-xs text-zinc-500 mt-1">论文、项目、方向/性质标签；数据与灵感笔记在 Library 端维护</p>
                     </div>
                 </div>
 
@@ -61,10 +60,10 @@ export default function PrismAdminPage() {
                     </button>
                     <button
                         type="button"
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "directions" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
-                        onClick={() => setActiveTab("directions")}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === "inspiration" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
+                        onClick={() => setActiveTab("inspiration")}
                     >
-                        研究背景与当前问题
+                        灵感与笔记
                     </button>
                 </div>
 
@@ -72,11 +71,10 @@ export default function PrismAdminPage() {
                     {activeTab === "papers" && <PapersTab />}
                     {activeTab === "projects" && <ProjectsTab />}
                     {activeTab === "tags" && <TagsTab />}
-                    {activeTab === "directions" && <DirectionsTab />}
+                    {activeTab === "inspiration" && <InspirationNotesTab />}
                 </div>
             </section>
 
-            {/* —— 课程笔记（与论文库物理分隔） —— */}
             <section
                 className="rounded-xl border border-emerald-900/40 bg-emerald-950/10 p-5 space-y-4"
                 aria-labelledby="prism-courses-heading"

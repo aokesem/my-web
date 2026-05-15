@@ -1,118 +1,49 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Target, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Target, Loader2, GitBranch } from 'lucide-react';
 import { ReactFlowProvider } from 'reactflow';
-import { supabase } from '@/lib/supabaseClient';
-import { toast } from 'sonner';
-import DirectionFlowMap from './DirectionFlowMap';
-import DirectionNotesPanel from './DirectionNotesPanel';
-import { usePrismDirections } from '../hooks/usePrismDirections';
-import type { ProjectData, PaperDetail } from '../types';
+import AgendaChainFlowMap from './AgendaChainFlowMap';
+import { useProjectAgenda, useAgendaVersionItems } from '../hooks/useProjectAgenda';
+import type { ProjectData, ProjectAgendaVersion, ProjectInsight } from '../types';
 
-// ============================================================
-// MAIN DIRECTION VIEW
-// ============================================================
+function formatVersionOption(v: ProjectAgendaVersion) {
+    if (v.label?.trim()) return v.label.trim();
+    const d = new Date(v.created_at);
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+const DISPLAY_MODES = [
+    { id: 'agenda_chain', label: '议程链' },
+] as const;
 
 interface DirectionViewProps {
     projects: ProjectData[];
-    allPapers: PaperDetail[];
-    onOpenPaper: (id: string) => void;
 }
 
-export default function DirectionView({ projects, allPapers, onOpenPaper }: DirectionViewProps) {
+export default function DirectionView({ projects }: DirectionViewProps) {
     const [activeProjectId, setActiveProjectId] = useState<string>(projects[0]?.id || '');
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [versionId, setVersionId] = useState<string | null>(null);
+    const [displayMode, setDisplayMode] = useState<string>('agenda_chain');
 
-    // ---- pixel-based split ----
-    const [containerH, setContainerH] = useState(0);
-    const [topRatio, setTopRatio] = useState(0.55); // 0-1
-    const DIVIDER_H = 12; // px
-
-    // Observe the resizable area's height (pixels)
-    useEffect(() => {
-        const el = containerRef.current;
-        if (!el) return;
-        const ro = new ResizeObserver(entries => {
-            setContainerH(entries[0].contentRect.height);
-        });
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
-
-    const topH = Math.floor((containerH - DIVIDER_H) * topRatio);
-    const bottomH = containerH - DIVIDER_H - topH;
-
-    const [maxFlowH, setMaxFlowH] = useState(0);
-
-    // ---- drag divider ----
-    const isDragging = useRef(false);
-    const lastY = useRef(0);
-    const topRatioRef = useRef(topRatio);
-    useEffect(() => { topRatioRef.current = topRatio; }, [topRatio]);
-    
-    const maxFlowHRef = useRef(maxFlowH);
-    useEffect(() => { maxFlowHRef.current = maxFlowH; }, [maxFlowH]);
-
-    const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        isDragging.current = true;
-        lastY.current = e.clientY;
-        document.body.style.cursor = 'row-resize';
-        document.body.style.userSelect = 'none';
-    }, []);
+    const { versions, isLoading: isLoadingVersions } = useProjectAgenda(activeProjectId || null);
+    const { bundle, isLoading: isLoadingItems } = useAgendaVersionItems(versionId);
 
     useEffect(() => {
-        const onMove = (e: MouseEvent) => {
-            if (!isDragging.current || !containerRef.current) return;
-            const dy = e.clientY - lastY.current;
-            lastY.current = e.clientY;
-            const h = containerRef.current.clientHeight - DIVIDER_H;
-            if (h <= 0) return;
-            let newTopH = Math.floor(h * topRatioRef.current) + dy;
-            
-            // Constrain
-            if (newTopH < 150) newTopH = 150;
-            if (maxFlowHRef.current > 0 && newTopH > maxFlowHRef.current + 40) newTopH = maxFlowHRef.current + 40;
-            if (newTopH > h - 150) newTopH = h - 150;
-            
-            setTopRatio(newTopH / h);
-        };
-        const onUp = () => {
-            if (!isDragging.current) return;
-            isDragging.current = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-        return () => {
-            window.removeEventListener('mousemove', onMove);
-            window.removeEventListener('mouseup', onUp);
-        };
-    }, []); // stable: refs only, no deps needed
+        if (versions.length > 0) {
+            setVersionId(versions[0].id);
+        } else {
+            setVersionId(null);
+        }
+    }, [activeProjectId, versions]);
 
-    const { questions, innovationPoints, leftNoteGroups, rightNoteGroups, isLoading, mutate } = usePrismDirections(activeProjectId || null);
+    const projectInsights = useMemo((): ProjectInsight[] => {
+        const proj = projects.find((p) => p.id === activeProjectId);
+        if (!proj) return [];
+        return proj.insights.flatMap((cat) => cat.items);
+    }, [projects, activeProjectId]);
 
-    // ---- front-end edit / delete for question & innovation nodes ----
-    const handleEditNode = useCallback(async (id: string, content: string) => {
-        const isQuestion = questions.some(q => q.id === id);
-        const table = isQuestion ? 'prism_research_questions' : 'prism_innovation_points';
-        const { error } = await supabase.from(table).update({ content }).eq('id', id);
-        if (error) { toast.error('保存失败'); return; }
-        toast.success('已保存');
-        // Don't call mutate() here — avoids re-layout, local text is already updated
-    }, [questions]);
-
-    const handleDeleteNode = useCallback(async (id: string) => {
-        if (!confirm('确定删除此节点？')) return;
-        const isQuestion = questions.some(q => q.id === id);
-        const table = isQuestion ? 'prism_research_questions' : 'prism_innovation_points';
-        const { error } = await supabase.from(table).delete().eq('id', id);
-        if (error) { toast.error('删除失败'); return; }
-        toast.success('已删除');
-        mutate();
-    }, [questions, mutate]);
+    const isLoading = isLoadingVersions || (versionId ? isLoadingItems : false);
 
     if (!projects.length) {
         return (
@@ -124,11 +55,11 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
 
     return (
         <div className="flex-1 w-full max-w-[1400px] mx-auto px-18 pb-6 flex flex-col h-[calc(100vh-220px)] overflow-hidden">
-            <div className="bg-white rounded-3xl border border-stone-200/70 shadow-sm flex flex-col overflow-hidden flex-1">
+            <div className="bg-white rounded-3xl border border-stone-200/70 shadow-sm flex flex-col overflow-hidden flex-1 min-h-0">
 
-                {/* Project Selector */}
+                {/* Project selector */}
                 <div className="shrink-0 px-6 py-4 flex items-center gap-2 overflow-x-auto custom-scrollbar border-b border-stone-100 bg-stone-50/50">
-                    {projects.map(proj => (
+                    {projects.map((proj) => (
                         <button
                             key={proj.id}
                             onClick={() => setActiveProjectId(proj.id)}
@@ -146,52 +77,63 @@ export default function DirectionView({ projects, allPapers, onOpenPaper }: Dire
                     ))}
                 </div>
 
-                {/* Content area — ref always mounted so ResizeObserver works */}
-                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar" ref={containerRef}>
-                    {isLoading ? (
-                        <div className="flex flex-col items-center justify-center h-full">
-                            <Loader2 size={32} className="animate-spin text-stone-300 mb-3" />
-                            <span className="text-sm font-mono text-stone-400">加载研究数据...</span>
-                        </div>
-                    ) : containerH > 0 ? (
-                        <>
-                            {/* Upper: Flow Map */}
-                            <div style={{ width: '100%', height: topH, position: 'relative', flexShrink: 0 }}>
-                                <ReactFlowProvider>
-                                    <DirectionFlowMap
-                                        questions={questions}
-                                        innovationPoints={innovationPoints}
-                                        allPapers={allPapers}
-                                        onOpenPaper={onOpenPaper}
-                                        onEditNode={handleEditNode}
-                                        onDeleteNode={handleDeleteNode}
-                                        onHeightChange={setMaxFlowH}
-                                    />
-                                </ReactFlowProvider>
-                            </div>
+                {/* Toolbar: display mode + agenda version */}
+                <div className="shrink-0 px-6 py-3 flex flex-wrap items-center gap-4 border-b border-stone-100 bg-white">
+                    <div className="flex items-center gap-2">
+                        <GitBranch size={14} className="text-stone-400" />
+                        <label className="text-xs font-medium text-stone-500">展示模式</label>
+                        <select
+                            value={displayMode}
+                            onChange={(e) => setDisplayMode(e.target.value)}
+                            className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-violet-200"
+                        >
+                            {DISPLAY_MODES.map((m) => (
+                                <option key={m.id} value={m.id}>{m.label}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                            {/* Divider */}
-                            <div
-                                onMouseDown={handleDividerMouseDown}
-                                style={{ height: DIVIDER_H, flexShrink: 0 }}
-                                className="cursor-row-resize flex items-center justify-center group hover:bg-violet-50/60 transition-colors relative z-20"
+                    {versions.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-stone-500">议程版本</label>
+                            <select
+                                value={versionId ?? ''}
+                                onChange={(e) => setVersionId(e.target.value || null)}
+                                className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-violet-200 min-w-[160px]"
                             >
-                                <div className="w-12 h-1 rounded-full bg-stone-200 group-hover:bg-violet-400 group-hover:w-20 transition-all" />
-                            </div>
+                                {versions.map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                        {formatVersionOption(v)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
 
-                            {/* Lower: Notes Panel — minHeight allows global scroll */}
-                            <div style={{ width: '100%', minHeight: bottomH, display: 'flex', flexDirection: 'column' }}>
-                                <DirectionNotesPanel
-                                    questions={questions}
-                                    leftNoteGroups={leftNoteGroups}
-                                    rightNoteGroups={rightNoteGroups}
-                                    allPapers={allPapers}
-                                    projectId={activeProjectId}
-                                    onOpenPaper={onOpenPaper}
-                                    mutate={mutate}
+                {/* Flow map — full remaining height */}
+                <div className="flex-1 min-h-0 relative">
+                    {isLoading ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Loader2 size={32} className="animate-spin text-stone-300 mb-3" />
+                            <span className="text-sm font-mono text-stone-400">加载议程数据...</span>
+                        </div>
+                    ) : versions.length === 0 ? (
+                        <div className="absolute inset-0 flex items-center justify-center p-8">
+                            <p className="text-sm text-stone-500 text-center leading-relaxed max-w-md">
+                                该项目尚无议程版本。请在管理后台「认知棱镜 → 项目管理 → 研究议程版本」中新建。
+                            </p>
+                        </div>
+                    ) : displayMode === 'agenda_chain' ? (
+                        <div className="absolute inset-0">
+                            <ReactFlowProvider>
+                                <AgendaChainFlowMap
+                                    surveys={bundle.survey}
+                                    insights={projectInsights}
+                                    synthesisItems={bundle.synthesis}
                                 />
-                            </div>
-                        </>
+                            </ReactFlowProvider>
+                        </div>
                     ) : null}
                 </div>
             </div>
