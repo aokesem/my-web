@@ -271,7 +271,7 @@ export default function InfoHubModal({
                                                     if (e.key === "Enter") handleAdd();
                                                 }}
                                                 placeholder="快速记录…"
-                                                className="flex-1 px-3 py-2.5 rounded-lg border border-stone-200/90 bg-white/90 text-sm outline-none focus:ring-2 focus:ring-slate-300/50 shadow-sm"
+                                                className="flex-1 px-3 py-2.5 rounded-lg border border-stone-200/90 bg-white text-slate-800 placeholder:text-slate-400 text-sm outline-none focus:ring-2 focus:ring-slate-300/50 shadow-sm"
                                                 disabled={isSubmitting}
                                                 autoFocus
                                             />
@@ -280,7 +280,7 @@ export default function InfoHubModal({
                                                 onChange={(e) =>
                                                     setDraftType(e.target.value as HubCategoryType)
                                                 }
-                                                className="w-[4.5rem] px-2 py-2.5 rounded-lg border border-stone-200/90 bg-white/90 text-[11px] font-mono text-slate-500 outline-none"
+                                                className="w-[4.5rem] px-2 py-2.5 rounded-lg border border-stone-200/90 bg-white text-[11px] font-mono text-slate-700 outline-none"
                                                 title="归档目标 Nexus"
                                             >
                                                 <option value="study">study</option>
