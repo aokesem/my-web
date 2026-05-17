@@ -102,6 +102,9 @@ export function InfoListHeader({
 
             {/* 第二行：功能专栏筛选，独占一行可横向滚动 */}
             <div className={`w-full min-w-0 pt-2 border-t border-black/5 dark:border-white/10`}>
+                <p className={`text-[10px] font-bold mb-2 ${theme.textMuted}`}>
+                    功能专栏 <span className="font-mono font-normal opacity-80">Categories</span>
+                </p>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
                     <button
                         type="button"

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, Search, Clock, ExternalLink, Bookmark, Edit, Trash2 } from 'lucide-react';
+import { Star, Search, Clock, ExternalLink, Edit, Trash2 } from 'lucide-react';
 import { InfoItem } from '../types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
@@ -15,7 +15,6 @@ interface InfoCardProps {
     categoryName?: string;
     isHighlighted: boolean;
     onToggleFav: (item: InfoItem) => void;
-    onToggleQueue: (item: InfoItem) => void;
     onEdit: (item: InfoItem) => void;
     onDeleteSuccess: () => void;
     onClick?: (item: InfoItem) => void;
@@ -23,7 +22,7 @@ interface InfoCardProps {
 
 export function InfoCard({
     item, theme, isStudy, displayImage, folderName, folderImg, categoryName, isHighlighted, 
-    onToggleFav, onToggleQueue, onEdit, onDeleteSuccess, onClick
+    onToggleFav, onEdit, onDeleteSuccess, onClick
 }: InfoCardProps) {
     return (
         <motion.div
@@ -61,13 +60,6 @@ export function InfoCard({
                         className={`w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-lg hover:border-yellow-400/50 hover:bg-yellow-400/20 transition-all group/btn`}
                     >
                         <Star size={14} className={item.is_favorited ? "text-yellow-400 fill-yellow-400" : "text-white group-hover/btn:text-yellow-400"} />
-                    </button>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onToggleQueue(item); }}
-                        title={item.is_queued ? "移出待看" : "加入待看"}
-                        className={`w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-lg hover:border-blue-400/50 hover:bg-blue-400/20 transition-all group/btn`}
-                    >
-                        <Bookmark size={14} className={item.is_queued ? "text-blue-400 fill-blue-400" : "text-white group-hover/btn:text-blue-400"} />
                     </button>
                 </div>
 

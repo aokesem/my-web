@@ -56,3 +56,67 @@ export const renderBoldTextUtil = (text: string) => {
         return <span key={i}>{part}</span>;
     });
 };
+
+/** 议程条目正文展示（支持 **加粗**） */
+export function AgendaContentDisplay({
+    content,
+    displayRef,
+    emptyLabel = '（暂无正文）',
+}: {
+    content: string;
+    displayRef?: React.RefObject<HTMLDivElement | null>;
+    emptyLabel?: string;
+}) {
+    return (
+        <div
+            ref={displayRef}
+            className="text-base text-stone-700 leading-relaxed whitespace-pre-wrap min-h-[2.5rem]"
+        >
+            {content?.trim() ? renderBoldTextUtil(content) : <span className="text-stone-400 text-sm">{emptyLabel}</span>}
+        </div>
+    );
+}
+
+/** 编辑时按展示高度起跳，并随内容增高；支持 Ctrl+B */
+export function AgendaContentTextarea({
+    value,
+    onChange,
+    disabled,
+    minHeightPx,
+    placeholder = '支持 Ctrl+B 加粗',
+    ringClass = 'focus:ring-violet-200',
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    disabled?: boolean;
+    minHeightPx?: number;
+    placeholder?: string;
+    ringClass?: string;
+}) {
+    const ref = React.useRef<HTMLTextAreaElement>(null);
+
+    const syncHeight = React.useCallback(() => {
+        const el = ref.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        const h = Math.max(el.scrollHeight + 2, minHeightPx ?? 40);
+        el.style.height = `${h}px`;
+    }, [value, minHeightPx]);
+
+    React.useLayoutEffect(() => {
+        syncHeight();
+    }, [syncHeight]);
+
+    return (
+        <textarea
+            ref={ref}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => handleBoldShortcutUtil(e, onChange)}
+            disabled={disabled}
+            rows={1}
+            placeholder={placeholder}
+            className={`w-full resize-none overflow-hidden rounded-lg border border-stone-200 bg-white p-3 text-base text-stone-700 leading-relaxed outline-none focus:ring-1 ${ringClass}`}
+        />
+    );
+}

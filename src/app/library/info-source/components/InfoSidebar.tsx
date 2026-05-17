@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { ArrowLeft, Library, ListTodo, Loader2, Target } from 'lucide-react';
 import Link from 'next/link';
-import { InfoSourceGroup, InfoSource, InfoItem, InfoSidebarNavMode, INFO_UNGROUPED_FOLDER_ID } from '../types';
+import { InfoSourceGroup, InfoItem, InfoSidebarNavMode, INFO_UNGROUPED_FOLDER_ID } from '../types';
 import { itemBelongsToFolder } from '../lib/infoSourceFolders';
 
 interface InfoSidebarProps {
@@ -13,13 +13,10 @@ interface InfoSidebarProps {
     setSidebarMode: (mode: InfoSidebarNavMode) => void;
 
     mockGroups: InfoSourceGroup[];
-    mockSources: InfoSource[];
     mockItems: InfoItem[];
 
     selectedGroupId: number | null;
     setSelectedGroupId: (id: number | null) => void;
-    selectedSourceId: number | null;
-    setSelectedSourceId: (id: number | null) => void;
 
     handleReorderGroups: (newOrder: InfoSourceGroup[]) => void;
 
@@ -29,13 +26,12 @@ interface InfoSidebarProps {
 
 export function InfoSidebar({
     theme, isStudy, isLoading, sidebarMode, setSidebarMode,
-    mockGroups, mockSources, mockItems,
+    mockGroups, mockItems,
     selectedGroupId, setSelectedGroupId,
-    selectedSourceId, setSelectedSourceId,
     handleReorderGroups,
     queuedItems, scrollToCard
 }: InfoSidebarProps) {
-    const ungroupedCount = mockItems.filter(i => itemBelongsToFolder(i, INFO_UNGROUPED_FOLDER_ID, mockSources)).length;
+    const ungroupedCount = mockItems.filter(i => itemBelongsToFolder(i, INFO_UNGROUPED_FOLDER_ID)).length;
 
     return (
         <aside className={`w-72 shrink-0 h-full flex flex-col border-r ${theme.border} ${theme.sidebarBg} relative z-10`}>
@@ -100,8 +96,8 @@ export function InfoSidebar({
                                 <div className="mt-2 space-y-1 pb-4">
                                     <button
                                         type="button"
-                                        onClick={() => { setSelectedGroupId(null); setSelectedSourceId(null); }}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all mb-3 ${selectedGroupId === null && selectedSourceId === null ? theme.primaryBg + ' ' + theme.primary : `transparent hover:${theme.cardBg}`
+                                        onClick={() => setSelectedGroupId(null)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all mb-3 ${selectedGroupId === null ? theme.primaryBg + ' ' + theme.primary : `transparent hover:${theme.cardBg}`
                                             }`}
                                     >
                                         <span className="text-sm font-bold text-left leading-snug">全部收藏夹 <span className="block text-[10px] font-mono font-normal opacity-70 mt-0.5">All folders</span></span>
@@ -114,14 +110,14 @@ export function InfoSidebar({
                                         className="space-y-2"
                                     >
                                         {mockGroups.map(group => {
-                                            const totalCount = mockItems.filter(item => itemBelongsToFolder(item, group.id, mockSources)).length;
-                                            const isGroupActive = selectedGroupId === group.id && selectedSourceId === null;
+                                            const totalCount = mockItems.filter(item => itemBelongsToFolder(item, group.id)).length;
+                                            const isGroupActive = selectedGroupId === group.id;
 
                                             return (
                                                 <Reorder.Item key={group.id} value={group} className="relative">
                                                     <button
                                                         type="button"
-                                                        onClick={() => { setSelectedGroupId(group.id); setSelectedSourceId(null); }}
+                                                        onClick={() => setSelectedGroupId(group.id)}
                                                         className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${isGroupActive ? theme.cardBg + ' shadow-sm' : `transparent hover:${theme.cardBg}`
                                                             }`}
                                                     >
@@ -137,8 +133,8 @@ export function InfoSidebar({
 
                                     <button
                                         type="button"
-                                        onClick={() => { setSelectedGroupId(INFO_UNGROUPED_FOLDER_ID); setSelectedSourceId(null); }}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all mt-4 border border-dashed ${theme.border} ${selectedGroupId === INFO_UNGROUPED_FOLDER_ID && selectedSourceId === null ? theme.primaryBg + ' ' + theme.primary : `opacity-90 hover:${theme.cardBg}`}`}
+                                        onClick={() => setSelectedGroupId(INFO_UNGROUPED_FOLDER_ID)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all mt-4 border border-dashed ${theme.border} ${selectedGroupId === INFO_UNGROUPED_FOLDER_ID ? theme.primaryBg + ' ' + theme.primary : `opacity-90 hover:${theme.cardBg}`}`}
                                     >
                                         <span className="text-sm font-bold text-left leading-snug">未归入收藏夹 <span className="block text-[10px] font-mono font-normal opacity-70 mt-0.5">Ungrouped</span></span>
                                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md ${selectedGroupId === INFO_UNGROUPED_FOLDER_ID ? (isStudy ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-600') : (isStudy ? 'bg-slate-800 text-slate-500' : 'bg-stone-200 text-stone-500')}`}>
@@ -158,7 +154,7 @@ export function InfoSidebar({
                             >
                                 {queuedItems.length === 0 ? (
                                     <div className={`text-center py-10 text-sm ${theme.textMuted}`}>
-                                        当前没有待看条目 <span className="block text-[10px] font-mono mt-1 opacity-80">Nothing in queue</span>
+                                        当前没有待看条目
                                     </div>
                                 ) : (
                                     queuedItems.map(item => (

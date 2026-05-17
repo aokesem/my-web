@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
     InfoItem,
-    InfoSource,
     InfoBookmark,
     InfoCategory,
     InfoSourceViewMode,
@@ -14,14 +13,12 @@ export function useInfoSourceFilters(
     mockCategories: InfoCategory[],
     mockItems: InfoItem[],
     mockBookmarks: InfoBookmark[],
-    mockSources: InfoSource[],
     isLoading: boolean
 ) {
     const [viewMode, setViewMode] = useState<InfoSourceViewMode>('folders');
     const [sidebarMode, setSidebarMode] = useState<InfoSidebarNavMode>('folders');
     const [selectedParentItemId, setSelectedParentItemId] = useState<number | null>(null);
     const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
-    const [selectedSourceId, setSelectedSourceId] = useState<number | null>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
     const [sortBy, setSortBy] = useState<'info_date' | 'created_at'>('created_at');
@@ -36,10 +33,8 @@ export function useInfoSourceFilters(
     const allFilteredItems = useMemo(() => {
         let sorted = [...mockItems];
 
-        if (selectedSourceId !== null) {
-            sorted = sorted.filter(item => item.source_id === selectedSourceId);
-        } else if (selectedGroupId !== null) {
-            sorted = sorted.filter(item => itemBelongsToFolder(item, selectedGroupId, mockSources));
+        if (selectedGroupId !== null) {
+            sorted = sorted.filter(item => itemBelongsToFolder(item, selectedGroupId));
         }
 
         if (selectedCategoryId !== null) {
@@ -63,17 +58,15 @@ export function useInfoSourceFilters(
         });
 
         return sorted;
-    }, [mockItems, selectedSourceId, selectedGroupId, mockSources, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
+    }, [mockItems, selectedGroupId, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
 
     const allFilteredBookmarks = useMemo(() => {
         let sorted = [...mockBookmarks];
 
         if (selectedParentItemId !== null) {
             sorted = sorted.filter(b => b.parent_item_id === selectedParentItemId);
-        } else if (selectedSourceId !== null) {
-            sorted = sorted.filter(b => b.source_id === selectedSourceId);
         } else if (selectedGroupId !== null) {
-            sorted = sorted.filter(b => bookmarkBelongsToFolder(b, selectedGroupId, mockSources, mockItems));
+            sorted = sorted.filter(b => bookmarkBelongsToFolder(b, selectedGroupId, mockItems));
         }
 
         if (selectedCategoryId !== null) {
@@ -91,7 +84,7 @@ export function useInfoSourceFilters(
         });
 
         return sorted;
-    }, [mockBookmarks, mockItems, selectedParentItemId, selectedSourceId, selectedGroupId, mockSources, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
+    }, [mockBookmarks, mockItems, selectedParentItemId, selectedGroupId, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
 
     const queuedItems = useMemo(() => mockItems.filter(i => i.is_queued), [mockItems]);
     const queuedBookmarks = useMemo(() => {
@@ -99,17 +92,14 @@ export function useInfoSourceFilters(
             let thumb = '';
             if (bookmark.parent_item_id) {
                 const pItem = mockItems.find(i => i.id === bookmark.parent_item_id);
-                thumb = pItem?.image_url || mockSources.find(s => s.id === pItem?.source_id)?.image_url || '';
-            } else if (bookmark.source_id) {
-                const sItem = mockSources.find(s => s.id === bookmark.source_id);
-                thumb = sItem?.image_url || '';
+                thumb = pItem?.image_url || '';
             }
             return {
                 ...bookmark,
                 image_url: thumb
             };
         });
-    }, [mockBookmarks, mockItems, mockSources]);
+    }, [mockBookmarks, mockItems]);
 
     useEffect(() => {
         if (pendingScrollId && !isLoading) {
@@ -127,33 +117,37 @@ export function useInfoSourceFilters(
     }, [pendingScrollId, allFilteredItems, isLoading]);
 
     const scrollToCard = (id: number) => {
-        if (viewMode === 'entries') {
-            const bookmark = mockBookmarks.find(b => b.id === id);
-            if (!bookmark) return;
-            const el = document.getElementById(`bookmark-card-${id}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                setSelectedParentItemId(bookmark.parent_item_id || null);
-                setSelectedSourceId(null);
-                setSelectedGroupId(resolveBookmarkFolderId(bookmark, mockItems, mockSources));
-                setSelectedCategoryId(bookmark.category_id || null);
+        const bookmark = mockBookmarks.find((b) => b.id === id);
+        if (bookmark) {
+            if (viewMode !== 'entries') {
+                setViewMode('entries');
             }
-        } else {
-            const item = mockItems.find(i => i.id === id);
-            if (!item) return;
+            setSelectedParentItemId(bookmark.parent_item_id || null);
+            setSelectedGroupId(resolveBookmarkFolderId(bookmark, mockItems));
+            setSelectedCategoryId(bookmark.category_id || null);
 
-            const el = document.getElementById(`info-card-${id}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setHighlightedCardId(id);
-                setTimeout(() => setHighlightedCardId(null), 1500);
-            } else {
-                setSelectedSourceId(null);
-                setSelectedGroupId(resolveItemFolderId(item, mockSources));
-                setSelectedCategoryId(item.category_ids[0] || null);
-                setPendingScrollId(id);
-            }
+            const tryScroll = () => {
+                const el = document.getElementById(`bookmark-card-${id}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+            setTimeout(tryScroll, 150);
+            return;
+        }
+
+        const item = mockItems.find((i) => i.id === id);
+        if (!item) return;
+
+        const el = document.getElementById(`info-card-${id}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHighlightedCardId(id);
+            setTimeout(() => setHighlightedCardId(null), 1500);
+        } else {
+            setSelectedGroupId(resolveItemFolderId(item));
+            setSelectedCategoryId(item.category_ids[0] || null);
+            setPendingScrollId(id);
         }
     };
 
@@ -166,8 +160,6 @@ export function useInfoSourceFilters(
         setSelectedParentItemId,
         selectedGroupId,
         setSelectedGroupId,
-        selectedSourceId,
-        setSelectedSourceId,
         selectedCategoryId,
         setSelectedCategoryId,
         sortBy,

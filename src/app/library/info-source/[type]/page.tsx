@@ -45,14 +45,14 @@ export default function InfoSourceListPage() {
 
     // 2. 本地过滤与派生层
     const filters = useInfoSourceFilters(
-        type, data.mockCategories, data.mockItems, data.mockBookmarks, data.mockSources, data.isLoading
+        type, data.mockCategories, data.mockItems, data.mockBookmarks, data.isLoading
     );
 
     // 3. 弹窗表单状态层
     const modals = useInfoSourceModals(
-        type, filters.viewMode, filters.selectedGroupId, filters.selectedSourceId, filters.selectedParentItemId,
+        type, filters.viewMode, filters.selectedGroupId, filters.selectedParentItemId,
         data.setItems, data.setBookmarks,
-        data.mockSources, data.mockItems
+        data.mockItems
     );
 
     return (
@@ -65,14 +65,11 @@ export default function InfoSourceListPage() {
                 sidebarMode={filters.sidebarMode}
                 setSidebarMode={filters.setSidebarMode}
                 mockGroups={data.mockGroups}
-                mockSources={data.mockSources}
                 mockItems={data.mockItems}
                 selectedGroupId={filters.selectedGroupId}
                 setSelectedGroupId={filters.setSelectedGroupId}
-                selectedSourceId={filters.selectedSourceId}
-                setSelectedSourceId={filters.setSelectedSourceId}
                 handleReorderGroups={data.handleReorderGroups}
-                queuedItems={filters.viewMode === 'folders' ? filters.queuedItems : (filters.queuedBookmarks as any)}
+                queuedItems={filters.queuedBookmarks as any}
                 scrollToCard={filters.scrollToCard}
             />
 
@@ -103,7 +100,6 @@ export default function InfoSourceListPage() {
                     viewMode={filters.viewMode}
                     allFilteredItems={filters.allFilteredItems}
                     allFilteredBookmarks={filters.allFilteredBookmarks}
-                    mockSources={data.mockSources}
                     mockGroups={data.mockGroups}
                     mockItems={data.mockItems}
                     currentCategories={filters.currentCategories}
@@ -142,7 +138,6 @@ export default function InfoSourceListPage() {
                 handleSave={modals.handleSaveBookmark}
                 theme={theme}
                 mockGroups={data.mockGroups}
-                mockSources={data.mockSources}
                 mockItems={data.mockItems}
                 currentCategories={filters.currentCategories}
             />

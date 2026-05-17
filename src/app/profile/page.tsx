@@ -398,6 +398,7 @@ function LibraryQuickCapsuleMotif({ motif }: { motif?: LibraryQuickMotif }) {
 export default function ProfilePage() {
     const router = useRouter();
     const [isWindowOpen, setIsWindowOpen] = useState(false);
+    const [openHubFromUrl, setOpenHubFromUrl] = useState(false);
     const [activeModule, setActiveModule] = useState<'idle' | 'hobby' | 'timeline' | 'protocol' | 'toolbox' | 'cabinet' | 'status' | 'calendar'>('idle');
 
     const [backBtnHover, setBackBtnHover] = useState(false);
@@ -429,6 +430,15 @@ export default function ProfilePage() {
             setIsAdmin(!!user);
         };
         initData();
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('hub') === '1') {
+            setOpenHubFromUrl(true);
+            setIsWindowOpen(true);
+        }
     }, []);
 
     useEffect(() => () => {
@@ -649,7 +659,20 @@ export default function ProfilePage() {
             <HobbySystem isActive={activeModule === 'hobby'} onToggle={() => setActiveModule(prev => prev === 'hobby' ? 'idle' : 'hobby')} />
 
             <div className={`transition-all duration-1000 ${activeModule !== 'idle' ? 'pointer-events-none' : ''}`}>
-                <WindowView isOpen={isWindowOpen} onToggle={() => setIsWindowOpen(!isWindowOpen)} isBlurred={activeModule !== 'idle'} />
+                <WindowView
+                    isOpen={isWindowOpen}
+                    onToggle={() => setIsWindowOpen(!isWindowOpen)}
+                    isBlurred={activeModule !== 'idle'}
+                    onOpenCalendar={() => {
+                        setIsWindowOpen(false);
+                        setActiveModule('calendar');
+                    }}
+                    onOpenProtocol={() => {
+                        setIsWindowOpen(false);
+                        setActiveModule('protocol');
+                    }}
+                    requestOpenInfoHub={openHubFromUrl}
+                />
             </div>
             {activeModule !== 'idle' && (
                 <div className="absolute inset-0 z-40 bg-white/40 backdrop-blur-sm transition-all duration-700" onClick={() => setActiveModule('idle')} />

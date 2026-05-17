@@ -21,10 +21,10 @@ import {
     SearchCode,
     Layers,
     Sprout,
-    BookMarked,
     Utensils,
     Box,
     MapPin,
+    ClipboardList,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -48,7 +48,7 @@ const ROOM_NAV_ITEMS = [
     { title: "地点管理", href: "/admin/room/places", icon: MapPin },
     { title: "习惯配置", href: "/admin/room/habits", icon: ListTodo },
     { title: "日历管理", href: "/admin/calendar", icon: CalendarDays },
-    { title: "任务森林", href: "/admin/playbook", icon: BookMarked },
+    { title: "信息清单", href: "/admin/room/info-hub", icon: ClipboardList },
 ];
 
 const LIBRARY_NAV_ITEMS = [

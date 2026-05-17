@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, Search } from 'lucide-react';
-import { InfoItem, InfoSource, InfoBookmark, InfoCategory, InfoSourceGroup, InfoSourceViewMode } from '../types';
+import { InfoItem, InfoBookmark, InfoCategory, InfoSourceGroup, InfoSourceViewMode } from '../types';
 import { InfoCard } from './InfoCard';
 import { BookmarkCard } from './BookmarkCard';
 
@@ -11,7 +11,6 @@ interface InfoContentGridProps {
     viewMode: InfoSourceViewMode;
     allFilteredItems: InfoItem[];
     allFilteredBookmarks: InfoBookmark[];
-    mockSources: InfoSource[];
     mockGroups: InfoSourceGroup[];
     mockItems: InfoItem[];
     currentCategories: InfoCategory[];
@@ -32,7 +31,6 @@ export function InfoContentGrid({
     viewMode,
     allFilteredItems,
     allFilteredBookmarks,
-    mockSources,
     mockGroups,
     mockItems,
     currentCategories,
@@ -61,16 +59,11 @@ export function InfoContentGrid({
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {allFilteredItems.map((item) => {
-                                const sourceImg = mockSources.find(s => s.id === item.source_id)?.image_url;
                                 const folderName = item.group_id
                                     ? mockGroups.find(g => g.id === item.group_id)?.name
-                                    : (() => {
-                                        if (!item.source_id) return undefined;
-                                        const s = mockSources.find(src => src.id === item.source_id);
-                                        return s?.group_id ? mockGroups.find(g => g.id === s.group_id)?.name : undefined;
-                                    })();
+                                    : undefined;
                                 const isHighlighted = highlightedCardId === item.id;
-                                const displayImage = item.image_url || sourceImg || undefined;
+                                const displayImage = item.image_url || undefined;
                                 const categoryName = item.category_ids.length > 0 ? currentCategories.find(c => c.id === item.category_ids[0])?.name : undefined;
 
                                 return (
@@ -85,7 +78,6 @@ export function InfoContentGrid({
                                         categoryName={categoryName}
                                         isHighlighted={isHighlighted}
                                         onToggleFav={(i: InfoItem) => toggleStatus(null, i.id, 'is_favorited')}
-                                        onToggleQueue={(i: InfoItem) => toggleStatus(null, i.id, 'is_queued')}
                                         onEdit={handleEditItem}
                                         onDeleteSuccess={fetchData}
                                         onClick={(item: InfoItem) => {
@@ -111,12 +103,8 @@ export function InfoContentGrid({
                                 let label = '';
                                 if (bookmark.parent_item_id) {
                                     const pItem = mockItems.find(i => i.id === bookmark.parent_item_id);
-                                    thumb = pItem?.image_url || mockSources.find(s => s.id === pItem?.source_id)?.image_url || '';
+                                    thumb = pItem?.image_url || '';
                                     label = pItem?.name || '';
-                                } else if (bookmark.source_id) {
-                                    const sItem = mockSources.find(s => s.id === bookmark.source_id);
-                                    thumb = sItem?.image_url || '';
-                                    label = sItem?.name || '';
                                 }
                                 const categoryName = bookmark.category_id ? currentCategories.find(c => c.id === bookmark.category_id)?.name : undefined;
                                 return (

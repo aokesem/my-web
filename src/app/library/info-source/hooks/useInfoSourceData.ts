@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { InfoSourceGroup, InfoSource, InfoCategory, InfoItem, InfoBookmark } from '../types';
+import { InfoSourceGroup, InfoCategory, InfoItem, InfoBookmark } from '../types';
 
 export function useInfoSourceData(type: string) {
     const [isLoading, setIsLoading] = useState(true);
     const [mockGroups, setGroups] = useState<InfoSourceGroup[]>([]);
-    const [mockSources, setSources] = useState<InfoSource[]>([]);
     const [mockCategories, setCategories] = useState<InfoCategory[]>([]);
     const [mockItems, setItems] = useState<InfoItem[]>([]);
     const [mockBookmarks, setBookmarks] = useState<InfoBookmark[]>([]);
@@ -14,9 +13,8 @@ export function useInfoSourceData(type: string) {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [groupRes, sourceRes, catRes, itemsRes, bookmarksRes] = await Promise.all([
+            const [groupRes, catRes, itemsRes, bookmarksRes] = await Promise.all([
                 supabase.from('info_source_groups').select('*').eq('category_type', type).order('sort_order', { ascending: true }),
-                supabase.from('info_sources').select('*').order('sort_order', { ascending: true }),
                 supabase.from('info_categories').select('*'),
                 supabase.from('info_items')
                     .select('*, info_item_categories(category_id)')
@@ -27,7 +25,6 @@ export function useInfoSourceData(type: string) {
             if (groupRes.data) {
                 setGroups(groupRes.data);
             }
-            if (sourceRes.data) setSources(sourceRes.data);
             if (catRes.data) setCategories(catRes.data);
             
             if (itemsRes.data) {
@@ -80,6 +77,9 @@ export function useInfoSourceData(type: string) {
         if (error) {
             console.error(`Failed to update ${field}`, error);
             setBookmarks(prev => prev.map(i => i.id === id ? { ...i, [field]: !newValue } : i));
+            if (field === 'is_queued') {
+                toast.error('待看状态保存失败，请检查网络或数据库权限');
+            }
         }
     };
 
@@ -109,8 +109,6 @@ export function useInfoSourceData(type: string) {
         isLoading,
         mockGroups,
         setGroups,
-        mockSources,
-        setSources,
         mockCategories,
         mockItems,
         setItems,

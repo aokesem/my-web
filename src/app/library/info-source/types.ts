@@ -17,16 +17,6 @@ export interface InfoSourceGroup {
     created_at?: string;
 }
 
-export interface InfoSource {
-    id: number;
-    group_id?: number | null;
-    name: string;
-    image_url?: string | null;
-    sort_order: number;
-    created_at?: string;
-    info_source_groups?: { name: string } | null;
-}
-
 export interface InfoCategory {
     id: number;
     category_type: CategoryType;

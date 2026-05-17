@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { AgendaContentDisplay, AgendaContentTextarea } from './utils';
 import { ClipboardList, Loader2, Save, Trash2, Plus, Pencil, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
@@ -61,6 +62,8 @@ function DriveRow({
     const [title, setTitle] = useState(item.title);
     const [content, setContent] = useState(item.content);
     const [busy, setBusy] = useState(false);
+    const contentDisplayRef = useRef<HTMLDivElement>(null);
+    const [contentMinH, setContentMinH] = useState<number | undefined>();
 
     useEffect(() => {
         setTitle(item.title);
@@ -68,6 +71,8 @@ function DriveRow({
     }, [item.id, item.title, item.content]);
 
     const enterEdit = () => {
+        const h = contentDisplayRef.current?.offsetHeight;
+        setContentMinH(h && h > 0 ? h : undefined);
         setTitle(item.title);
         setContent(item.content);
         setIsEditing(true);
@@ -76,6 +81,7 @@ function DriveRow({
     const cancelEdit = () => {
         setTitle(item.title);
         setContent(item.content);
+        setContentMinH(undefined);
         setIsEditing(false);
     };
 
@@ -84,6 +90,7 @@ function DriveRow({
         try {
             await onSave({ title, content });
             setIsEditing(false);
+            setContentMinH(undefined);
         } finally {
             setBusy(false);
         }
@@ -126,12 +133,11 @@ function DriveRow({
                         disabled={disabled || busy}
                         className="w-full rounded-lg border border-stone-200 bg-white py-2 px-3 text-base font-bold text-stone-900 outline-none focus:ring-1 focus:ring-violet-200"
                     />
-                    <textarea
+                    <AgendaContentTextarea
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        rows={4}
+                        onChange={setContent}
                         disabled={disabled || busy}
-                        className="w-full resize-y rounded-lg border border-stone-200 bg-white p-3 text-base text-stone-700 leading-relaxed outline-none focus:ring-1 focus:ring-violet-200 min-h-[100px]"
+                        minHeightPx={contentMinH}
                     />
                     <div className="flex justify-end gap-2 pt-1">
                         <button
@@ -158,11 +164,7 @@ function DriveRow({
                     <div className="text-base font-bold text-stone-900 leading-snug">
                         {item.title?.trim() ? item.title : <span className="text-stone-400 font-normal">（无小标题）</span>}
                     </div>
-                    <div className="text-base text-stone-700 leading-relaxed whitespace-pre-wrap min-h-[2.5rem]">
-                        {item.content?.trim()
-                            ? item.content
-                            : <span className="text-stone-400 text-sm">（暂无正文）</span>}
-                    </div>
+                    <AgendaContentDisplay content={item.content} displayRef={contentDisplayRef} />
                 </div>
             )}
         </div>
@@ -184,6 +186,8 @@ function SurveyRow({
     const [title, setTitle] = useState(item.title);
     const [content, setContent] = useState(item.content);
     const [busy, setBusy] = useState(false);
+    const contentDisplayRef = useRef<HTMLDivElement>(null);
+    const [contentMinH, setContentMinH] = useState<number | undefined>();
 
     useEffect(() => {
         setTitle(item.title);
@@ -191,6 +195,8 @@ function SurveyRow({
     }, [item.id, item.title, item.content]);
 
     const enterEdit = () => {
+        const h = contentDisplayRef.current?.offsetHeight;
+        setContentMinH(h && h > 0 ? h : undefined);
         setTitle(item.title);
         setContent(item.content);
         setIsEditing(true);
@@ -199,6 +205,7 @@ function SurveyRow({
     const cancelEdit = () => {
         setTitle(item.title);
         setContent(item.content);
+        setContentMinH(undefined);
         setIsEditing(false);
     };
 
@@ -207,6 +214,7 @@ function SurveyRow({
         try {
             await onSave({ title, content });
             setIsEditing(false);
+            setContentMinH(undefined);
         } finally {
             setBusy(false);
         }
@@ -249,12 +257,11 @@ function SurveyRow({
                         disabled={disabled || busy}
                         className="w-full rounded-lg border border-stone-200 bg-white py-2 px-3 text-base font-bold text-stone-900 outline-none focus:ring-1 focus:ring-violet-200"
                     />
-                    <textarea
+                    <AgendaContentTextarea
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        rows={4}
+                        onChange={setContent}
                         disabled={disabled || busy}
-                        className="w-full resize-y rounded-lg border border-stone-200 bg-white p-3 text-base text-stone-700 leading-relaxed outline-none focus:ring-1 focus:ring-violet-200 min-h-[100px]"
+                        minHeightPx={contentMinH}
                     />
                     <div className="flex justify-end gap-2 pt-1">
                         <button
@@ -281,11 +288,7 @@ function SurveyRow({
                     <div className="text-base font-bold text-stone-900 leading-snug">
                         {item.title?.trim() ? item.title : <span className="text-stone-400 font-normal">（无小标题）</span>}
                     </div>
-                    <div className="text-base text-stone-700 leading-relaxed whitespace-pre-wrap min-h-[2.5rem]">
-                        {item.content?.trim()
-                            ? item.content
-                            : <span className="text-stone-400 text-sm">（暂无正文）</span>}
-                    </div>
+                    <AgendaContentDisplay content={item.content} displayRef={contentDisplayRef} />
                 </div>
             )}
         </div>
@@ -309,6 +312,8 @@ function SynthesisRow({
     const [content, setContent] = useState(item.content);
     const [refIds, setRefIds] = useState<string[]>(item.insight_ref_ids);
     const [busy, setBusy] = useState(false);
+    const contentDisplayRef = useRef<HTMLDivElement>(null);
+    const [contentMinH, setContentMinH] = useState<number | undefined>();
 
     useEffect(() => {
         setContent(item.content);
@@ -320,6 +325,8 @@ function SynthesisRow({
     };
 
     const enterEdit = () => {
+        const h = contentDisplayRef.current?.offsetHeight;
+        setContentMinH(h && h > 0 ? h : undefined);
         setContent(item.content);
         setRefIds(item.insight_ref_ids);
         setIsEditing(true);
@@ -328,6 +335,7 @@ function SynthesisRow({
     const cancelEdit = () => {
         setContent(item.content);
         setRefIds(item.insight_ref_ids);
+        setContentMinH(undefined);
         setIsEditing(false);
     };
 
@@ -336,6 +344,7 @@ function SynthesisRow({
         try {
             await onSave({ content, insight_ref_ids: refIds });
             setIsEditing(false);
+            setContentMinH(undefined);
         } finally {
             setBusy(false);
         }
@@ -377,13 +386,12 @@ function SynthesisRow({
 
             {isEditing ? (
                 <div className="space-y-3">
-                    <textarea
+                    <AgendaContentTextarea
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        rows={5}
+                        onChange={setContent}
                         disabled={disabled || busy}
-                        className="w-full resize-y rounded-lg border border-stone-200 bg-white p-3 text-base text-stone-700 leading-relaxed outline-none focus:ring-1 focus:ring-violet-200 min-h-[120px]"
-                        placeholder="共识、缺口、下一步待检验点…"
+                        minHeightPx={contentMinH}
+                        placeholder="共识、缺口、下一步待检验点…（支持 Ctrl+B 加粗）"
                     />
                     <div className="space-y-2">
                         <label className="text-xs font-medium text-stone-500">引用启示</label>
@@ -434,11 +442,7 @@ function SynthesisRow({
                 </div>
             ) : (
                 <div className="space-y-3 pr-12">
-                    <div className="text-base text-stone-700 leading-relaxed whitespace-pre-wrap min-h-[2.5rem]">
-                        {item.content?.trim()
-                            ? item.content
-                            : <span className="text-stone-400 text-sm">（暂无正文）</span>}
-                    </div>
+                    <AgendaContentDisplay content={item.content} displayRef={contentDisplayRef} />
                     {displayRefs.length > 0 && (
                         <div>
                             <div className="text-xs font-medium text-stone-500 mb-1.5">引用启示</div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import PlaybookModal from './PlaybookModal';
+import InfoHubModal from './info-hub/InfoHubModal';
 import EnglishModuleModal from './EnglishModuleModal';
 import VocabularyListModal from './VocabularyListModal';
 import ReflectionModal from './ReflectionModal';
@@ -15,13 +15,17 @@ interface WindowViewProps {
     isOpen: boolean;
     onToggle: () => void;
     isBlurred: boolean;
+    onOpenCalendar?: () => void;
+    onOpenProtocol?: () => void;
+    /** 从外链进入 Profile 时自动打开信息清单，如 /profile?hub=1 */
+    requestOpenInfoHub?: boolean;
 }
 
-export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewProps) {
+export default function WindowView({ isOpen, onToggle, isBlurred, onOpenCalendar, onOpenProtocol, requestOpenInfoHub }: WindowViewProps) {
     // [新增] 解决 Hydration Error 的核心：挂载状态
     const [mounted, setMounted] = useState(false);
     // [新增] Playbook展开状态
-    const [isPlaybookOpen, setIsPlaybookOpen] = useState(false);
+    const [isInfoHubOpen, setIsInfoHubOpen] = useState(false);
     // [新增] EnglishModule展开状态
     const [isEnglishOpen, setIsEnglishOpen] = useState(false);
     // [新增] VocabularyList展开状态
@@ -60,6 +64,12 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (requestOpenInfoHub && mounted && !isBlurred) {
+            setIsInfoHubOpen(true);
+        }
+    }, [requestOpenInfoHub, mounted, isBlurred]);
 
     // [新增] 定时器：控制轮播
     useEffect(() => {
@@ -206,18 +216,18 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                     {/* --- 3. Playbook 入口 (A set of leaning books) --- */}
                     {/* 防止在 blur 状态下点击 */}
                     <div
-                        className="absolute bottom-full left-8 mb-px flex items-end group/playbook cursor-pointer transition-transform duration-500 hover:scale-[1.03] z-50"
+                        className="absolute bottom-full left-8 mb-px flex items-end group/infohub cursor-pointer transition-transform duration-500 hover:scale-[1.03] z-50"
                         onClick={(e) => {
                             e.stopPropagation(); // 阻止触发 WindowView 的 toggle
                             if (!isBlurred) {
-                                setIsPlaybookOpen(true);
+                                setIsInfoHubOpen(true);
                             }
                         }}
                     >
                         {/* Tooltip positioned relative to the entire group */}
                         <div className="absolute -top-13 left-1/2 -translate-x-1/2 opacity-0 group-hover/playbook:opacity-100 transition-opacity duration-300 pointer-events-none z-50">
                             <div className="bg-slate-800 text-white text-[16px] py-1.5 px-3 rounded-md font-mono tracking-widest whitespace-nowrap shadow-xl border border-white/10">
-                                目标与任务森林
+                                信息清单
                             </div>
                             <div className="w-2 h-2 bg-slate-800 rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2 border-b border-r border-white/10"></div>
                         </div>
@@ -226,7 +236,7 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
                         <div className="relative w-8 h-32 origin-bottom transition-all duration-300 group-hover/playbook:-translate-y-1 z-10 shrink-0">
                             <div className="absolute inset-0 bg-[#5C3A19] rounded-sm shadow-[3px_0_8px_rgba(0,0,0,0.3)] border-r border-white/10 flex flex-col items-center justify-between py-3 overflow-hidden">
                                 <div className="w-6 h-2 bg-[#3A220F] rounded-sm shadow-inner"></div>
-                                <span className="text-[10px] text-amber-500/90 font-serif font-bold tracking-widest [writing-mode:vertical-rl] opacity-90 rotate-180">PLAYBOOK</span>
+                                <span className="text-[10px] text-amber-500/90 font-serif font-bold tracking-widest [writing-mode:vertical-rl] opacity-90 rotate-180">HUB</span>
                                 <div className="w-6 h-2 bg-[#3A220F] rounded-sm shadow-inner"></div>
                             </div>
                             <div className="absolute -top-[2px] left-px right-px h-[2px] bg-[#fdfbf7] border-t border-slate-300 shadow-inner"></div>
@@ -361,9 +371,11 @@ export default function WindowView({ isOpen, onToggle, isBlurred }: WindowViewPr
             </div>
 
             {mounted && (
-                <PlaybookModal
-                    isOpen={isPlaybookOpen}
-                    onClose={() => setIsPlaybookOpen(false)}
+                <InfoHubModal
+                    isOpen={isInfoHubOpen}
+                    onClose={() => setIsInfoHubOpen(false)}
+                    onOpenCalendar={onOpenCalendar}
+                    onOpenProtocol={onOpenProtocol}
                 />
             )}
 

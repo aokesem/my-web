@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, X, Loader2 } from 'lucide-react';
-import { InfoItem, InfoSource, InfoSourceGroup, InfoCategory } from '../types';
+import { InfoItem, InfoSourceGroup, InfoCategory } from '../types';
 import { itemBelongsToFolder } from '../lib/infoSourceFolders';
 
 interface BookmarkModalProps {
@@ -14,14 +14,13 @@ interface BookmarkModalProps {
     handleSave: () => void;
     theme: any;
     mockGroups: InfoSourceGroup[];
-    mockSources: InfoSource[];
     mockItems: InfoItem[];
     currentCategories: InfoCategory[];
 }
 
 export function BookmarkModal({
     isOpen, onClose, formMode, formData, setFormData,
-    isSaving, handleSave, theme, mockGroups, mockSources, mockItems, currentCategories
+    isSaving, handleSave, theme, mockGroups, mockItems, currentCategories
 }: BookmarkModalProps) {
     return (
         <AnimatePresence>
@@ -104,7 +103,7 @@ export function BookmarkModal({
 
                                 {formData.group_id && (() => {
                                     const gid = parseInt(formData.group_id, 10);
-                                    const itemsInFolder = mockItems.filter(i => itemBelongsToFolder(i, gid, mockSources));
+                                    const itemsInFolder = mockItems.filter(i => itemBelongsToFolder(i, gid));
                                     if (itemsInFolder.length === 0) return null;
                                     return (
                                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>

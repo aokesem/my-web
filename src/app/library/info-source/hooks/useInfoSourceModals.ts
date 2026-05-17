@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { InfoItem, InfoBookmark, InfoSourceViewMode, InfoSource, INFO_UNGROUPED_FOLDER_ID } from '../types';
+import { InfoItem, InfoBookmark, InfoSourceViewMode, INFO_UNGROUPED_FOLDER_ID } from '../types';
 import { resolveBookmarkFolderId } from '../lib/infoSourceFolders';
 
 export function useInfoSourceModals(
     type: string,
     viewMode: InfoSourceViewMode,
     selectedGroupId: number | null,
-    selectedSourceId: number | null,
     selectedParentItemId: number | null,
     setItems: React.Dispatch<React.SetStateAction<InfoItem[]>>,
     setBookmarks: React.Dispatch<React.SetStateAction<InfoBookmark[]>>,
-    mockSources: InfoSource[],
     mockItems: InfoItem[]
 ) {
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -57,14 +55,12 @@ export function useInfoSourceModals(
     const handleEditItem = (item: InfoItem) => {
         setFormMode('edit');
         setEditingItem(item);
-        const src = item.source_id ? mockSources.find(s => s.id === item.source_id) : undefined;
-        const resolvedGroup = item.group_id ?? src?.group_id;
         setFormData({
             name: item.name,
             description: item.description || '',
             url: item.url || '',
             source_id: '',
-            group_id: resolvedGroup ? resolvedGroup.toString() : '',
+            group_id: item.group_id ? item.group_id.toString() : '',
             category_id: item.category_ids.length > 0 ? item.category_ids[0].toString() : '',
             image_url: item.image_url || '',
             info_date: item.info_date || ''
@@ -75,7 +71,7 @@ export function useInfoSourceModals(
     const handleEditBookmark = (bookmark: InfoBookmark) => {
         setBookmarkFormMode('edit');
         setEditingBookmark(bookmark);
-        const resolvedFolder = resolveBookmarkFolderId(bookmark, mockItems, mockSources);
+        const resolvedFolder = resolveBookmarkFolderId(bookmark, mockItems);
         let gid = bookmark.group_id ?? undefined;
         if (gid == null) {
             gid = resolvedFolder === INFO_UNGROUPED_FOLDER_ID ? undefined : resolvedFolder;
