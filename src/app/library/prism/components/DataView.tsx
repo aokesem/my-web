@@ -17,6 +17,7 @@ import {
     deleteMetric,
     paperHasData,
 } from '../hooks/usePrismPaperData';
+import { LatexNoteField } from './LatexRichText';
 
 type ViewMode = 'paper' | 'library';
 type DictKind = 'datasets' | 'metrics';
@@ -207,6 +208,13 @@ export default function DataView({ papers }: DataViewProps) {
         }
     };
 
+    const openDictInLibrary = useCallback((kind: DictKind, id: string) => {
+        setViewMode('library');
+        setDictKind(kind);
+        setSelectedDictId(id);
+        setDictSearch('');
+    }, []);
+
     const handleDeleteDict = async () => {
         if (!selectedDict) return;
         const usage =
@@ -351,14 +359,13 @@ export default function DataView({ papers }: DataViewProps) {
                                     <section className="space-y-2">
                                         <label className="text-xs font-medium text-stone-500">数据说明</label>
                                         <p className="text-[11px] text-stone-400">
-                                            对比对象、打分方式等（自由文本，不进词典）
+                                            对比对象、打分方式等
                                         </p>
-                                        <textarea
+                                        <LatexNoteField
                                             value={notesDraft}
-                                            onChange={(e) => setNotesDraft(e.target.value)}
-                                            rows={6}
+                                            onChange={setNotesDraft}
                                             placeholder="记录本篇论文的对比设置、打分方式等…"
-                                            className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm text-stone-800 resize-y min-h-[120px] outline-none focus:ring-1 focus:ring-teal-200"
+                                            disabled={savingNotes}
                                         />
                                         <button
                                             type="button"
@@ -380,7 +387,9 @@ export default function DataView({ papers }: DataViewProps) {
                                         emptyHint="尚未关联数据集"
                                         items={bundle.datasets}
                                         selectedIds={paperLinks.datasetIds}
-                                        onToggle={handleToggleDataset}
+                                        onOpenLinked={(id) => openDictInLibrary('datasets', id)}
+                                        onUnlink={handleToggleDataset}
+                                        onLink={handleToggleDataset}
                                         newName={newDatasetName}
                                         onNewNameChange={setNewDatasetName}
                                         onCreate={handleCreateAndLinkDataset}
@@ -392,7 +401,9 @@ export default function DataView({ papers }: DataViewProps) {
                                         emptyHint="尚未关联指标"
                                         items={bundle.metrics}
                                         selectedIds={paperLinks.metricIds}
-                                        onToggle={handleToggleMetric}
+                                        onOpenLinked={(id) => openDictInLibrary('metrics', id)}
+                                        onUnlink={handleToggleMetric}
+                                        onLink={handleToggleMetric}
                                         newName={newMetricName}
                                         onNewNameChange={setNewMetricName}
                                         onCreate={handleCreateAndLinkMetric}
@@ -551,12 +562,11 @@ function DictEntryEditor({
             </div>
             <div className="space-y-2">
                 <label className="text-xs font-medium text-stone-500">样例 / 格式说明</label>
-                <textarea
+                <LatexNoteField
                     value={formatNote}
-                    onChange={(e) => setFormatNote(e.target.value)}
-                    rows={6}
+                    onChange={setFormatNote}
                     placeholder="记录样例、字段格式或指标定义…"
-                    className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm text-stone-800 resize-y min-h-[120px] outline-none focus:ring-1 focus:ring-teal-200"
+                    disabled={saving}
                 />
             </div>
             <div className="flex items-center gap-2">
@@ -631,7 +641,9 @@ function TagSection({
     emptyHint,
     items,
     selectedIds,
-    onToggle,
+    onOpenLinked,
+    onUnlink,
+    onLink,
     newName,
     onNewNameChange,
     onCreate,
@@ -641,7 +653,9 @@ function TagSection({
     emptyHint: string;
     items: { id: string; name: string }[];
     selectedIds: string[];
-    onToggle: (id: string) => void;
+    onOpenLinked: (id: string) => void;
+    onUnlink: (id: string) => void;
+    onLink: (id: string) => void;
     newName: string;
     onNewNameChange: (v: string) => void;
     onCreate: () => void;
@@ -658,15 +672,28 @@ function TagSection({
                     <span className="text-xs text-stone-400">{emptyHint}</span>
                 ) : (
                     selected.map((item) => (
-                        <button
+                        <span
                             key={item.id}
-                            type="button"
-                            onClick={() => onToggle(item.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-medium hover:bg-teal-100"
+                            className="inline-flex items-stretch rounded-full bg-teal-50 border border-teal-200 text-xs font-medium overflow-hidden"
                         >
-                            {item.name}
-                            <X size={12} />
-                        </button>
+                            <button
+                                type="button"
+                                onClick={() => onOpenLinked(item.id)}
+                                className="px-2.5 py-1 text-teal-800 hover:bg-teal-100 transition-colors text-left"
+                                title="在库视角中查看"
+                            >
+                                {item.name}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onUnlink(item.id)}
+                                className="px-1.5 py-1 text-teal-600/70 hover:text-red-600 hover:bg-red-50 border-l border-teal-200/80 transition-colors"
+                                title="取消关联"
+                                aria-label={`取消关联 ${item.name}`}
+                            >
+                                <X size={12} />
+                            </button>
+                        </span>
                     ))
                 )}
             </div>
@@ -676,7 +703,7 @@ function TagSection({
                         <button
                             key={item.id}
                             type="button"
-                            onClick={() => onToggle(item.id)}
+                            onClick={() => onLink(item.id)}
                             className="px-2 py-0.5 rounded-md border border-dashed border-stone-200 text-xs text-stone-500 hover:border-teal-300 hover:text-teal-700"
                         >
                             + {item.name}

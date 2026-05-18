@@ -75,7 +75,7 @@ export default function InfoHubAdminPage() {
             <header>
                 <h1 className="text-2xl font-bold flex items-center gap-2 text-zinc-100">
                     <ClipboardList className="text-violet-400" />
-                    信息清单 · 桥梁捕获
+                    信息清单
                 </h1>
                 <p className="text-sm text-zinc-500 mt-1">
                     Profile 窗台「信息清单」中的未归档捕获；归档后写入信息条目并默认加入待看。
