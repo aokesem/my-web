@@ -16,12 +16,18 @@ export interface HubQueuedBookmark {
 
 export type HubReminderAction = 'calendar' | 'protocol';
 export type HubReminderTone = 'warn' | 'info';
+export type HubReminderKind = 'default' | 'deadline';
 
 export interface HubReminder {
     id: string;
     message: string;
     action?: HubReminderAction;
     tone?: HubReminderTone;
+    kind?: HubReminderKind;
+    /** kind === 'deadline' 时使用 */
+    deadlineTitle?: string;
+    deadlineDate?: string;
+    deadlineWhen?: string;
 }
 
 export interface HubLongTermTask {

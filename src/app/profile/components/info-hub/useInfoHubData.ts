@@ -142,15 +142,6 @@ export function useInfoHubData(isOpen: boolean) {
         fetchAll();
     }, [isOpen, fetchAll]);
 
-    useEffect(() => {
-        if (!isOpen) return;
-        const onVisible = () => {
-            if (document.visibilityState === 'visible') fetchAll();
-        };
-        document.addEventListener('visibilitychange', onVisible);
-        return () => document.removeEventListener('visibilitychange', onVisible);
-    }, [isOpen, fetchAll]);
-
     const addCapture = async (title: string, category_type: HubCategoryType) => {
         const { data, error } = await supabase
             .from('info_hub_captures')
@@ -165,6 +156,22 @@ export function useInfoHubData(isOpen: boolean) {
         const { error } = await supabase.from('info_hub_captures').delete().eq('id', id);
         if (error) throw error;
         setCaptures((prev) => prev.filter((c) => c.id !== id));
+    };
+
+    const updateCapture = async (
+        id: number,
+        payload: { title: string; category_type: HubCategoryType }
+    ) => {
+        const { data, error } = await supabase
+            .from('info_hub_captures')
+            .update({ title: payload.title, category_type: payload.category_type })
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        setCaptures((prev) =>
+            prev.map((c) => (c.id === id ? (data as HubCapture) : c))
+        );
     };
 
     const archiveCapture = async (capture: HubCapture) => {
@@ -209,6 +216,7 @@ export function useInfoHubData(isOpen: boolean) {
         refresh: fetchAll,
         addCapture,
         deleteCapture,
+        updateCapture,
         archiveCapture,
         unqueueBookmark,
     };

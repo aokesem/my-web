@@ -69,19 +69,22 @@ export function buildHubReminders(input: {
     const upcoming = input.timepoints
         .filter((tp) => {
             const d = daysBetween(hubToday, tp.date);
-            return d >= 0 && d <= 7;
+            return d >= 0 && d <= 10;
         })
         .sort((a, b) => a.date.localeCompare(b.date));
 
     for (const tp of upcoming.slice(0, 5)) {
         const d = daysBetween(hubToday, tp.date);
         const itemName = itemTitle.get(tp.item_id) || 'Deadline';
-        const label = tp.label ? ` · ${tp.label}` : '';
-        const when =
-            d === 0 ? '今天' : d === 1 ? '明天' : `${d} 天后`;
+        const title = tp.label?.trim() || itemName;
+        const when = d === 0 ? '今天' : d === 1 ? '明天' : `${d} 天后`;
         out.push({
             id: `deadline-${tp.id}`,
-            message: `${itemName}${label}（${when} · ${tp.date}）`,
+            kind: 'deadline',
+            message: title,
+            deadlineTitle: title,
+            deadlineDate: tp.date,
+            deadlineWhen: when,
             action: 'calendar',
             tone: d <= 2 ? 'warn' : 'info',
         });

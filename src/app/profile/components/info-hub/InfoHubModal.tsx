@@ -13,6 +13,9 @@ import {
     BookmarkMinus,
     AlertCircle,
     Info,
+    Pencil,
+    Check,
+    Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -24,6 +27,7 @@ import type {
     HubReminder,
 } from "./types";
 import { formatDeadlineCountdown, formatHubRowTime } from "./formatTime";
+import { CATEGORY_CONFIG, type Category } from "../daily-protocol/types";
 
 interface InfoHubModalProps {
     isOpen: boolean;
@@ -77,11 +81,25 @@ function CategoryTag({ type }: { type: HubCategoryType }) {
     );
 }
 
+function taskCategoryConfig(category: string) {
+    if (category in CATEGORY_CONFIG) {
+        return CATEGORY_CONFIG[category as Category];
+    }
+    return null;
+}
+
 function reminderStyles(tone: HubReminder["tone"]) {
     if (tone === "warn") {
         return "text-amber-900/90 bg-amber-50/90 border-amber-200/70";
     }
     return "text-slate-700 bg-slate-50/90 border-slate-200/70";
+}
+
+function deadlineReminderStyles(tone: HubReminder["tone"]) {
+    if (tone === "warn") {
+        return "border-rose-300/80 bg-gradient-to-r from-rose-50/95 via-white/90 to-rose-50/40 shadow-[inset_3px_0_0_0_rgba(244,63,94,0.55)]";
+    }
+    return "border-violet-200/70 bg-gradient-to-r from-violet-50/80 via-white/90 to-violet-50/30 shadow-[inset_3px_0_0_0_rgba(139,92,246,0.45)]";
 }
 
 function ReminderRow({
@@ -95,12 +113,71 @@ function ReminderRow({
     onOpenProtocol?: () => void;
     onClose: () => void;
 }) {
-    const Icon = reminder.tone === "warn" ? AlertCircle : Info;
-    const handleAction = () => {
+    const handleCalendar = () => {
         onClose();
-        if (reminder.action === "calendar") onOpenCalendar?.();
-        if (reminder.action === "protocol") onOpenProtocol?.();
+        onOpenCalendar?.();
     };
+
+    const handleProtocol = () => {
+        onClose();
+        onOpenProtocol?.();
+    };
+
+    if (reminder.kind === "deadline" && reminder.deadlineTitle) {
+        const dateLabel = reminder.deadlineDate?.replace(/-/g, ".") ?? "";
+        const isUrgent = reminder.tone === "warn";
+
+        return (
+            <li
+                className={`flex items-stretch gap-3 rounded-lg border px-3 py-3 text-sm ${deadlineReminderStyles(reminder.tone)}`}
+            >
+                <div
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                        isUrgent
+                            ? "border-rose-200/80 bg-rose-100/80 text-rose-600"
+                            : "border-violet-200/70 bg-violet-100/70 text-violet-600"
+                    }`}
+                    aria-hidden
+                >
+                    <Clock size={15} strokeWidth={2.25} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 leading-snug truncate">
+                        {reminder.deadlineTitle}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <span
+                            className={`text-[11px] font-mono font-bold tracking-wide px-2 py-0.5 rounded-md border ${
+                                isUrgent
+                                    ? "text-rose-700 bg-rose-100/60 border-rose-200/60"
+                                    : "text-violet-700 bg-violet-100/50 border-violet-200/50"
+                            }`}
+                        >
+                            {reminder.deadlineWhen}
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-500 tracking-tight">
+                            {dateLabel}
+                        </span>
+                    </div>
+                </div>
+                {onOpenCalendar && (
+                    <button
+                        type="button"
+                        onClick={handleCalendar}
+                        className={`self-center text-[11px] font-mono shrink-0 px-2 py-1 rounded-md border transition-colors ${
+                            isUrgent
+                                ? "text-rose-600/80 border-rose-200/50 hover:bg-rose-100/60 hover:text-rose-700"
+                                : "text-violet-600/80 border-violet-200/50 hover:bg-violet-100/50 hover:text-violet-700"
+                        }`}
+                    >
+                        日历
+                    </button>
+                )}
+            </li>
+        );
+    }
+
+    const Icon = reminder.tone === "warn" ? AlertCircle : Info;
 
     return (
         <li
@@ -111,7 +188,7 @@ function ReminderRow({
             {reminder.action && (reminder.action === "calendar" ? onOpenCalendar : onOpenProtocol) && (
                 <button
                     type="button"
-                    onClick={handleAction}
+                    onClick={reminder.action === "calendar" ? handleCalendar : handleProtocol}
                     className="text-[11px] font-mono opacity-70 hover:opacity-100 hover:underline shrink-0"
                 >
                     {reminder.action === "calendar" ? "日历" : "Protocol"}
@@ -131,6 +208,9 @@ export default function InfoHubModal({
     const [draftTitle, setDraftTitle] = useState("");
     const [draftType, setDraftType] = useState<HubCategoryType>("study");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingCaptureId, setEditingCaptureId] = useState<number | null>(null);
+    const [editTitle, setEditTitle] = useState("");
+    const [editType, setEditType] = useState<HubCategoryType>("study");
 
     const hub = useInfoHubData(isOpen);
 
@@ -142,6 +222,10 @@ export default function InfoHubModal({
         return () => {
             document.body.style.overflow = "unset";
         };
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) setEditingCaptureId(null);
     }, [isOpen]);
 
     const handleAdd = async () => {
@@ -189,6 +273,35 @@ export default function InfoHubModal({
             await hub.unqueueBookmark(bookmark.id);
         } catch {
             toast.error("操作失败");
+        }
+    };
+
+    const startEditingCapture = (capture: HubCapture) => {
+        setEditingCaptureId(capture.id);
+        setEditTitle(capture.title);
+        setEditType(capture.category_type);
+    };
+
+    const cancelEditingCapture = () => {
+        setEditingCaptureId(null);
+    };
+
+    const handleSaveCaptureEdit = async () => {
+        const title = editTitle.trim();
+        if (!title || editingCaptureId == null) return;
+        setIsSubmitting(true);
+        try {
+            await hub.updateCapture(editingCaptureId, {
+                title,
+                category_type: editType,
+            });
+            setEditingCaptureId(null);
+            toast.success("已更新");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "保存失败";
+            toast.error(msg);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -311,50 +424,133 @@ export default function InfoHubModal({
                                                     <>
                                                         <TaskSubheading title="未归档" />
                                                         <ul className="space-y-2">
-                                                        {hub.captures.map((capture) => (
+                                                        {hub.captures.map((capture) => {
+                                                            const isEditing =
+                                                                editingCaptureId === capture.id;
+                                                            return (
                                                             <li
                                                                 key={`c-${capture.id}`}
                                                                 className="group flex items-center gap-2 rounded-lg bg-white/80 px-3 py-2.5"
                                                             >
-                                                                <span className="flex-1 min-w-0">
-                                                                    <span className="block text-sm text-slate-800 truncate">
-                                                                        {capture.title}
-                                                                    </span>
-                                                                    <span className="text-[10px] text-slate-400 font-mono">
-                                                                        {formatHubRowTime(
-                                                                            capture.created_at
-                                                                        )}
-                                                                    </span>
-                                                                </span>
-                                                                <CategoryTag
-                                                                    type={capture.category_type}
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    title="归档至信息溯源"
-                                                                    onClick={() =>
-                                                                        handleArchive(capture)
-                                                                    }
-                                                                    disabled={isSubmitting}
-                                                                    className="p-1.5 rounded-md text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
-                                                                >
-                                                                    <Archive size={14} />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    title="删除"
-                                                                    onClick={() =>
-                                                                        handleDelete(
-                                                                            capture.id,
-                                                                            capture.title
-                                                                        )
-                                                                    }
-                                                                    className="p-1.5 rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
+                                                                {isEditing ? (
+                                                                    <>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editTitle}
+                                                                            onChange={(e) =>
+                                                                                setEditTitle(
+                                                                                    e.target.value
+                                                                                )
+                                                                            }
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter")
+                                                                                    handleSaveCaptureEdit();
+                                                                                if (e.key === "Escape")
+                                                                                    cancelEditingCapture();
+                                                                            }}
+                                                                            className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-stone-200 bg-white text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300/50"
+                                                                            disabled={isSubmitting}
+                                                                            autoFocus
+                                                                        />
+                                                                        <select
+                                                                            value={editType}
+                                                                            onChange={(e) =>
+                                                                                setEditType(
+                                                                                    e.target
+                                                                                        .value as HubCategoryType
+                                                                                )
+                                                                            }
+                                                                            className="w-[4.5rem] px-2 py-1.5 rounded-md border border-stone-200 bg-white text-[11px] font-mono text-slate-700 outline-none"
+                                                                            disabled={isSubmitting}
+                                                                        >
+                                                                            <option value="study">
+                                                                                study
+                                                                            </option>
+                                                                            <option value="life">
+                                                                                life
+                                                                            </option>
+                                                                        </select>
+                                                                        <button
+                                                                            type="button"
+                                                                            title="保存"
+                                                                            onClick={handleSaveCaptureEdit}
+                                                                            disabled={
+                                                                                isSubmitting ||
+                                                                                !editTitle.trim()
+                                                                            }
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-40"
+                                                                        >
+                                                                            <Check size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            title="取消"
+                                                                            onClick={cancelEditingCapture}
+                                                                            disabled={isSubmitting}
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                                                        >
+                                                                            <X size={14} />
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <span className="flex-1 min-w-0">
+                                                                            <span className="block text-sm text-slate-800 truncate">
+                                                                                {capture.title}
+                                                                            </span>
+                                                                            <span className="text-[10px] text-slate-400 font-mono">
+                                                                                {formatHubRowTime(
+                                                                                    capture.created_at
+                                                                                )}
+                                                                            </span>
+                                                                        </span>
+                                                                        <CategoryTag
+                                                                            type={
+                                                                                capture.category_type
+                                                                            }
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            title="编辑"
+                                                                            onClick={() =>
+                                                                                startEditingCapture(
+                                                                                    capture
+                                                                                )
+                                                                            }
+                                                                            disabled={isSubmitting}
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-white/80 transition-colors"
+                                                                        >
+                                                                            <Pencil size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            title="归档至信息溯源"
+                                                                            onClick={() =>
+                                                                                handleArchive(capture)
+                                                                            }
+                                                                            disabled={isSubmitting}
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                                                        >
+                                                                            <Archive size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            title="删除"
+                                                                            onClick={() =>
+                                                                                handleDelete(
+                                                                                    capture.id,
+                                                                                    capture.title
+                                                                                )
+                                                                            }
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </>
+                                                                )}
                                                             </li>
-                                                        ))}
+                                                            );
+                                                        })}
                                                         </ul>
                                                     </>
                                                 )}
@@ -415,17 +611,31 @@ export default function InfoHubModal({
                                             </p>
                                         ) : (
                                             <ul className="space-y-2">
-                                                {hub.longTermTasks.map((t) => (
+                                                {hub.longTermTasks.map((t) => {
+                                                    const catConfig = taskCategoryConfig(t.category);
+                                                    return (
                                                     <li
                                                         key={t.id}
-                                                        className="flex items-center gap-3 rounded-lg border border-stone-200/60 bg-white/60 px-3 py-2.5 text-sm shadow-sm"
+                                                        className={`flex items-center gap-3 rounded-lg border border-stone-200/60 px-3 py-2.5 text-sm shadow-sm ${
+                                                            catConfig?.bgLight ?? "bg-white/60"
+                                                        }`}
                                                     >
+                                                        <div
+                                                            className={`w-1 self-stretch min-h-[2.25rem] rounded-full shrink-0 ${
+                                                                catConfig?.indicator ?? "bg-slate-300"
+                                                            }`}
+                                                            aria-hidden
+                                                        />
                                                         <span className="flex-1 min-w-0">
                                                             <span className="block text-slate-800 truncate">
                                                                 {t.title}
                                                             </span>
-                                                            <span className="text-[10px] font-mono text-slate-400 uppercase">
-                                                                {t.category}
+                                                            <span
+                                                                className={`inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide mt-0.5 ${
+                                                                    catConfig?.color ?? "text-slate-400"
+                                                                }`}
+                                                            >
+                                                                {catConfig?.label ?? t.category}
                                                             </span>
                                                         </span>
                                                         <span className="text-[11px] font-mono text-slate-500 shrink-0 text-right">
@@ -449,7 +659,8 @@ export default function InfoHubModal({
                                                             </button>
                                                         )}
                                                     </li>
-                                                ))}
+                                                    );
+                                                })}
                                             </ul>
                                         )}
                                     </SectionBlock>
