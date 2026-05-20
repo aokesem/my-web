@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, Search, Clock, ExternalLink, Edit, Trash2 } from 'lucide-react';
+import { Star, Search, Edit, Trash2 } from 'lucide-react';
 import { InfoItem } from '../types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
@@ -83,12 +83,6 @@ export function InfoCard({
                 <div className="flex items-start justify-between gap-3 mb-2 pr-16 relative z-0">
                     <div>
                         <h3 className="font-bold text-base leading-snug line-clamp-2 md:line-clamp-1">{item.name}</h3>
-                        {item.info_date && (
-                            <div className={`flex items-center gap-1.5 text-xs mt-2 ${theme.textMuted} font-mono tracking-tight`}>
-                                <Clock size={12} />
-                                <span>{item.info_date}</span>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -98,22 +92,8 @@ export function InfoCard({
                     </p>
                 )}
                 
-                <div className="mt-auto pt-4 flex items-center justify-between relative z-10 w-full">
-                    {item.url && (
-                        <a 
-                            href={item.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className={`inline-flex items-center gap-1.5 text-xs font-bold ${theme.primary} hover:opacity-70 transition-opacity bg-black/5 px-3 py-1.5 rounded-full`}
-                        >
-                            <span>访问源链</span>
-                            <ExternalLink size={12} />
-                        </a>
-                    )}
-                    
-                    {/* Inline actions (Edit and SafeDeleteDialog) */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                <div className="mt-auto pt-4 flex items-center justify-end relative z-10 w-full">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                             onClick={(e) => { e.stopPropagation(); onEdit(item); }}
                             title="编辑修改"

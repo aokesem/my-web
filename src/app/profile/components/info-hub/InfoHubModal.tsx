@@ -16,6 +16,8 @@ import {
     Pencil,
     Check,
     Clock,
+    FolderOpen,
+    BellOff,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -23,10 +25,12 @@ import { useInfoHubData } from "./useInfoHubData";
 import type {
     HubCapture,
     HubCategoryType,
+    HubFolderReminder,
     HubQueuedBookmark,
     HubReminder,
 } from "./types";
 import { formatDeadlineCountdown, formatHubRowTime } from "./formatTime";
+import { formatFolderReminderInterval } from "@/lib/infoItemReminder";
 import { CATEGORY_CONFIG, type Category } from "../daily-protocol/types";
 
 interface InfoHubModalProps {
@@ -61,6 +65,23 @@ function categoryTagStyles(type: HubCategoryType) {
         return "bg-blue-500/10 text-blue-600 border-blue-500/20";
     }
     return "bg-amber-500/10 text-amber-700 border-amber-500/20";
+}
+
+function folderReminderRowStyles(type: HubCategoryType) {
+    if (type === "study") {
+        return {
+            row: "border-blue-200/70 bg-gradient-to-r from-blue-50/90 via-white/90 to-blue-50/30 shadow-[inset_3px_0_0_0_rgba(59,130,246,0.45)]",
+            icon: "border-blue-200/60 bg-blue-100/70 text-blue-600",
+            meta: "text-blue-700/80",
+            action: "hover:text-blue-800 hover:bg-blue-50",
+        };
+    }
+    return {
+        row: "border-amber-200/70 bg-gradient-to-r from-amber-50/90 via-white/90 to-amber-50/30 shadow-[inset_3px_0_0_0_rgba(245,158,11,0.45)]",
+        icon: "border-amber-200/60 bg-amber-100/70 text-amber-700",
+        meta: "text-amber-800/80",
+        action: "hover:text-amber-900 hover:bg-amber-50",
+    };
 }
 
 function TaskSubheading({ title }: { title: string }) {
@@ -211,6 +232,8 @@ export default function InfoHubModal({
     const [editingCaptureId, setEditingCaptureId] = useState<number | null>(null);
     const [editTitle, setEditTitle] = useState("");
     const [editType, setEditType] = useState<HubCategoryType>("study");
+    const [archivingCaptureId, setArchivingCaptureId] = useState<number | null>(null);
+    const [archiveParentItemId, setArchiveParentItemId] = useState("");
 
     const hub = useInfoHubData(isOpen);
 
@@ -225,7 +248,11 @@ export default function InfoHubModal({
     }, [isOpen]);
 
     useEffect(() => {
-        if (!isOpen) setEditingCaptureId(null);
+        if (!isOpen) {
+            setEditingCaptureId(null);
+            setArchivingCaptureId(null);
+            setArchiveParentItemId("");
+        }
     }, [isOpen]);
 
     const handleAdd = async () => {
@@ -244,11 +271,37 @@ export default function InfoHubModal({
         }
     };
 
-    const handleArchive = async (capture: HubCapture) => {
-        if (!confirm(`归档「${capture.title}」至信息溯源？归档后将进入待看列表。`)) return;
+    const startArchive = (capture: HubCapture) => {
+        setArchivingCaptureId(capture.id);
+        setArchiveParentItemId("");
+    };
+
+    const cancelArchive = () => {
+        setArchivingCaptureId(null);
+        setArchiveParentItemId("");
+    };
+
+    const confirmArchive = async (capture: HubCapture) => {
+        const folderLabel =
+            archiveParentItemId === ""
+                ? "未归入收藏夹"
+                : hub.hubFolders.find((f) => f.id === parseInt(archiveParentItemId, 10))
+                      ?.name ?? "所选收藏夹";
+        if (
+            !confirm(
+                `归档「${capture.title}」至信息溯源？\n放入：${folderLabel}\n归档后将进入待看列表。`
+            )
+        ) {
+            return;
+        }
+        const parentId =
+            archiveParentItemId === ""
+                ? null
+                : parseInt(archiveParentItemId, 10);
         setIsSubmitting(true);
         try {
-            await hub.archiveCapture(capture);
+            await hub.archiveCapture(capture, parentId);
+            cancelArchive();
             toast.success("已归档至信息溯源");
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "归档失败";
@@ -276,7 +329,24 @@ export default function InfoHubModal({
         }
     };
 
+    const handleClearFolderReminder = async (folder: HubFolderReminder) => {
+        if (
+            !confirm(
+                `清除「${folder.name}」的回顾提醒？\n清除后将从今日重新计算周期。`
+            )
+        ) {
+            return;
+        }
+        try {
+            await hub.clearFolderReminder(folder.id);
+            toast.success("已清除提醒");
+        } catch {
+            toast.error("操作失败");
+        }
+    };
+
     const startEditingCapture = (capture: HubCapture) => {
+        cancelArchive();
         setEditingCaptureId(capture.id);
         setEditTitle(capture.title);
         setEditType(capture.category_type);
@@ -414,7 +484,8 @@ export default function InfoHubModal({
                                         </div>
 
                                         {hub.captures.length === 0 &&
-                                        hub.queuedBookmarks.length === 0 ? (
+                                        hub.queuedBookmarks.length === 0 &&
+                                        hub.folderReminders.length === 0 ? (
                                             <p className="text-sm text-slate-400 italic pl-0.5">
                                                 暂无待处理项
                                             </p>
@@ -492,6 +563,69 @@ export default function InfoHubModal({
                                                                             <X size={14} />
                                                                         </button>
                                                                     </>
+                                                                ) : archivingCaptureId ===
+                                                                  capture.id ? (
+                                                                    <>
+                                                                        <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                                                            <span className="text-sm text-slate-800 truncate">
+                                                                                {capture.title}
+                                                                            </span>
+                                                                            <label className="text-[10px] font-bold text-slate-500">
+                                                                                放入收藏夹
+                                                                            </label>
+                                                                            <select
+                                                                                value={archiveParentItemId}
+                                                                                onChange={(e) =>
+                                                                                    setArchiveParentItemId(
+                                                                                        e.target.value
+                                                                                    )
+                                                                                }
+                                                                                disabled={isSubmitting}
+                                                                                className="w-full px-2 py-1.5 rounded-md border border-stone-200 bg-white text-xs text-slate-800 outline-none focus:ring-2 focus:ring-slate-300/50"
+                                                                            >
+                                                                                <option value="">
+                                                                                    未归入收藏夹
+                                                                                </option>
+                                                                                {hub.hubFolders
+                                                                                    .filter(
+                                                                                        (f) =>
+                                                                                            f.category_type ===
+                                                                                            capture.category_type
+                                                                                    )
+                                                                                    .map((f) => (
+                                                                                        <option
+                                                                                            key={f.id}
+                                                                                            value={f.id}
+                                                                                        >
+                                                                                            {f.name}
+                                                                                        </option>
+                                                                                    ))}
+                                                                            </select>
+                                                                        </div>
+                                                                        <CategoryTag
+                                                                            type={capture.category_type}
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            title="确认归档"
+                                                                            onClick={() =>
+                                                                                confirmArchive(capture)
+                                                                            }
+                                                                            disabled={isSubmitting}
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                                                        >
+                                                                            <Check size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            title="取消"
+                                                                            onClick={cancelArchive}
+                                                                            disabled={isSubmitting}
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                                                        >
+                                                                            <X size={14} />
+                                                                        </button>
+                                                                    </>
                                                                 ) : (
                                                                     <>
                                                                         <span className="flex-1 min-w-0">
@@ -526,7 +660,7 @@ export default function InfoHubModal({
                                                                             type="button"
                                                                             title="归档至信息溯源"
                                                                             onClick={() =>
-                                                                                handleArchive(capture)
+                                                                                startArchive(capture)
                                                                             }
                                                                             disabled={isSubmitting}
                                                                             className="p-1.5 rounded-md text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
@@ -555,9 +689,67 @@ export default function InfoHubModal({
                                                     </>
                                                 )}
 
+                                                {hub.folderReminders.length > 0 && (
+                                                    <>
+                                                        <TaskSubheading title="收藏夹提醒" />
+                                                        <ul className="space-y-2">
+                                                            {hub.folderReminders.map((folder) => {
+                                                                const styles =
+                                                                    folderReminderRowStyles(
+                                                                        folder.category_type
+                                                                    );
+                                                                return (
+                                                                <li
+                                                                    key={`f-${folder.id}`}
+                                                                    className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${styles.row}`}
+                                                                >
+                                                                    <div
+                                                                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${styles.icon}`}
+                                                                    >
+                                                                        <FolderOpen size={15} />
+                                                                    </div>
+                                                                    <span className="flex-1 min-w-0">
+                                                                        <span className="block text-sm font-semibold text-slate-800 truncate">
+                                                                            {folder.name}
+                                                                        </span>
+                                                                        <span
+                                                                            className={`text-[10px] font-mono mt-0.5 block ${styles.meta}`}
+                                                                        >
+                                                                            {formatFolderReminderInterval(
+                                                                                folder.reminder_interval_days
+                                                                            )}{" "}
+                                                                            · 回顾
+                                                                        </span>
+                                                                    </span>
+                                                                    <CategoryTag type={folder.category_type} />
+                                                                    <Link
+                                                                        href={`/library/info-source/${folder.category_type}`}
+                                                                        onClick={onClose}
+                                                                        className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
+                                                                        title="打开信息溯源"
+                                                                    >
+                                                                        <ExternalLink size={14} />
+                                                                    </Link>
+                                                                    <button
+                                                                        type="button"
+                                                                        title="清除提醒"
+                                                                        onClick={() =>
+                                                                            handleClearFolderReminder(folder)
+                                                                        }
+                                                                        className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
+                                                                    >
+                                                                        <BellOff size={14} />
+                                                                    </button>
+                                                                </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    </>
+                                                )}
+
                                                 {hub.queuedBookmarks.length > 0 && (
                                                     <>
-                                                        <TaskSubheading title="待看" />
+                                                        <TaskSubheading title="待看条目" />
                                                         <ul className="space-y-2">
                                                         {hub.queuedBookmarks.map((bookmark) => (
                                                             <li
@@ -568,7 +760,10 @@ export default function InfoHubModal({
                                                                     <span className="block text-sm text-slate-800 truncate">
                                                                         {bookmark.title}
                                                                     </span>
-                                                                    <span className="text-[10px] text-slate-400 font-mono">
+                                                                    <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                                                        来自 · {bookmark.hub_name ?? "未归入收藏夹"}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400/80 font-mono">
                                                                         {formatHubRowTime(
                                                                             bookmark.created_at
                                                                         )}

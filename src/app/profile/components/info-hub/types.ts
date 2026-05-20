@@ -7,11 +7,27 @@ export interface HubCapture {
     created_at: string;
 }
 
+export interface HubFolderReminder {
+    id: number;
+    name: string;
+    category_type: HubCategoryType;
+    reminder_interval_days: number;
+}
+
+/** 归档时可选的收藏夹（info_items） */
+export interface HubFolderOption {
+    id: number;
+    name: string;
+    category_type: HubCategoryType;
+}
+
 export interface HubQueuedBookmark {
     id: number;
     title: string;
     category_type: HubCategoryType;
     created_at: string;
+    parent_item_id?: number | null;
+    hub_name?: string | null;
 }
 
 export type HubReminderAction = 'calendar' | 'protocol';
@@ -24,7 +40,6 @@ export interface HubReminder {
     action?: HubReminderAction;
     tone?: HubReminderTone;
     kind?: HubReminderKind;
-    /** kind === 'deadline' 时使用 */
     deadlineTitle?: string;
     deadlineDate?: string;
     deadlineWhen?: string;

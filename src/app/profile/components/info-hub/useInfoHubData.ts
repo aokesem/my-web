@@ -3,41 +3,99 @@ import { supabase } from '@/lib/supabaseClient';
 import type {
     HubCapture,
     HubCategoryType,
+    HubFolderOption,
+    HubFolderReminder,
     HubLongTermTask,
     HubQueuedBookmark,
     HubReminder,
 } from './types';
 import { buildHubReminders } from './hubReminders';
+import { getHubDayKey } from './hubDay';
+import { getDueFolderReminders } from '@/lib/infoItemReminder';
 
-const QUEUED_BOOKMARK_SELECT = 'id, title, category_type, created_at';
+const QUEUED_BOOKMARK_SELECT_WITH_HUB =
+    'id, title, category_type, created_at, parent_item_id, info_items(name)';
+const QUEUED_BOOKMARK_SELECT_BASE = 'id, title, category_type, created_at, parent_item_id';
 
-async function fetchQueuedBookmarks(): Promise<{
-    data: HubQueuedBookmark[];
-    error: { message: string } | null;
-}> {
-    const [studyRes, lifeRes] = await Promise.all([
+function logSupabaseError(label: string, error: unknown) {
+    if (!error || typeof error !== 'object') {
+        console.error(label, error);
+        return;
+    }
+    const e = error as { message?: string; code?: string; details?: string; hint?: string };
+    console.error(
+        label,
+        [e.message, e.code, e.details, e.hint].filter(Boolean).join(' · ') || error
+    );
+}
+
+function mapQueuedRow(
+    row: Record<string, unknown>,
+    hubNameById: Map<number, string>
+): HubQueuedBookmark {
+    const items = row.info_items as { name?: string } | { name?: string }[] | null;
+    const joinedName = Array.isArray(items) ? items[0]?.name : items?.name;
+    const parentId = (row.parent_item_id as number | null) ?? null;
+    return {
+        id: row.id as number,
+        title: row.title as string,
+        category_type: row.category_type as HubCategoryType,
+        created_at: row.created_at as string,
+        parent_item_id: parentId,
+        hub_name: joinedName ?? (parentId != null ? hubNameById.get(parentId) ?? null : null),
+    };
+}
+
+async function fetchQueuedBookmarks(hubNameById: Map<number, string>) {
+    const fetchSide = async (category: HubCategoryType, select: string) =>
         supabase
             .from('info_bookmarks')
-            .select(QUEUED_BOOKMARK_SELECT)
-            .eq('category_type', 'study')
+            .select(select)
+            .eq('category_type', category)
             .eq('is_queued', true)
-            .order('created_at', { ascending: false }),
-        supabase
-            .from('info_bookmarks')
-            .select(QUEUED_BOOKMARK_SELECT)
-            .eq('category_type', 'life')
-            .eq('is_queued', true)
-            .order('created_at', { ascending: false }),
-    ]);
+            .order('created_at', { ascending: false });
+
+    let studyRes = await fetchSide('study', QUEUED_BOOKMARK_SELECT_WITH_HUB);
+    let lifeRes = await fetchSide('life', QUEUED_BOOKMARK_SELECT_WITH_HUB);
+
+    if (studyRes.error || lifeRes.error) {
+        studyRes = await fetchSide('study', QUEUED_BOOKMARK_SELECT_BASE);
+        lifeRes = await fetchSide('life', QUEUED_BOOKMARK_SELECT_BASE);
+    }
 
     const error = studyRes.error || lifeRes.error;
     if (error) {
+        logSupabaseError('queued info_bookmarks', error);
         return { data: [], error };
     }
 
-    const merged = [...(studyRes.data || []), ...(lifeRes.data || [])] as HubQueuedBookmark[];
+    const merged = [...(studyRes.data || []), ...(lifeRes.data || [])].map((row) =>
+        mapQueuedRow(row as unknown as Record<string, unknown>, hubNameById)
+    );
     merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return { data: merged, error: null };
+}
+
+async function fetchItemsForHubReminders() {
+    const full = await supabase.from('info_items').select('*');
+    if (!full.error) return full;
+
+    logSupabaseError('info_items (reminders)', full.error);
+    const basic = await supabase
+        .from('info_items')
+        .select('id, name, category_type, created_at');
+    if (basic.error) {
+        logSupabaseError('info_items (reminders fallback)', basic.error);
+        return basic;
+    }
+    return {
+        data: (basic.data || []).map((row) => ({
+            ...row,
+            reminder_interval_days: 0,
+            last_reminder_cleared_at: null,
+        })),
+        error: null,
+    };
 }
 
 export function useInfoHubData(isOpen: boolean) {
@@ -46,52 +104,54 @@ export function useInfoHubData(isOpen: boolean) {
     const [queuedBookmarks, setQueuedBookmarks] = useState<HubQueuedBookmark[]>([]);
     const [reminders, setReminders] = useState<HubReminder[]>([]);
     const [longTermTasks, setLongTermTasks] = useState<HubLongTermTask[]>([]);
+    const [folderReminders, setFolderReminders] = useState<HubFolderReminder[]>([]);
+    const [hubFolders, setHubFolders] = useState<HubFolderOption[]>([]);
 
     const fetchAll = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [
-                capRes,
-                queuedRes,
-                routineRes,
-                actsRes,
-                tpRes,
-                itemsRes,
-                msRes,
-                tasksRes,
-            ] = await Promise.all([
-                supabase
-                    .from('info_hub_captures')
-                    .select('*')
-                    .order('created_at', { ascending: false }),
-                fetchQueuedBookmarks(),
-                supabase.from('calendar_routine_logs').select('date, wake_time, sleep_time'),
-                supabase
-                    .from('calendar_activities')
-                    .select('date, day_of_week, content'),
-                supabase.from('deadline_timepoints').select('id, date, label, item_id'),
-                supabase.from('deadline_items').select('id, title'),
-                supabase
-                    .from('profile_task_milestones')
-                    .select('id, title, date, is_completed, task_id, profile_tasks(title)')
-                    .eq('is_completed', false)
-                    .order('date', { ascending: true }),
-                supabase
-                    .from('profile_tasks')
-                    .select('id, title, deadline, category, status')
-                    .eq('status', 'in_progress')
-                    .not('deadline', 'is', null)
-                    .order('deadline', { ascending: true }),
-            ]);
+            const [capRes, itemsRes, routineRes, actsRes, tpRes, deadlineItemsRes, msRes, tasksRes] =
+                await Promise.all([
+                    supabase
+                        .from('info_hub_captures')
+                        .select('*')
+                        .order('created_at', { ascending: false }),
+                    fetchItemsForHubReminders(),
+                    supabase.from('calendar_routine_logs').select('date, wake_time, sleep_time'),
+                    supabase
+                        .from('calendar_activities')
+                        .select('date, day_of_week, content'),
+                    supabase.from('deadline_timepoints').select('id, date, label, item_id'),
+                    supabase.from('deadline_items').select('id, title'),
+                    supabase
+                        .from('profile_task_milestones')
+                        .select('id, title, date, is_completed, task_id, profile_tasks(title)')
+                        .eq('is_completed', false)
+                        .order('date', { ascending: true }),
+                    supabase
+                        .from('profile_tasks')
+                        .select('id, title, deadline, category, status')
+                        .eq('status', 'in_progress')
+                        .not('deadline', 'is', null)
+                        .order('deadline', { ascending: true }),
+                ]);
+
+            const hubNameById = new Map<number, string>();
+            if (itemsRes.data) {
+                for (const item of itemsRes.data) {
+                    hubNameById.set(item.id, item.name);
+                }
+            }
+
+            const queuedRes = await fetchQueuedBookmarks(hubNameById);
 
             if (capRes.error) {
-                console.error('info_hub_captures:', capRes.error);
+                logSupabaseError('info_hub_captures', capRes.error);
             } else if (capRes.data) {
                 setCaptures(capRes.data as HubCapture[]);
             }
 
             if (queuedRes.error) {
-                console.error('queued info_bookmarks:', queuedRes.error);
                 setQueuedBookmarks([]);
             } else {
                 setQueuedBookmarks(queuedRes.data);
@@ -99,10 +159,22 @@ export function useInfoHubData(isOpen: boolean) {
 
             setReminders(
                 buildHubReminders({
-                    routineLogs: (routineRes.data || []) as { date: string; wake_time: string | null; sleep_time: string | null }[],
-                    activities: (actsRes.data || []) as { date: string; day_of_week: number | null }[],
-                    timepoints: (tpRes.data || []) as { id: number; date: string; label: string | null; item_id: number }[],
-                    deadlineItems: (itemsRes.data || []) as { id: number; title: string }[],
+                    routineLogs: (routineRes.data || []) as {
+                        date: string;
+                        wake_time: string | null;
+                        sleep_time: string | null;
+                    }[],
+                    activities: (actsRes.data || []) as {
+                        date: string;
+                        day_of_week: number | null;
+                    }[],
+                    timepoints: (tpRes.data || []) as {
+                        id: number;
+                        date: string;
+                        label: string | null;
+                        item_id: number;
+                    }[],
+                    deadlineItems: (deadlineItemsRes.data || []) as { id: number; title: string }[],
                     milestones: (msRes.data || []).map((m: Record<string, unknown>) => {
                         const pt = m.profile_tasks;
                         const taskTitle = Array.isArray(pt)
@@ -131,6 +203,37 @@ export function useInfoHubData(isOpen: boolean) {
                 );
             } else {
                 setLongTermTasks([]);
+            }
+
+            if (itemsRes.error) {
+                setFolderReminders([]);
+                setHubFolders([]);
+            } else if (itemsRes.data) {
+                setHubFolders(
+                    itemsRes.data.map((row) => ({
+                        id: row.id,
+                        name: row.name,
+                        category_type: row.category_type as HubCategoryType,
+                    }))
+                );
+                const due = getDueFolderReminders(
+                    itemsRes.data.map((row) => ({
+                        id: row.id,
+                        name: row.name,
+                        category_type: row.category_type,
+                        reminder_interval_days: row.reminder_interval_days ?? 0,
+                        last_reminder_cleared_at: row.last_reminder_cleared_at ?? null,
+                        created_at: row.created_at,
+                    }))
+                );
+                setFolderReminders(
+                    due.map((item) => ({
+                        id: item.id,
+                        name: item.name,
+                        category_type: item.category_type as HubCategoryType,
+                        reminder_interval_days: item.reminder_interval_days ?? 0,
+                    }))
+                );
             }
         } finally {
             setIsLoading(false);
@@ -169,23 +272,28 @@ export function useInfoHubData(isOpen: boolean) {
             .select()
             .single();
         if (error) throw error;
-        setCaptures((prev) =>
-            prev.map((c) => (c.id === id ? (data as HubCapture) : c))
-        );
+        setCaptures((prev) => prev.map((c) => (c.id === id ? (data as HubCapture) : c)));
     };
 
-    const archiveCapture = async (capture: HubCapture) => {
+    const archiveCapture = async (
+        capture: HubCapture,
+        parentItemId: number | null
+    ) => {
+        const hubName =
+            parentItemId != null
+                ? hubFolders.find((f) => f.id === parentItemId)?.name ?? null
+                : null;
+
         const { data: bookmark, error: insertError } = await supabase
             .from('info_bookmarks')
             .insert({
                 category_type: capture.category_type,
                 title: capture.title,
                 source_id: null,
-                group_id: null,
-                parent_item_id: null,
+                parent_item_id: parentItemId,
                 is_queued: true,
             })
-            .select('id, title, category_type, created_at')
+            .select('id, title, category_type, created_at, parent_item_id')
             .single();
         if (insertError) throw insertError;
 
@@ -197,7 +305,13 @@ export function useInfoHubData(isOpen: boolean) {
 
         setCaptures((prev) => prev.filter((c) => c.id !== capture.id));
         if (bookmark) {
-            setQueuedBookmarks((prev) => [bookmark as HubQueuedBookmark, ...prev]);
+            setQueuedBookmarks((prev) => [
+                {
+                    ...(bookmark as HubQueuedBookmark),
+                    hub_name: hubName,
+                },
+                ...prev,
+            ]);
         }
     };
 
@@ -207,10 +321,22 @@ export function useInfoHubData(isOpen: boolean) {
         setQueuedBookmarks((prev) => prev.filter((b) => b.id !== id));
     };
 
+    const clearFolderReminder = async (itemId: number) => {
+        const today = getHubDayKey();
+        const { error } = await supabase
+            .from('info_items')
+            .update({ last_reminder_cleared_at: today })
+            .eq('id', itemId);
+        if (error) throw error;
+        setFolderReminders((prev) => prev.filter((f) => f.id !== itemId));
+    };
+
     return {
         isLoading,
         captures,
         queuedBookmarks,
+        folderReminders,
+        hubFolders,
         reminders,
         longTermTasks,
         refresh: fetchAll,
@@ -219,5 +345,6 @@ export function useInfoHubData(isOpen: boolean) {
         updateCapture,
         archiveCapture,
         unqueueBookmark,
+        clearFolderReminder,
     };
 }

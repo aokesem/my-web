@@ -5,8 +5,11 @@ import {
     InfoCategory,
     InfoSourceViewMode,
     InfoSidebarNavMode,
+    InfoSidebarSelection,
+    INFO_UNGROUPED_FOLDER_ID,
 } from '../types';
-import { itemBelongsToFolder, bookmarkBelongsToFolder, resolveItemFolderId, resolveBookmarkFolderId } from '../lib/infoSourceFolders';
+import { isUngroupedBookmark, bookmarkBelongsToHub } from '../lib/infoSourceNav';
+import { effectiveDateSortKey } from '../lib/formatEffectiveDateRange';
 
 export function useInfoSourceFilters(
     type: string,
@@ -17,28 +20,41 @@ export function useInfoSourceFilters(
 ) {
     const [viewMode, setViewMode] = useState<InfoSourceViewMode>('folders');
     const [sidebarMode, setSidebarMode] = useState<InfoSidebarNavMode>('folders');
-    const [selectedParentItemId, setSelectedParentItemId] = useState<number | null>(null);
-    const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+    const [sidebarSelection, setSidebarSelection] = useState<InfoSidebarSelection>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
-    const [sortBy, setSortBy] = useState<'info_date' | 'created_at'>('created_at');
+    const [sortBy, setSortBy] = useState<'effective_date' | 'created_at'>('created_at');
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
     const [pinFavorites, setPinFavorites] = useState(true);
 
     const [highlightedCardId, setHighlightedCardId] = useState<number | null>(null);
     const [pendingScrollId, setPendingScrollId] = useState<number | null>(null);
 
-    const currentCategories = useMemo(() => mockCategories.filter(c => c.category_type === type), [mockCategories, type]);
+    const currentCategories = useMemo(
+        () => mockCategories.filter((c) => c.category_type === type),
+        [mockCategories, type]
+    );
+
+    const selectAllHubs = () => {
+        setSidebarSelection(null);
+        setViewMode('folders');
+    };
+
+    const selectHub = (hubId: number) => {
+        setSidebarSelection(hubId);
+        setViewMode('entries');
+    };
+
+    const selectUngroupedEntries = () => {
+        setSidebarSelection(INFO_UNGROUPED_FOLDER_ID);
+        setViewMode('entries');
+    };
 
     const allFilteredItems = useMemo(() => {
         let sorted = [...mockItems];
 
-        if (selectedGroupId !== null) {
-            sorted = sorted.filter(item => itemBelongsToFolder(item, selectedGroupId));
-        }
-
         if (selectedCategoryId !== null) {
-            sorted = sorted.filter(item => item.category_ids.includes(selectedCategoryId));
+            sorted = sorted.filter((item) => item.category_ids.includes(selectedCategoryId));
         }
 
         sorted.sort((a, b) => {
@@ -46,31 +62,30 @@ export function useInfoSourceFilters(
                 if (a.is_favorited && !b.is_favorited) return -1;
                 if (!a.is_favorited && b.is_favorited) return 1;
             }
-
             if (a.sort_order !== b.sort_order) {
                 return b.sort_order - a.sort_order;
             }
-
-            const timeA = new Date(a[sortBy] || a.created_at).getTime();
-            const timeB = new Date(b[sortBy] || b.created_at).getTime();
-
+            const timeA = new Date(a.created_at).getTime();
+            const timeB = new Date(b.created_at).getTime();
             return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
         });
 
         return sorted;
-    }, [mockItems, selectedGroupId, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
+    }, [mockItems, selectedCategoryId, sortOrder, pinFavorites]);
 
     const allFilteredBookmarks = useMemo(() => {
+        if (viewMode !== 'entries') return [];
+
         let sorted = [...mockBookmarks];
 
-        if (selectedParentItemId !== null) {
-            sorted = sorted.filter(b => b.parent_item_id === selectedParentItemId);
-        } else if (selectedGroupId !== null) {
-            sorted = sorted.filter(b => bookmarkBelongsToFolder(b, selectedGroupId, mockItems));
+        if (sidebarSelection === INFO_UNGROUPED_FOLDER_ID) {
+            sorted = sorted.filter(isUngroupedBookmark);
+        } else if (typeof sidebarSelection === 'number') {
+            sorted = sorted.filter((b) => bookmarkBelongsToHub(b, sidebarSelection));
         }
 
         if (selectedCategoryId !== null) {
-            sorted = sorted.filter(b => b.category_id === selectedCategoryId);
+            sorted = sorted.filter((b) => b.category_id === selectedCategoryId);
         }
 
         sorted.sort((a, b) => {
@@ -78,28 +93,45 @@ export function useInfoSourceFilters(
                 if (a.is_favorited && !b.is_favorited) return -1;
                 if (!a.is_favorited && b.is_favorited) return 1;
             }
-            const timeA = new Date(a[sortBy] || a.created_at).getTime();
-            const timeB = new Date(b[sortBy] || b.created_at).getTime();
+            const timeA =
+                sortBy === 'effective_date'
+                    ? effectiveDateSortKey(a)
+                    : new Date(a.created_at).getTime();
+            const timeB =
+                sortBy === 'effective_date'
+                    ? effectiveDateSortKey(b)
+                    : new Date(b.created_at).getTime();
             return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
         });
 
         return sorted;
-    }, [mockBookmarks, mockItems, selectedParentItemId, selectedGroupId, selectedCategoryId, sortBy, sortOrder, pinFavorites]);
+    }, [
+        mockBookmarks,
+        viewMode,
+        sidebarSelection,
+        selectedCategoryId,
+        sortBy,
+        sortOrder,
+        pinFavorites,
+    ]);
 
-    const queuedItems = useMemo(() => mockItems.filter(i => i.is_queued), [mockItems]);
     const queuedBookmarks = useMemo(() => {
-        return mockBookmarks.filter(b => b.is_queued).map(bookmark => {
-            let thumb = '';
-            if (bookmark.parent_item_id) {
-                const pItem = mockItems.find(i => i.id === bookmark.parent_item_id);
-                thumb = pItem?.image_url || '';
-            }
-            return {
-                ...bookmark,
-                image_url: thumb
-            };
-        });
+        return mockBookmarks
+            .filter((b) => b.is_queued)
+            .map((bookmark) => {
+                let thumb = '';
+                if (bookmark.parent_item_id) {
+                    const pItem = mockItems.find((i) => i.id === bookmark.parent_item_id);
+                    thumb = pItem?.image_url || '';
+                }
+                return { ...bookmark, image_url: thumb };
+            });
     }, [mockBookmarks, mockItems]);
+
+    const activeHub =
+        typeof sidebarSelection === 'number'
+            ? mockItems.find((i) => i.id === sidebarSelection) ?? null
+            : null;
 
     useEffect(() => {
         if (pendingScrollId && !isLoading) {
@@ -119,18 +151,16 @@ export function useInfoSourceFilters(
     const scrollToCard = (id: number) => {
         const bookmark = mockBookmarks.find((b) => b.id === id);
         if (bookmark) {
-            if (viewMode !== 'entries') {
-                setViewMode('entries');
+            if (isUngroupedBookmark(bookmark)) {
+                selectUngroupedEntries();
+            } else if (bookmark.parent_item_id) {
+                selectHub(bookmark.parent_item_id);
             }
-            setSelectedParentItemId(bookmark.parent_item_id || null);
-            setSelectedGroupId(resolveBookmarkFolderId(bookmark, mockItems));
             setSelectedCategoryId(bookmark.category_id || null);
 
             const tryScroll = () => {
                 const el = document.getElementById(`bookmark-card-${id}`);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             };
             setTimeout(tryScroll, 150);
             return;
@@ -139,13 +169,13 @@ export function useInfoSourceFilters(
         const item = mockItems.find((i) => i.id === id);
         if (!item) return;
 
+        selectAllHubs();
         const el = document.getElementById(`info-card-${id}`);
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             setHighlightedCardId(id);
             setTimeout(() => setHighlightedCardId(null), 1500);
         } else {
-            setSelectedGroupId(resolveItemFolderId(item));
             setSelectedCategoryId(item.category_ids[0] || null);
             setPendingScrollId(id);
         }
@@ -156,10 +186,12 @@ export function useInfoSourceFilters(
         setViewMode,
         sidebarMode,
         setSidebarMode,
-        selectedParentItemId,
-        setSelectedParentItemId,
-        selectedGroupId,
-        setSelectedGroupId,
+        sidebarSelection,
+        setSidebarSelection,
+        selectAllHubs,
+        selectHub,
+        selectUngroupedEntries,
+        activeHub,
         selectedCategoryId,
         setSelectedCategoryId,
         sortBy,
@@ -172,8 +204,7 @@ export function useInfoSourceFilters(
         currentCategories,
         allFilteredItems,
         allFilteredBookmarks,
-        queuedItems,
         queuedBookmarks,
-        scrollToCard
+        scrollToCard,
     };
 }

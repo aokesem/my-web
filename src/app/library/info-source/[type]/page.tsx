@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { InfoSidebar } from '../components/InfoSidebar';
 import { InfoItemModal } from '../components/InfoItemModal';
 import { BookmarkModal } from '../components/BookmarkModal';
 import { InfoListHeader } from '../components/InfoListHeader';
 import { InfoContentGrid } from '../components/InfoContentGrid';
+import { FolderSettingsModal } from '../components/FolderSettingsModal';
+import { InfoItem } from '../types';
 
 import { useInfoSourceData } from '../hooks/useInfoSourceData';
 import { useInfoSourceFilters } from '../hooks/useInfoSourceFilters';
@@ -22,7 +25,6 @@ export default function InfoSourceListPage() {
 
     const isStudy = type === 'study';
 
-    // === 主题设计 tokens ===
     const theme = useMemo(() => ({
         bg: isStudy ? 'bg-[#0f172a]' : 'bg-[#fdfbf7]',
         textBase: isStudy ? 'text-slate-300' : 'text-stone-700',
@@ -38,49 +40,80 @@ export default function InfoSourceListPage() {
         sidebarBg: isStudy ? 'bg-[#0b1121]' : 'bg-[#f8f5ee]',
         queueCardBg: isStudy ? 'bg-slate-800/50' : 'bg-white/50',
         highlightRing: isStudy ? 'ring-2 ring-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'ring-2 ring-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)]',
+        iconHoverBg: isStudy ? 'hover:bg-slate-700' : 'hover:bg-stone-100',
     }), [isStudy]);
 
-    // 1. 数据获取与缓存层
     const data = useInfoSourceData(type);
 
-    // 2. 本地过滤与派生层
     const filters = useInfoSourceFilters(
         type, data.mockCategories, data.mockItems, data.mockBookmarks, data.isLoading
     );
 
-    // 3. 弹窗表单状态层
     const modals = useInfoSourceModals(
-        type, filters.viewMode, filters.selectedGroupId, filters.selectedParentItemId,
-        data.setItems, data.setBookmarks,
+        type,
+        filters.viewMode,
+        filters.sidebarSelection,
+        data.setItems,
+        data.setBookmarks,
         data.mockItems
     );
 
+    const [folderSettingsItem, setFolderSettingsItem] = useState<InfoItem | null>(null);
+    const [isFolderSettingsOpen, setIsFolderSettingsOpen] = useState(false);
+    const [isFolderSaving, setIsFolderSaving] = useState(false);
+
+    const handleOpenFolderSettings = (item: InfoItem) => {
+        setFolderSettingsItem(item);
+        setIsFolderSettingsOpen(true);
+    };
+
+    const handleSaveFolderSettings = async (payload: {
+        name: string;
+        reminder_interval_days: number;
+    }) => {
+        if (!folderSettingsItem) return;
+        setIsFolderSaving(true);
+        try {
+            await data.updateItemReminderSettings(folderSettingsItem.id, payload);
+            setIsFolderSettingsOpen(false);
+            setFolderSettingsItem(null);
+            toast.success('收藏夹设置已保存');
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : '保存失败';
+            toast.error(msg);
+        } finally {
+            setIsFolderSaving(false);
+        }
+    };
+
     return (
         <div className={`flex w-full h-screen overflow-hidden ${theme.bg} ${theme.textBase} transition-colors duration-500 font-sans`}>
-            
-            <InfoSidebar 
+            <InfoSidebar
                 theme={theme}
                 isStudy={isStudy}
                 isLoading={data.isLoading}
                 sidebarMode={filters.sidebarMode}
                 setSidebarMode={filters.setSidebarMode}
-                mockGroups={data.mockGroups}
                 mockItems={data.mockItems}
-                selectedGroupId={filters.selectedGroupId}
-                setSelectedGroupId={filters.setSelectedGroupId}
-                handleReorderGroups={data.handleReorderGroups}
-                queuedItems={filters.queuedBookmarks as any}
+                mockBookmarks={data.mockBookmarks}
+                sidebarSelection={filters.sidebarSelection}
+                onSelectAllHubs={filters.selectAllHubs}
+                onSelectHub={filters.selectHub}
+                onSelectUngrouped={filters.selectUngroupedEntries}
+                handleReorderItems={data.handleReorderItems}
+                onOpenFolderSettings={handleOpenFolderSettings}
+                queuedBookmarks={filters.queuedBookmarks}
                 scrollToCard={filters.scrollToCard}
             />
 
-            {/* === 右侧主内容区 === */}
             <main className="flex-1 h-full flex flex-col relative z-0">
-                <InfoListHeader 
+                <InfoListHeader
                     theme={theme}
                     isStudy={isStudy}
                     viewMode={filters.viewMode}
-                    setViewMode={filters.setViewMode}
-                    setSelectedParentItemId={filters.setSelectedParentItemId}
+                    activeHubName={filters.activeHub?.name}
+                    onShowAllHubs={filters.selectAllHubs}
+                    onShowEntries={() => filters.setViewMode('entries')}
                     currentCategories={filters.currentCategories}
                     selectedCategoryId={filters.selectedCategoryId}
                     setSelectedCategoryId={filters.setSelectedCategoryId}
@@ -93,14 +126,13 @@ export default function InfoSourceListPage() {
                     setSortOrder={filters.setSortOrder}
                 />
 
-                <InfoContentGrid 
+                <InfoContentGrid
                     isLoading={data.isLoading}
                     theme={theme}
                     isStudy={isStudy}
                     viewMode={filters.viewMode}
                     allFilteredItems={filters.allFilteredItems}
                     allFilteredBookmarks={filters.allFilteredBookmarks}
-                    mockGroups={data.mockGroups}
                     mockItems={data.mockItems}
                     currentCategories={filters.currentCategories}
                     highlightedCardId={filters.highlightedCardId}
@@ -109,12 +141,11 @@ export default function InfoSourceListPage() {
                     handleEditItem={modals.handleEditItem}
                     handleEditBookmark={modals.handleEditBookmark}
                     fetchData={data.fetchData}
-                    setSelectedParentItemId={filters.setSelectedParentItemId}
-                    setViewMode={filters.setViewMode}
+                    onSelectHub={filters.selectHub}
                 />
             </main>
 
-            <InfoItemModal 
+            <InfoItemModal
                 isOpen={modals.isFormModalOpen}
                 onClose={() => modals.setIsFormModalOpen(false)}
                 formMode={modals.formMode}
@@ -123,7 +154,6 @@ export default function InfoSourceListPage() {
                 isSaving={modals.isSaving}
                 handleSave={modals.handleSave}
                 theme={theme}
-                mockGroups={data.mockGroups}
                 currentCategories={filters.currentCategories}
                 type={type}
             />
@@ -137,9 +167,19 @@ export default function InfoSourceListPage() {
                 isSaving={modals.isSaving}
                 handleSave={modals.handleSaveBookmark}
                 theme={theme}
-                mockGroups={data.mockGroups}
                 mockItems={data.mockItems}
                 currentCategories={filters.currentCategories}
+            />
+
+            <FolderSettingsModal
+                isOpen={isFolderSettingsOpen}
+                onClose={() => {
+                    setIsFolderSettingsOpen(false);
+                    setFolderSettingsItem(null);
+                }}
+                item={folderSettingsItem}
+                isSaving={isFolderSaving}
+                onSave={handleSaveFolderSettings}
             />
         </div>
     );
