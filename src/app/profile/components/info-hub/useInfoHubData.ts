@@ -12,6 +12,7 @@ import type {
 import { buildHubReminders } from './hubReminders';
 import { getHubDayKey } from './hubDay';
 import { getDueFolderReminders } from '@/lib/infoItemReminder';
+import { getDaysSinceDate } from '@/lib/profileSocialRecords';
 
 const QUEUED_BOOKMARK_SELECT_WITH_HUB =
     'id, title, category_type, created_at, parent_item_id, info_items(name)';
@@ -110,7 +111,7 @@ export function useInfoHubData(isOpen: boolean) {
     const fetchAll = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [capRes, itemsRes, routineRes, actsRes, tpRes, deadlineItemsRes, msRes, tasksRes] =
+            const [capRes, itemsRes, routineRes, actsRes, tpRes, deadlineItemsRes, msRes, tasksRes, friendsRes] =
                 await Promise.all([
                     supabase
                         .from('info_hub_captures')
@@ -134,6 +135,11 @@ export function useInfoHubData(isOpen: boolean) {
                         .eq('status', 'in_progress')
                         .not('deadline', 'is', null)
                         .order('deadline', { ascending: true }),
+                    supabase
+                        .from('profile_friends')
+                        .select('id, name, last_contact_date')
+                        .not('last_contact_date', 'is', null)
+                        .order('last_contact_date', { ascending: true }),
                 ]);
 
             const hubNameById = new Map<number, string>();
@@ -157,8 +163,7 @@ export function useInfoHubData(isOpen: boolean) {
                 setQueuedBookmarks(queuedRes.data);
             }
 
-            setReminders(
-                buildHubReminders({
+            const nextReminders = buildHubReminders({
                     routineLogs: (routineRes.data || []) as {
                         date: string;
                         wake_time: string | null;
@@ -188,8 +193,27 @@ export function useInfoHubData(isOpen: boolean) {
                             profile_tasks: taskTitle ? { title: taskTitle } : null,
                         };
                     }),
-                })
-            );
+                });
+
+            if (friendsRes.data) {
+                const friendReminders = friendsRes.data
+                    .map((friend) => {
+                        const lastContact = friend.last_contact_date as string | null;
+                        if (!lastContact) return null;
+                        const days = getDaysSinceDate(lastContact, getHubDayKey());
+                        if (days < 30) return null;
+                        return {
+                            id: `friend-contact-${friend.id}`,
+                            message: `${friend.name} 已经 ${days} 天没有联系`,
+                            tone: 'warn' as const,
+                        };
+                    })
+                    .filter((item): item is { id: string; message: string; tone: 'warn' } => item !== null);
+
+                nextReminders.push(...friendReminders);
+            }
+
+            setReminders(nextReminders);
 
             if (tasksRes.data) {
                 setLongTermTasks(

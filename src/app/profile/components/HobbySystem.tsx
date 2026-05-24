@@ -16,36 +16,16 @@ import {
     Image as ImageIcon,
     type LucideIcon,
 } from 'lucide-react';
+import {
+    fetchProfileSocialRecords,
+    type ProfileFriendRecord,
+    type ProfileGroupRecord,
+    type ProfileHobbyRecord,
+} from '@/lib/profileSocialRecords';
 import { supabase } from '@/lib/supabaseClient';
 
 type Category = 'knowledge' | 'sports' | 'arts' | 'acgn';
 type SocialTab = 'hobbies' | 'friends' | 'groups';
-
-interface HobbyItem {
-    id: number;
-    category: string;
-    name: string;
-    description: string;
-    level: number;
-}
-
-interface FriendCardItem {
-    id: number;
-    name: string;
-    lastContact: string | null;
-    hobbies: string[];
-    tags: string[];
-    image?: string;
-}
-
-interface GroupCardItem {
-    id: number;
-    name: string;
-    note: string;
-    members: string[];
-    image?: string;
-    accent: string;
-}
 
 const HOBBY_GROUP_STYLES: Record<Category, {
     label: string;
@@ -84,34 +64,23 @@ const HOBBY_GROUP_STYLES: Record<Category, {
     },
 };
 
-const FRIEND_HOBBY_CATEGORY_MAP: Record<string, Category> = {
-    '阅读': 'knowledge',
-    '地图': 'knowledge',
-    '徒步': 'sports',
-    '电影': 'arts',
-    '摄影': 'arts',
-    '动画': 'acgn',
-    '游戏': 'acgn',
-    '模型': 'acgn',
-};
-
 const CATEGORY_UI_CONFIG: Record<Category, { label: string; icon: LucideIcon; color: string; bg: string; activeColor: string }> = {
     knowledge: {
-        label: "鐭ヨ瘑",
+        label: "知识",
         icon: Cpu,
         color: "text-blue-600",
         bg: "bg-blue-50",
         activeColor: "bg-blue-500",
     },
     sports: {
-        label: "杩愬姩",
+        label: "运动",
         icon: Zap,
         color: "text-red-600",
         bg: "bg-red-50",
         activeColor: "bg-red-500",
     },
     arts: {
-        label: "鏂囪壓",
+        label: "文艺",
         icon: Library,
         color: "text-emerald-600",
         bg: "bg-emerald-50",
@@ -126,50 +95,6 @@ const CATEGORY_UI_CONFIG: Record<Category, { label: string; icon: LucideIcon; co
     },
 };
 
-
-const FRIENDS_MOCK: FriendCardItem[] = [
-    {
-        id: 1,
-        name: '阿川',
-        lastContact: '2026-04-18',
-        hobbies: ['阅读', '地图', '徒步'],
-        tags: ['老同学', '会认真聊天'],
-        image: '/images/places/kei_asai_1.png',
-    },
-    {
-        id: 2,
-        name: '叶子',
-        lastContact: '2026-05-07',
-        hobbies: ['电影', '摄影'],
-        tags: ['散步搭子', '审美稳定'],
-    },
-    {
-        id: 3,
-        name: 'K',
-        lastContact: null,
-        hobbies: ['动画', '游戏', '模型'],
-        tags: ['网络认识', '聊作品很投缘'],
-        image: '/images/places/saki_maino.jpg',
-    },
-];
-
-const GROUPS_MOCK: GroupCardItem[] = [
-    {
-        id: 1,
-        name: '散步观察会',
-        note: '偏安静的小圈子，常常是临时约出来走走，路线和气氛比目的地更重要。',
-        members: ['阿川', '叶子', '阿彻', 'Momo'],
-        image: '/images/places/kei_asai_1.png',
-        accent: 'from-amber-100/80 via-orange-50/70 to-white/80',
-    },
-    {
-        id: 2,
-        name: '作品交换局',
-        note: '会互相推荐电影、动画、书和零碎文章，也会顺手讲讲最近的生活感受。',
-        members: ['K', '林木', '阿凉'],
-        accent: 'from-violet-100/80 via-indigo-50/70 to-white/80',
-    },
-];
 
 interface HobbySystemProps {
     isActive: boolean;
@@ -188,11 +113,11 @@ const LevelIndicator = ({ level, activeColor }: { level: number; activeColor: st
 );
 
 function formatContactDate(date: string | null) {
-    if (!date) return '灏氭湭璁板綍';
+    if (!date) return '尚未记录';
     return date.replace(/-/g, '.');
 }
 
-function splitFriendHobbiesByCategory(hobbies: string[]) {
+function splitFriendHobbiesByCategory(hobbies: ProfileHobbyRecord[]) {
     const grouped: Record<Category, string[]> = {
         knowledge: [],
         sports: [],
@@ -201,8 +126,8 @@ function splitFriendHobbiesByCategory(hobbies: string[]) {
     };
 
     hobbies.forEach((hobby) => {
-        const category = FRIEND_HOBBY_CATEGORY_MAP[hobby] ?? 'knowledge';
-        grouped[category].push(hobby);
+        const category = hobby.category ?? 'knowledge';
+        grouped[category].push(hobby.name);
     });
 
     return grouped;
@@ -216,7 +141,7 @@ function buildSeedFromText(text: string) {
     return hash;
 }
 
-function buildFriendAuraStyle(friend: FriendCardItem) {
+function buildFriendAuraStyle(friend: ProfileFriendRecord) {
     const grouped = splitFriendHobbiesByCategory(friend.hobbies);
     const counts: Record<Category, number> = {
         knowledge: grouped.knowledge.length,
@@ -225,7 +150,7 @@ function buildFriendAuraStyle(friend: FriendCardItem) {
         acgn: grouped.acgn.length,
     };
     const total = Object.values(counts).reduce((sum, value) => sum + value, 0) || 1;
-    const seed = buildSeedFromText(friend.name);
+    const seed = buildSeedFromText(`${friend.id}-${friend.name}`);
     const hueShift = (seed % 11) - 5;
     const angle = 104 + (seed % 18);
     const lightOffset = (seed % 7) - 3;
@@ -283,42 +208,39 @@ function TabButton({
 
 export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
     const [expandedKeys, setExpandedKeys] = useState<Category[]>([]);
-    const [allHobbies, setAllHobbies] = useState<HobbyItem[]>([]);
+    const [allHobbies, setAllHobbies] = useState<ProfileHobbyRecord[]>([]);
+    const [friends, setFriends] = useState<ProfileFriendRecord[]>([]);
+    const [groups, setGroups] = useState<ProfileGroupRecord[]>([]);
     const [activeTab, setActiveTab] = useState<SocialTab>('hobbies');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     const visibleActiveTab: SocialTab = !isActive ? 'hobbies' : isLoggedIn ? activeTab : 'hobbies';
 
     useEffect(() => {
-        const fetchHobbies = async () => {
-            const { data } = await supabase
-                .from('profile_hobbies')
-                .select('*')
-                .order('id', { ascending: true });
+        const loadData = async () => {
+            const [{ data: sessionData }, socialData] = await Promise.all([
+                supabase.auth.getSession(),
+                fetchProfileSocialRecords(),
+            ]);
 
-            if (data) {
-                setAllHobbies(data as HobbyItem[]);
-            }
+            setIsLoggedIn(!!sessionData.session);
+            setAllHobbies(socialData.hobbies);
+            setFriends(socialData.friends);
+            setGroups(socialData.groups);
         };
 
-        const checkSession = async () => {
-            const { data } = await supabase.auth.getSession();
-            setIsLoggedIn(!!data.session);
-        };
-
-        fetchHobbies();
-        checkSession();
+        loadData();
     }, []);
 
     const visibleTabs = useMemo(
         () =>
             isLoggedIn
                 ? [
-                    { key: 'hobbies' as SocialTab, label: '鐖卞ソ' },
-                    { key: 'friends' as SocialTab, label: '鏈嬪弸' },
-                    { key: 'groups' as SocialTab, label: '鍥綋' },
+                    { key: 'hobbies' as SocialTab, label: '爱好' },
+                    { key: 'friends' as SocialTab, label: '朋友' },
+                    { key: 'groups' as SocialTab, label: '团体' },
                 ]
-                : [{ key: 'hobbies' as SocialTab, label: '鐖卞ソ' }],
+                : [{ key: 'hobbies' as SocialTab, label: '爱好' }],
         [isLoggedIn]
     );
 
@@ -362,7 +284,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                 <div className="flex items-center gap-3">
                     <Library size={20} className="text-slate-400" />
                     <span className="text-[15px] font-bold tracking-[0.2em] text-slate-500/80">
-                        鐖卞ソ妗ｆ // HOBBYARCHIVE
+                        爱好档案 // HOBBYARCHIVE
                     </span>
                 </div>
 
@@ -444,10 +366,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                     >
                                         <div className="mb-2 flex items-center justify-between border-b border-slate-200/50 px-3 py-2">
                                             <span className="text-[13px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                                                鍐呭璇︽儏 / Details
+                                                内容详情 / Details
                                             </span>
                                             <span className="text-[13px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                                                鐖卞ソ绛夌骇 / Level
+                                                爱好等级 / Level
                                             </span>
                                         </div>
 
@@ -486,7 +408,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                     <div className="h-full overflow-y-auto px-5 py-5">
                         <div className="mb-4 px-1">
                             <div>
-                                <h3 className="text-lg font-serif font-bold tracking-tight text-slate-700">鏈嬪弸</h3>
+                                <h3 className="text-lg font-serif font-bold tracking-tight text-slate-700">朋友</h3>
                                 <p className="mt-1 text-[11px] font-mono tracking-[0.15em] text-slate-400">
                                     PEOPLE ARCHIVE / STATIC PREVIEW
                                 </p>
@@ -494,7 +416,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                         </div>
 
                         <div className="space-y-4">
-                            {FRIENDS_MOCK.map((friend) => {
+                            {friends.map((friend) => {
                                 const cardAuraStyle = buildFriendAuraStyle(friend);
 
                                 return (
@@ -511,10 +433,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                             return (
                                                 <div className="relative flex gap-8">
                                                     <div className="flex w-48 shrink-0 flex-col">
-                                                        {friend.image ? (
+                                                        {friend.image_url ? (
                                                             <div className="h-full min-h-[250px] overflow-hidden rounded-[24px] border border-white/70 bg-white/70 shadow-sm">
                                                                 <img
-                                                                    src={friend.image}
+                                                                    src={friend.image_url}
                                                                     alt={friend.name}
                                                                     className="h-full w-full object-cover"
                                                                 />
@@ -536,7 +458,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                     <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
                                                                         <Tags size={13} className="shrink-0 text-slate-400" />
                                                                         <p className="min-w-0 leading-relaxed">
-                                                                            {friend.tags.join(' | ')}
+                                                                            {friend.tags.map((tag) => tag.name).join(' | ')}
                                                                         </p>
                                                                     </div>
                                                                 )}
@@ -545,7 +467,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                             <div className="shrink-0 pt-1 text-right">
                                                                 <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-base font-mono text-slate-600 shadow-sm">
                                                                     <CalendarDays size={15} className="text-slate-400" />
-                                                                    <span>{formatContactDate(friend.lastContact)}</span>
+                                                                    <span>{formatContactDate(friend.last_contact_date)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -553,7 +475,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                         <div className="mt-6 rounded-[24px] border border-white/75 bg-white/58 px-5 py-5 shadow-[0_14px_24px_-20px_rgba(37,99,235,0.28)] backdrop-blur-sm">
                                                             <div className="mb-4 flex items-center gap-3">
                                                                 <span className="text-sm font-semibold tracking-[0.12em] text-slate-600">
-                                                                    鍏宠仈鐖卞ソ
+                                                                    关联爱好
                                                                 </span>
                                                                 <div className="h-px flex-1 bg-linear-to-r from-blue-200/70 to-transparent" />
                                                             </div>
@@ -601,13 +523,18 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                     </div>
                                 )
                             })}
+                            {friends.length === 0 ? (
+                                <div className="rounded-[26px] border border-dashed border-slate-200/80 bg-white/55 px-6 py-12 text-center text-sm text-slate-400">
+                                    还没有朋友记录
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 ) : (
                     <div className="h-full overflow-y-auto px-5 py-5">
                         <div className="mb-4 px-1">
                             <div>
-                                <h3 className="text-lg font-serif font-bold tracking-tight text-slate-700">鍥綋</h3>
+                                <h3 className="text-lg font-serif font-bold tracking-tight text-slate-700">团体</h3>
                                 <p className="mt-1 text-[11px] font-mono tracking-[0.15em] text-slate-400">
                                     GROUP ARCHIVE / STATIC PREVIEW
                                 </p>
@@ -615,18 +542,22 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                         </div>
 
                         <div className="space-y-4">
-                            {GROUPS_MOCK.map((group) => (
+                            {groups.map((group, index) => (
                                 <div
                                     key={group.id}
-                                    className={`relative overflow-hidden rounded-[26px] border border-white/75 bg-gradient-to-br ${group.accent} p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.22)]`}
+                                    className={`relative overflow-hidden rounded-[26px] border border-white/75 bg-gradient-to-br ${
+                                        index % 2 === 0
+                                            ? 'from-amber-100/80 via-orange-50/70 to-white/80'
+                                            : 'from-violet-100/80 via-indigo-50/70 to-white/80'
+                                    } p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.22)]`}
                                 >
                                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.18),transparent_40%)]" />
 
                                     <div className="relative flex gap-6">
-                                        {group.image ? (
+                                        {group.image_url ? (
                                             <div className="h-32 w-36 shrink-0 overflow-hidden rounded-[24px] border border-white/70 bg-white/70 shadow-sm">
                                                 <img
-                                                    src={group.image}
+                                                    src={group.image_url}
                                                     alt={group.name}
                                                     className="h-full w-full object-cover"
                                                 />
@@ -650,15 +581,15 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
 
                                             <div className="mt-4 rounded-2xl border border-white/70 bg-white/60 px-4 py-3">
                                                 <div className="mb-2 text-[10px] font-mono uppercase tracking-[0.18em] text-slate-400">
-                                                    鎴愬憳鍚嶅綍
+                                                    成员名录
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {group.members.map((member) => (
                                                         <span
-                                                            key={member}
+                                                            key={member.id}
                                                             className="rounded-full border border-stone-200 bg-stone-50/90 px-2.5 py-1 text-[11px] font-medium text-stone-700"
                                                         >
-                                                            {member}
+                                                            {member.display_name}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -667,6 +598,11 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                     </div>
                                 </div>
                             ))}
+                            {groups.length === 0 ? (
+                                <div className="rounded-[26px] border border-dashed border-slate-200/80 bg-white/55 px-6 py-12 text-center text-sm text-slate-400">
+                                    还没有团体记录
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 )}
