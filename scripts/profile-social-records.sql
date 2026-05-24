@@ -5,11 +5,15 @@ create table if not exists public.profile_friends (
     id bigint generated always as identity primary key,
     name text not null,
     last_contact_date date null,
+    contact_reminder_snoozed_until date null,
     image_url text null,
     sort_order integer not null default 0,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+alter table if exists public.profile_friends
+    add column if not exists contact_reminder_snoozed_until date null;
 
 create table if not exists public.profile_friend_tags (
     id bigint generated always as identity primary key,

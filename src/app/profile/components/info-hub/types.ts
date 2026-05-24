@@ -32,7 +32,7 @@ export interface HubQueuedBookmark {
 
 export type HubReminderAction = 'calendar' | 'protocol';
 export type HubReminderTone = 'warn' | 'info';
-export type HubReminderKind = 'default' | 'deadline';
+export type HubReminderKind = 'default' | 'deadline' | 'friend_contact';
 
 export interface HubReminder {
     id: string;
@@ -40,6 +40,7 @@ export interface HubReminder {
     action?: HubReminderAction;
     tone?: HubReminderTone;
     kind?: HubReminderKind;
+    friendId?: number;
     deadlineTitle?: string;
     deadlineDate?: string;
     deadlineWhen?: string;

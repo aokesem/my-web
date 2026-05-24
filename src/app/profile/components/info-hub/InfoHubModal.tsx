@@ -128,11 +128,13 @@ function ReminderRow({
     onOpenCalendar,
     onOpenProtocol,
     onClose,
+    onIgnoreFriendReminder,
 }: {
     reminder: HubReminder;
     onOpenCalendar?: () => void;
     onOpenProtocol?: () => void;
     onClose: () => void;
+    onIgnoreFriendReminder?: (friendId: number) => void;
 }) {
     const handleCalendar = () => {
         onClose();
@@ -206,6 +208,15 @@ function ReminderRow({
         >
             <Icon size={16} className="shrink-0 mt-0.5 opacity-80" />
             <span className="flex-1 leading-snug">{reminder.message}</span>
+            {reminder.kind === "friend_contact" && reminder.friendId && onIgnoreFriendReminder && (
+                <button
+                    type="button"
+                    onClick={() => onIgnoreFriendReminder(reminder.friendId!)}
+                    className="shrink-0 rounded-md border border-amber-200/70 px-2 py-1 text-[11px] font-mono text-amber-700/80 transition-colors hover:bg-amber-100/60 hover:text-amber-800"
+                >
+                    忽略
+                </button>
+            )}
             {reminder.action && (reminder.action === "calendar" ? onOpenCalendar : onOpenProtocol) && (
                 <button
                     type="button"
@@ -345,6 +356,15 @@ export default function InfoHubModal({
         }
     };
 
+    const handleIgnoreFriendReminder = async (friendId: number) => {
+        try {
+            await hub.dismissFriendReminder(friendId);
+            toast.success("已忽略本周期提醒");
+        } catch {
+            toast.error("操作失败");
+        }
+    };
+
     const startEditingCapture = (capture: HubCapture) => {
         cancelArchive();
         setEditingCaptureId(capture.id);
@@ -438,6 +458,7 @@ export default function InfoHubModal({
                                                         onClose={onClose}
                                                         onOpenCalendar={onOpenCalendar}
                                                         onOpenProtocol={onOpenProtocol}
+                                                        onIgnoreFriendReminder={handleIgnoreFriendReminder}
                                                     />
                                                 ))}
                                             </ul>

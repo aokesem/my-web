@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/profileSocialRecords";
 import { supabase } from "@/lib/supabaseClient";
 import {
+    CalendarDays,
     Loader2,
     Pencil,
     Plus,
@@ -161,6 +162,7 @@ export default function FriendsAdminPage() {
     const [groupForm, setGroupForm] = useState<GroupFormState>(buildEmptyGroupForm(1));
     const [tagForm, setTagForm] = useState<TagFormState>(buildEmptyTagForm(1));
     const [customMemberName, setCustomMemberName] = useState("");
+    const friendDateInputRef = useRef<HTMLInputElement | null>(null);
 
     const nextFriendOrder = useMemo(
         () => (friends.length > 0 ? Math.max(...friends.map((item) => item.sort_order || 0)) + 1 : 1),
@@ -283,12 +285,21 @@ export default function FriendsAdminPage() {
 
         setIsSaving(true);
         try {
+            const currentEditingFriend = editingFriendId
+                ? friends.find((item) => item.id === editingFriendId) ?? null
+                : null;
+            const dateChanged =
+                (currentEditingFriend?.last_contact_date ?? "") !==
+                (friendForm.last_contact_date || "");
             const payload = {
                 name,
                 last_contact_date: friendForm.last_contact_date || null,
                 image_url: friendForm.image_url || null,
                 sort_order: Number(friendForm.sort_order) || 0,
                 updated_at: new Date().toISOString(),
+                ...(!editingFriendId || dateChanged
+                    ? { contact_reminder_snoozed_until: null }
+                    : {}),
             };
 
             let friendId = editingFriendId;
@@ -613,14 +624,39 @@ export default function FriendsAdminPage() {
                     </div>
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">最后联系日期</label>
-                        <Input
-                            type="date"
-                            value={friendForm.last_contact_date}
-                            onChange={(event) =>
-                                setFriendForm((prev) => ({ ...prev, last_contact_date: event.target.value }))
-                            }
-                            className="bg-black border-zinc-800 text-zinc-200"
-                        />
+                        <div className="flex gap-2">
+                            <Input
+                                ref={friendDateInputRef}
+                                type="date"
+                                value={friendForm.last_contact_date}
+                                onChange={(event) =>
+                                    setFriendForm((prev) => ({ ...prev, last_contact_date: event.target.value }))
+                                }
+                                className="bg-black border-zinc-800 text-zinc-200"
+                            />
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="shrink-0"
+                                onClick={() => friendDateInputRef.current?.showPicker?.()}
+                                title="open-calendar"
+                            >
+                                <CalendarDays size={16} />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="shrink-0"
+                                onClick={() =>
+                                    setFriendForm((prev) => ({
+                                        ...prev,
+                                        last_contact_date: new Date().toISOString().slice(0, 10),
+                                    }))
+                                }
+                            >
+                                Today
+                            </Button>
+                        </div>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">图片</label>

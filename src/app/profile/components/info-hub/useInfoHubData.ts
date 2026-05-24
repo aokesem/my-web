@@ -10,9 +10,11 @@ import type {
     HubReminder,
 } from './types';
 import { buildHubReminders } from './hubReminders';
-import { getHubDayKey } from './hubDay';
+import { addCalendarDays, getHubDayKey } from './hubDay';
 import { getDueFolderReminders } from '@/lib/infoItemReminder';
 import { getDaysSinceDate } from '@/lib/profileSocialRecords';
+
+const FRIEND_CONTACT_REMINDER_INTERVAL_DAYS = 30;
 
 const QUEUED_BOOKMARK_SELECT_WITH_HUB =
     'id, title, category_type, created_at, parent_item_id, info_items(name)';
@@ -137,7 +139,7 @@ export function useInfoHubData(isOpen: boolean) {
                         .order('deadline', { ascending: true }),
                     supabase
                         .from('profile_friends')
-                        .select('id, name, last_contact_date')
+                        .select('id, name, last_contact_date, contact_reminder_snoozed_until')
                         .not('last_contact_date', 'is', null)
                         .order('last_contact_date', { ascending: true }),
                 ]);
@@ -200,15 +202,29 @@ export function useInfoHubData(isOpen: boolean) {
                     .map((friend) => {
                         const lastContact = friend.last_contact_date as string | null;
                         if (!lastContact) return null;
+                        const snoozedUntil = friend.contact_reminder_snoozed_until as string | null;
+                        if (snoozedUntil && snoozedUntil >= getHubDayKey()) return null;
                         const days = getDaysSinceDate(lastContact, getHubDayKey());
-                        if (days < 30) return null;
+                        if (days < FRIEND_CONTACT_REMINDER_INTERVAL_DAYS) return null;
                         return {
                             id: `friend-contact-${friend.id}`,
                             message: `${friend.name} 已经 ${days} 天没有联系`,
+                            kind: 'friend_contact' as const,
+                            friendId: friend.id as number,
                             tone: 'warn' as const,
                         };
                     })
-                    .filter((item): item is { id: string; message: string; tone: 'warn' } => item !== null);
+                    .filter(
+                        (
+                            item
+                        ): item is {
+                            id: string;
+                            message: string;
+                            kind: 'friend_contact';
+                            friendId: number;
+                            tone: 'warn';
+                        } => item !== null
+                    );
 
                 nextReminders.push(...friendReminders);
             }
@@ -355,6 +371,24 @@ export function useInfoHubData(isOpen: boolean) {
         setFolderReminders((prev) => prev.filter((f) => f.id !== itemId));
     };
 
+    const dismissFriendReminder = async (friendId: number) => {
+        const nextReminderDate = addCalendarDays(
+            getHubDayKey(),
+            FRIEND_CONTACT_REMINDER_INTERVAL_DAYS
+        );
+        const { error } = await supabase
+            .from('profile_friends')
+            .update({ contact_reminder_snoozed_until: nextReminderDate })
+            .eq('id', friendId);
+        if (error) throw error;
+        setReminders((prev) =>
+            prev.filter(
+                (reminder) =>
+                    !(reminder.kind === 'friend_contact' && reminder.friendId === friendId)
+            )
+        );
+    };
+
     return {
         isLoading,
         captures,
@@ -370,5 +404,6 @@ export function useInfoHubData(isOpen: boolean) {
         archiveCapture,
         unqueueBookmark,
         clearFolderReminder,
+        dismissFriendReminder,
     };
 }

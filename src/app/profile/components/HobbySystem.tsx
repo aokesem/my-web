@@ -12,6 +12,7 @@ import {
     ChevronDown,
     ChevronRight,
     CalendarDays,
+    Check,
     Tags,
     Image as ImageIcon,
     type LucideIcon,
@@ -213,6 +214,9 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
     const [groups, setGroups] = useState<ProfileGroupRecord[]>([]);
     const [activeTab, setActiveTab] = useState<SocialTab>('hobbies');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [editingContactFriendId, setEditingContactFriendId] = useState<number | null>(null);
+    const [contactDraft, setContactDraft] = useState('');
+    const [isSavingContact, setIsSavingContact] = useState(false);
 
     const visibleActiveTab: SocialTab = !isActive ? 'hobbies' : isLoggedIn ? activeTab : 'hobbies';
 
@@ -249,6 +253,48 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
         setExpandedKeys((prev) =>
             prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
         );
+    };
+
+    const startEditContactDate = (friend: ProfileFriendRecord, event: React.MouseEvent) => {
+        event.stopPropagation();
+        setEditingContactFriendId(friend.id);
+        setContactDraft(friend.last_contact_date ?? '');
+    };
+
+    const cancelEditContactDate = (event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        setEditingContactFriendId(null);
+        setContactDraft('');
+    };
+
+    const saveContactDate = async (friendId: number, event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        setIsSavingContact(true);
+        try {
+            const nextValue = contactDraft || null;
+            const { error } = await supabase
+                .from('profile_friends')
+                .update({
+                    last_contact_date: nextValue,
+                    contact_reminder_snoozed_until: null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', friendId);
+
+            if (error) throw error;
+
+            setFriends((prev) =>
+                prev.map((friend) =>
+                    friend.id === friendId
+                        ? { ...friend, last_contact_date: nextValue }
+                        : friend
+                )
+            );
+            setEditingContactFriendId(null);
+            setContactDraft('');
+        } finally {
+            setIsSavingContact(false);
+        }
     };
 
     return (
@@ -431,8 +477,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                             const orderedGroups: Category[] = ['knowledge', 'sports', 'arts', 'acgn'];
 
                                             return (
-                                                <div className="relative flex gap-8">
-                                                    <div className="flex w-48 shrink-0 flex-col">
+                                                <div className="relative flex gap-6">
+                                                    <div className="flex w-56 shrink-0 flex-col">
                                                         {friend.image_url ? (
                                                             <div className="h-full min-h-[250px] overflow-hidden rounded-[24px] border border-white/70 bg-white/70 shadow-sm">
                                                                 <img
@@ -465,22 +511,63 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                             </div>
 
                                                             <div className="shrink-0 pt-1 text-right">
-                                                                <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-base font-mono text-slate-600 shadow-sm">
-                                                                    <CalendarDays size={15} className="text-slate-400" />
-                                                                    <span>{formatContactDate(friend.last_contact_date)}</span>
-                                                                </div>
+                                                                {isLoggedIn && editingContactFriendId === friend.id ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <input
+                                                                            type="date"
+                                                                            value={contactDraft}
+                                                                            onClick={(event) => event.stopPropagation()}
+                                                                            onChange={(event) => setContactDraft(event.target.value)}
+                                                                            className="rounded-full border border-white/75 bg-white/85 px-3 py-2 text-sm font-mono text-slate-600 shadow-sm outline-none"
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(event) => saveContactDate(friend.id, event)}
+                                                                            disabled={isSavingContact}
+                                                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/75 bg-white/85 text-slate-600 shadow-sm transition-colors hover:text-slate-900 disabled:opacity-50"
+                                                                        >
+                                                                            {isSavingContact ? (
+                                                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                                                                            ) : (
+                                                                                <Check size={15} />
+                                                                            )}
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(event) => cancelEditContactDate(event)}
+                                                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/75 bg-white/85 text-slate-500 shadow-sm transition-colors hover:text-slate-800"
+                                                                        >
+                                                                            <Minimize2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(event) =>
+                                                                            isLoggedIn
+                                                                                ? startEditContactDate(friend, event)
+                                                                                : event.stopPropagation()
+                                                                        }
+                                                                        className={`inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-base font-mono text-slate-600 shadow-sm ${
+                                                                            isLoggedIn ? 'transition-colors hover:text-slate-900' : ''
+                                                                        }`}
+                                                                    >
+                                                                        <CalendarDays size={15} className="text-slate-400" />
+                                                                        <span>{formatContactDate(friend.last_contact_date)}</span>
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </div>
 
-                                                        <div className="mt-6 rounded-[24px] border border-white/75 bg-white/58 px-5 py-5 shadow-[0_14px_24px_-20px_rgba(37,99,235,0.28)] backdrop-blur-sm">
-                                                            <div className="mb-4 flex items-center gap-3">
+                                                        <div className="mt-6 rounded-[24px] border border-white/75 bg-white/58 px-4 py-5 shadow-[0_14px_24px_-20px_rgba(37,99,235,0.28)] backdrop-blur-sm">
+                                                            <div className="mb-4 flex items-center gap-3 pl-[22px] pr-1">
                                                                 <span className="text-sm font-semibold tracking-[0.12em] text-slate-600">
                                                                     关联爱好
                                                                 </span>
                                                                 <div className="h-px flex-1 bg-linear-to-r from-blue-200/70 to-transparent" />
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 gap-y-4 pl-4 pr-1 md:grid-cols-4 md:gap-x-0 md:pl-5 md:pr-2">
+                                                            <div className="grid grid-cols-2 gap-y-4 md:grid-cols-4 md:gap-x-0">
                                                                 {orderedGroups.map((groupKey, index) => {
                                                                     const hobbies = hobbyGroups[groupKey];
                                                                     const style = HOBBY_GROUP_STYLES[groupKey];
@@ -489,7 +576,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                     return (
                                                                         <div
                                                                             key={groupKey}
-                                                                            className={`flex min-h-[172px] flex-col items-center px-3 text-center md:px-5 ${showDivider ? 'border-r-2 border-slate-300/70' : ''}`}
+                                                                            className={`flex min-h-[172px] flex-col items-center px-2 text-center md:px-3 ${showDivider ? 'border-r-2 border-slate-300/70' : ''}`}
                                                                         >
                                                                             <div className="mb-4 flex w-full justify-center">
                                                                                 <span className={`text-lg font-semibold tracking-[0.08em] ${style.title}`}>
@@ -502,7 +589,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                         {hobbies.map((hobby) => (
                                                                             <div
                                                                                 key={hobby}
-                                                                                className={`inline-flex min-w-[112px] justify-center rounded-xl border-[0.5px] px-3.5 py-2.5 text-center text-[15px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${style.shell} ${style.title}`}
+                                                                                className={`inline-flex min-w-[104px] justify-center rounded-xl border-[0.5px] px-3 py-2.5 text-center text-[15px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${style.shell} ${style.title}`}
                                                                             >
                                                                                 {hobby}
                                                                             </div>
