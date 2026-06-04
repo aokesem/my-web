@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { ArrowLeft, BookText } from 'lucide-react';
+import { BookText, CornerDownLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { useCourses, useCourseChapters, useChapterContent, useCourseFormulas } from '../hooks/usePrismData';
+import { useCourses, useCourseChapters, useChapterContent, useCourseFormulas, useCourseSearchChapters } from '../hooks/usePrismData';
 import type { CourseFormula } from '../types';
 import type { BlockEditorRef } from '@/components/ui/block-editor';
 
@@ -20,6 +20,8 @@ export default function CoursesPage() {
     // ============================================================
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+    const [courseSearchDraft, setCourseSearchDraft] = useState('');
+    const [courseSearchQuery, setCourseSearchQuery] = useState('');
     const editorRef = useRef<BlockEditorRef>(null);
 
     // ============================================================
@@ -27,10 +29,12 @@ export default function CoursesPage() {
     // ============================================================
     const { courses, isLoading: isLoadingCourses, mutate: mutateCourses } = useCourses();
     const { chapters, isLoading: isLoadingChapters, mutate: mutateChapters } = useCourseChapters(selectedCourseId);
+    const { searchChapters, isLoading: isLoadingSearchChapters } = useCourseSearchChapters(selectedCourseId);
     const { chapter, isLoading: isLoadingChapter, mutate: mutateChapter } = useChapterContent(selectedChapterId);
     const { formulas, mutate: mutateFormulas } = useCourseFormulas(selectedCourseId);
 
     const selectedCourse = courses.find(c => c.id === selectedCourseId);
+    const shouldShowCourseSearch = Boolean(selectedCourseId && !selectedChapterId && chapters.length > 0);
 
     // ============================================================
     // NOTE HEADINGS (for TOC - Level 3 sidebar)
@@ -82,11 +86,15 @@ export default function CoursesPage() {
     const handleSelectCourse = useCallback((courseId: string) => {
         setSelectedCourseId(courseId);
         setSelectedChapterId(null);
+        setCourseSearchDraft('');
+        setCourseSearchQuery('');
     }, []);
 
     const handleDeselectCourse = useCallback(() => {
         setSelectedCourseId(null);
         setSelectedChapterId(null);
+        setCourseSearchDraft('');
+        setCourseSearchQuery('');
     }, []);
 
     const handleSelectChapter = useCallback((chapterId: string) => {
@@ -97,6 +105,11 @@ export default function CoursesPage() {
             setSelectedChapterId(chapterId);
         }
     }, []);
+
+    const handleCourseSearchSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setCourseSearchQuery(courseSearchDraft.trim());
+    }, [courseSearchDraft]);
 
     const handleCreateChapter = useCallback(async () => {
         if (!selectedCourseId) return;
@@ -253,7 +266,33 @@ export default function CoursesPage() {
             {/* Right side container */}
             <div className="flex-1 flex flex-col min-w-0 relative">
                 {/* Header */}
-                <header className="shrink-0 w-full px-6 py-4 flex justify-end items-center bg-white/80 backdrop-blur-sm z-20 border-b border-stone-200/70">
+                <header className="shrink-0 w-full px-6 py-4 flex justify-between items-center gap-4 bg-white/80 backdrop-blur-sm z-20 border-b border-stone-200/70">
+                    {shouldShowCourseSearch ? (
+                        <form onSubmit={handleCourseSearchSubmit} className="w-full max-w-xl">
+                            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-[#faf9f7] px-3 py-2 shadow-sm shadow-stone-200/40 focus-within:border-violet-200 focus-within:bg-white transition-colors">
+                                <Search size={17} className="text-stone-400 shrink-0" strokeWidth={1.8} />
+                                <input
+                                    value={courseSearchDraft}
+                                    onChange={(event) => {
+                                        const value = event.target.value;
+                                        setCourseSearchDraft(value);
+                                        if (!value.trim()) setCourseSearchQuery('');
+                                    }}
+                                    placeholder="在当前课程中搜索正文与公式..."
+                                    className="min-w-0 flex-1 bg-transparent text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none"
+                                />
+                                <button
+                                    type="submit"
+                                    className="hidden sm:flex items-center gap-1.5 rounded-xl bg-stone-800 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-stone-900 transition-colors"
+                                >
+                                    搜索
+                                    <CornerDownLeft size={12} />
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="min-w-0 flex-1" />
+                    )}
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center border border-violet-100">
                             <BookText size={18} className="text-violet-500" strokeWidth={2} />
@@ -275,10 +314,12 @@ export default function CoursesPage() {
                         chapter={chapter}
                         formulas={formulas}
                         chapters={chapters}
+                        searchChapters={searchChapters}
                         courseId={selectedCourseId || ''}
                         courseName={selectedCourse?.name || ''}
                         selectedChapterId={selectedChapterId}
                         isLoadingChapter={isLoadingChapter && selectedChapterId !== CHAPTER_ID_FORMULA_OVERVIEW}
+                        isLoadingCourseSearch={isLoadingSearchChapters}
                         onSaveNotes={handleSaveNotes}
                         onUpdateChapterTitle={handleUpdateChapterTitle}
                         onDeleteChapter={handleDeleteChapter}
@@ -288,6 +329,7 @@ export default function CoursesPage() {
                         onCreateFirstChapter={handleCreateChapter}
                         editorRef={editorRef}
                         hasChapters={chapters.length > 0}
+                        courseSearchQuery={courseSearchQuery}
                     />
                 </main>
             </div>

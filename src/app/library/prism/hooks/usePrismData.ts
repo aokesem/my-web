@@ -201,6 +201,16 @@ const fetchCourseChapters = async (courseId: string): Promise<CourseChapter[]> =
     return data as CourseChapter[];
 };
 
+const fetchCourseSearchChapters = async (courseId: string): Promise<CourseChapter[]> => {
+    const { data, error } = await supabase
+        .from('prism_course_chapters')
+        .select('id, course_id, title, notes, sort_order, created_at')
+        .eq('course_id', courseId)
+        .order('sort_order');
+    if (error) throw error;
+    return data as CourseChapter[];
+};
+
 const fetchChapterContent = async (chapterId: string): Promise<CourseChapter> => {
     const { data, error } = await supabase
         .from('prism_course_chapters')
@@ -236,6 +246,14 @@ export function useCourseChapters(courseId: string | null) {
         () => fetchCourseChapters(courseId!)
     );
     return { chapters: data || [], isLoading, isError: error, mutate };
+}
+
+export function useCourseSearchChapters(courseId: string | null) {
+    const { data, error, isLoading, mutate } = useSWR(
+        courseId ? `prism_search_chapters_${courseId}` : null,
+        () => fetchCourseSearchChapters(courseId!)
+    );
+    return { searchChapters: data || [], isLoading, isError: error, mutate };
 }
 
 export function useChapterContent(chapterId: string | null) {

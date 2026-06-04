@@ -1,21 +1,170 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Pencil, Save, Loader2, Plus, BookOpen, Trash2, Sigma } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pencil, Save, Loader2, Plus, BookOpen, Trash2, Sigma, Search } from 'lucide-react';
 import { BlockEditor } from '@/components/ui/block-editor';
 import type { BlockEditorRef } from '@/components/ui/block-editor';
 import type { CourseChapter, CourseFormula } from '../../types';
 import { FormulaGallery } from './FormulaGallery';
 import { CHAPTER_ID_FORMULA_OVERVIEW } from '../page';
 
+const SEARCH_CONTEXT_RADIUS = 65;
+const MAX_BODY_RESULTS_PER_CHAPTER = 5;
+const INITIAL_VISIBLE_RESULTS = 20;
+const RESULTS_PAGE_SIZE = 10;
+
+type TiptapNode = {
+    type?: string;
+    text?: string;
+    content?: TiptapNode[];
+};
+
+type BodySearchResult = {
+    id: string;
+    chapterId: string;
+    chapterTitle: string;
+    excerpt: string;
+    matchIndex: number;
+};
+
+type FormulaSearchResult = {
+    id: string;
+    name: string;
+    latex: string;
+    description: string | undefined;
+    chapterTitle: string;
+    matchedFields: string[];
+};
+
+type ExcerptWindow = {
+    excerpt: string;
+    start: number;
+    end: number;
+};
+
+const BLOCK_TYPES = new Set([
+    'paragraph',
+    'heading',
+    'listItem',
+    'bulletList',
+    'orderedList',
+    'blockquote',
+    'codeBlock',
+]);
+
+const BOUNDARY_CHARS = ['。', '！', '？', '；', '\n', '.', '!', '?', ';'];
+
+function collectTiptapText(node: unknown, parts: string[]) {
+    if (!node || typeof node !== 'object') return;
+
+    const typedNode = node as TiptapNode;
+    if (typeof typedNode.text === 'string') {
+        parts.push(typedNode.text);
+    }
+
+    if (Array.isArray(typedNode.content)) {
+        typedNode.content.forEach(child => collectTiptapText(child, parts));
+    }
+
+    if (typedNode.type && BLOCK_TYPES.has(typedNode.type)) {
+        parts.push('\n');
+    }
+}
+
+function notesToPlainText(notes?: string) {
+    if (!notes) return '';
+
+    const trimmed = notes.trim();
+    if (!trimmed.startsWith('{')) {
+        return trimmed.replace(/\s+/g, ' ').trim();
+    }
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        const parts: string[] = [];
+        collectTiptapText(parsed, parts);
+        return parts.join('').replace(/\s+/g, ' ').trim();
+    } catch {
+        return trimmed.replace(/\s+/g, ' ').trim();
+    }
+}
+
+function findBoundaryBefore(text: string, target: number, fallback: number) {
+    let best = -1;
+    BOUNDARY_CHARS.forEach(char => {
+        const index = text.lastIndexOf(char, target);
+        if (index >= fallback && index > best) best = index + 1;
+    });
+    return best >= 0 ? best : fallback;
+}
+
+function findBoundaryAfter(text: string, target: number, fallback: number) {
+    let best = -1;
+    BOUNDARY_CHARS.forEach(char => {
+        const index = text.indexOf(char, target);
+        if (index >= 0 && index <= fallback && (best === -1 || index < best)) best = index + 1;
+    });
+    return best >= 0 ? best : fallback;
+}
+
+function createExcerptWindow(text: string, matchIndex: number, queryLength: number): ExcerptWindow {
+    const fallbackStart = Math.max(0, matchIndex - SEARCH_CONTEXT_RADIUS);
+    const fallbackEnd = Math.min(text.length, matchIndex + queryLength + SEARCH_CONTEXT_RADIUS);
+    const start = findBoundaryBefore(text, matchIndex, fallbackStart);
+    const end = findBoundaryAfter(text, matchIndex + queryLength, fallbackEnd);
+    const prefix = start > 0 ? '...' : '';
+    const suffix = end < text.length ? '...' : '';
+
+    return {
+        excerpt: `${prefix}${text.slice(start, end).trim()}${suffix}`,
+        start,
+        end,
+    };
+}
+
+function renderHighlightedExcerpt(excerpt: string, query: string) {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return excerpt;
+
+    const lowerExcerpt = excerpt.toLowerCase();
+    const lowerQuery = normalizedQuery.toLowerCase();
+    const parts: React.ReactNode[] = [];
+    let cursor = 0;
+    let matchIndex = lowerExcerpt.indexOf(lowerQuery);
+
+    while (matchIndex !== -1) {
+        if (matchIndex > cursor) {
+            parts.push(excerpt.slice(cursor, matchIndex));
+        }
+
+        const matchEnd = matchIndex + normalizedQuery.length;
+        parts.push(
+            <mark key={`${matchIndex}-${matchEnd}`} className="rounded-md bg-amber-100 px-1 py-0.5 text-amber-900">
+                {excerpt.slice(matchIndex, matchEnd)}
+            </mark>
+        );
+
+        cursor = matchEnd;
+        matchIndex = lowerExcerpt.indexOf(lowerQuery, cursor);
+    }
+
+    if (cursor < excerpt.length) {
+        parts.push(excerpt.slice(cursor));
+    }
+
+    return parts;
+}
+
 interface CourseContentViewProps {
     chapter: CourseChapter | null;
     formulas: CourseFormula[];
     chapters: CourseChapter[];
+    searchChapters: CourseChapter[];
     courseId: string;
     courseName: string;
     selectedChapterId: string | null;
     isLoadingChapter: boolean;
+    isLoadingCourseSearch: boolean;
     onSaveNotes: (chapterId: string, notes: string) => Promise<void>;
     onUpdateChapterTitle: (chapterId: string, title: string) => Promise<void>;
     onDeleteChapter: (chapterId: string) => Promise<void>;
@@ -25,16 +174,19 @@ interface CourseContentViewProps {
     onCreateFirstChapter: () => void;
     editorRef: React.RefObject<BlockEditorRef | null>;
     hasChapters: boolean;
+    courseSearchQuery?: string;
 }
 
 export function CourseContentView({
     chapter,
     formulas,
     chapters,
+    searchChapters,
     courseId,
     courseName,
     selectedChapterId,
     isLoadingChapter,
+    isLoadingCourseSearch,
     onSaveNotes,
     onUpdateChapterTitle,
     onDeleteChapter,
@@ -44,12 +196,101 @@ export function CourseContentView({
     onCreateFirstChapter,
     editorRef,
     hasChapters,
+    courseSearchQuery = '',
 }: CourseContentViewProps) {
     const [editingNotes, setEditingNotes] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
     const [tempNotes, setTempNotes] = useState('');
     const [tempTitle, setTempTitle] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [visibleFormulaResults, setVisibleFormulaResults] = useState(INITIAL_VISIBLE_RESULTS);
+    const [visibleBodyResults, setVisibleBodyResults] = useState(INITIAL_VISIBLE_RESULTS);
+
+    const chapterTitleById = useMemo(() => {
+        return new Map(chapters.map(chapterItem => [chapterItem.id, chapterItem.title]));
+    }, [chapters]);
+
+    const allFormulaSearchResults = useMemo<FormulaSearchResult[]>(() => {
+        const query = courseSearchQuery.trim();
+        if (!query) return [];
+
+        const lowerQuery = query.toLowerCase();
+
+        return formulas
+            .map(formula => {
+                const fields = [
+                    { label: '公式名', value: formula.name },
+                    { label: '说明', value: formula.description || '' },
+                    { label: 'LaTeX', value: formula.latex },
+                ];
+                const matchedFields = fields
+                    .filter(field => field.value.toLowerCase().includes(lowerQuery))
+                    .map(field => field.label);
+
+                if (matchedFields.length === 0) return null;
+
+                return {
+                    id: formula.id,
+                    name: formula.name,
+                    latex: formula.latex,
+                    description: formula.description,
+                    chapterTitle: formula.chapter_id ? (chapterTitleById.get(formula.chapter_id) || '未知章节') : '全课通用公式',
+                    matchedFields,
+                };
+            })
+            .filter((result): result is FormulaSearchResult => result !== null);
+    }, [chapterTitleById, courseSearchQuery, formulas]);
+
+    const allBodySearchResults = useMemo<BodySearchResult[]>(() => {
+        const query = courseSearchQuery.trim();
+        if (!query) return [];
+
+        const lowerQuery = query.toLowerCase();
+        const results: BodySearchResult[] = [];
+
+        searchChapters.forEach(chapterItem => {
+            const plainText = notesToPlainText(chapterItem.notes);
+            if (!plainText) return;
+
+            const lowerText = plainText.toLowerCase();
+            const chapterResults: BodySearchResult[] = [];
+            let searchFrom = 0;
+            let lastWindowEnd = -1;
+
+            while (chapterResults.length < MAX_BODY_RESULTS_PER_CHAPTER) {
+                const matchIndex = lowerText.indexOf(lowerQuery, searchFrom);
+                if (matchIndex === -1) break;
+
+                const window = createExcerptWindow(plainText, matchIndex, query.length);
+                searchFrom = matchIndex + query.length;
+
+                if (window.start <= lastWindowEnd + 20) {
+                    continue;
+                }
+
+                chapterResults.push({
+                    id: `${chapterItem.id}-${matchIndex}`,
+                    chapterId: chapterItem.id,
+                    chapterTitle: chapterItem.title,
+                    excerpt: window.excerpt,
+                    matchIndex,
+                });
+                lastWindowEnd = window.end;
+            }
+
+            results.push(...chapterResults);
+        });
+
+        return results;
+    }, [courseSearchQuery, searchChapters]);
+
+    const formulaSearchResults = allFormulaSearchResults.slice(0, visibleFormulaResults);
+    const bodySearchResults = allBodySearchResults.slice(0, visibleBodyResults);
+
+    useEffect(() => {
+        setVisibleFormulaResults(INITIAL_VISIBLE_RESULTS);
+        setVisibleBodyResults(INITIAL_VISIBLE_RESULTS);
+    }, [courseSearchQuery]);
 
     const handleSaveNotes = async () => {
         if (!chapter) return;
@@ -112,10 +353,172 @@ export function CourseContentView({
     // No chapter selected yet (but chapters exist)
     if (!chapter && !isLoadingChapter && selectedChapterId !== CHAPTER_ID_FORMULA_OVERVIEW) {
         return (
-            <div className="flex-1 flex items-center justify-center bg-[#faf9f7]">
-                <div className="flex flex-col items-center gap-3 text-stone-400">
-                    <BookOpen size={24} className="opacity-30" />
-                    <p className="text-sm font-mono">请从左侧选择一个章节</p>
+            <div className="flex-1 bg-[#faf9f7] overflow-hidden">
+                <div className="h-full px-8 md:px-12 py-8">
+                    <div className="h-full rounded-[28px] border border-stone-200/70 bg-stone-100/45 shadow-inner shadow-stone-200/50 overflow-hidden">
+                        {courseSearchQuery ? (
+                            <div className="h-full flex flex-col">
+                                <div className="shrink-0 border-b border-stone-200/70 bg-white/35 px-7 py-5">
+                                    <div className="flex items-center gap-2 text-[11px] font-mono font-bold uppercase tracking-[0.22em] text-violet-400">
+                                        <Search size={13} />
+                                        Course Search
+                                    </div>
+                                    <h2 className="mt-2 text-xl font-serif font-bold text-stone-800">
+                                        {courseSearchQuery}
+                                    </h2>
+                                    <p className="mt-1 text-xs text-stone-400">
+                                        公式结果会优先显示，正文结果会展示命中处附近的原文窗口。
+                                    </p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto custom-scrollbar px-7 py-6">
+                                    {isLoadingCourseSearch ? (
+                                        <div className="h-full flex items-center justify-center">
+                                            <Loader2 size={22} className="animate-spin text-stone-300" />
+                                        </div>
+                                    ) : allFormulaSearchResults.length > 0 || allBodySearchResults.length > 0 ? (
+                                        <div className="space-y-7">
+                                            {allFormulaSearchResults.length > 0 && (
+                                                <section className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-violet-400">
+                                                                Formula Matches
+                                                            </p>
+                                                            <h3 className="mt-1 text-lg font-serif font-bold text-stone-800">
+                                                                公式结果
+                                                            </h3>
+                                                        </div>
+                                                        <span className="rounded-full border border-violet-100 bg-violet-50/70 px-3 py-1 text-[11px] font-mono text-violet-400">
+                                                            {formulaSearchResults.length} / {allFormulaSearchResults.length}
+                                                        </span>
+                                                    </div>
+
+                                                    {formulaSearchResults.map((result, index) => (
+                                                        <article
+                                                            key={result.id}
+                                                            className="rounded-3xl border border-violet-100/90 bg-white/75 p-5 shadow-sm shadow-violet-100/50 transition-colors hover:border-violet-200 hover:bg-white"
+                                                        >
+                                                            <div className="mb-4 flex items-start justify-between gap-4">
+                                                                <div className="min-w-0">
+                                                                    <div className="mb-2 flex items-center gap-2">
+                                                                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-violet-50 text-violet-500">
+                                                                            <Sigma size={15} />
+                                                                        </span>
+                                                                        <span className="truncate text-base font-bold text-stone-800">
+                                                                            {renderHighlightedExcerpt(result.name, courseSearchQuery)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[11px] font-mono text-stone-400">
+                                                                        {result.chapterTitle} / 命中：{result.matchedFields.join('、')}
+                                                                    </p>
+                                                                </div>
+                                                                <span className="shrink-0 rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-mono text-violet-400">
+                                                                    F{index + 1}
+                                                                </span>
+                                                            </div>
+
+                                                            {result.description && (
+                                                                <p className="mb-3 text-sm leading-7 text-stone-600">
+                                                                    {renderHighlightedExcerpt(result.description, courseSearchQuery)}
+                                                                </p>
+                                                            )}
+
+                                                            <p className="truncate rounded-2xl border border-stone-200/70 bg-stone-50/80 px-3 py-2 font-mono text-xs text-stone-500">
+                                                                {renderHighlightedExcerpt(result.latex, courseSearchQuery)}
+                                                            </p>
+                                                        </article>
+                                                    ))}
+
+                                                    {allFormulaSearchResults.length > formulaSearchResults.length && (
+                                                        <div className="pt-1 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setVisibleFormulaResults(count => count + RESULTS_PAGE_SIZE)}
+                                                                className="rounded-full border border-violet-100 bg-white/70 px-4 py-2 text-xs font-bold text-violet-500 hover:border-violet-200 hover:bg-violet-50 transition-colors"
+                                                            >
+                                                                显示更多公式结果
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </section>
+                                            )}
+
+                                            {allBodySearchResults.length > 0 && (
+                                                <section className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-stone-400">
+                                                                Text Matches
+                                                            </p>
+                                                            <h3 className="mt-1 text-lg font-serif font-bold text-stone-800">
+                                                                正文结果
+                                                            </h3>
+                                                        </div>
+                                                        <span className="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-[11px] font-mono text-stone-400">
+                                                            {bodySearchResults.length} / {allBodySearchResults.length}
+                                                        </span>
+                                                    </div>
+
+                                                    {bodySearchResults.map((result, index) => (
+                                                        <article
+                                                            key={result.id}
+                                                            className="group rounded-3xl border border-stone-200/80 bg-white/70 p-5 shadow-sm shadow-stone-200/50 transition-colors hover:border-violet-200 hover:bg-white"
+                                                        >
+                                                            <div className="mb-3 flex items-center justify-between gap-3">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-violet-400">
+                                                                        Chapter
+                                                                    </p>
+                                                                    <h4 className="mt-1 truncate text-base font-bold text-stone-700">
+                                                                        {result.chapterTitle}
+                                                                    </h4>
+                                                                </div>
+                                                                <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-mono text-stone-400">
+                                                                    #{index + 1}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm leading-7 text-stone-600">
+                                                                {renderHighlightedExcerpt(result.excerpt, courseSearchQuery)}
+                                                            </p>
+                                                        </article>
+                                                    ))}
+
+                                                    {allBodySearchResults.length > bodySearchResults.length && (
+                                                        <div className="pt-2 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setVisibleBodyResults(count => count + RESULTS_PAGE_SIZE)}
+                                                                className="rounded-full border border-stone-200 bg-white/70 px-4 py-2 text-xs font-bold text-stone-500 hover:border-violet-200 hover:bg-white transition-colors"
+                                                            >
+                                                                显示更多正文结果
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </section>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-3xl border border-dashed border-stone-300/80 bg-white/45 p-8 text-center">
+                                            <div className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
+                                                <Search size={22} className="text-violet-400" strokeWidth={1.7} />
+                                            </div>
+                                            <p className="text-sm font-bold text-stone-600">没有找到匹配内容</p>
+                                            <p className="mt-2 text-xs leading-6 text-stone-400">
+                                                当前按完整字符串搜索正文与公式，不搜索章节标题；可以换一个更短的关键词试试。
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center gap-3 text-stone-400">
+                                <BookOpen size={24} className="opacity-30" />
+                                <p className="text-sm font-mono">请从左侧选择一个章节</p>
+                                <p className="text-xs text-stone-400/80">也可以在上方搜索当前课程的正文与公式</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         );
