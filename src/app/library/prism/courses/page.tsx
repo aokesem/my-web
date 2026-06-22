@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useCourses, useCourseChapters, useChapterContent, useCourseFormulas, useCourseSearchChapters } from '../hooks/usePrismData';
 import type { CourseFormula } from '../types';
 import type { BlockEditorRef } from '@/components/ui/block-editor';
+import { indexHeadingsFromNotes } from '@/lib/headingIndex';
 
 import { CourseSidebar } from './components/CourseSidebar';
 import { CourseContentView } from './components/CourseContentView';
@@ -53,31 +54,8 @@ export default function CoursesPage() {
         }
 
         // Mode 2: Regular Chapter - TOC is note headings
-        if (!chapter?.notes) return [];
-        const headings: { level: number; text: string; id: string }[] = [];
-        const notes = chapter.notes;
-
-        let parsedJson: any = null;
-        if (typeof notes === 'string' && notes.trim().startsWith('{')) {
-            try { parsedJson = JSON.parse(notes); } catch (e) { }
-        }
-
-        if (parsedJson?.content) {
-            const traverse = (node: any) => {
-                if (node.type === 'heading') {
-                    const level = node.attrs?.level || 1;
-                    const text = node.content?.map((c: any) => c.text || '').join('') || '';
-                    if (text) {
-                        const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
-                        headings.push({ level, text, id });
-                    }
-                }
-                if (node.content && Array.isArray(node.content)) node.content.forEach(traverse);
-            };
-            traverse(parsedJson);
-        }
-        return headings;
-    }, [chapter?.notes]);
+        return indexHeadingsFromNotes(chapter?.notes);
+    }, [chapter?.notes, chapters, formulas, selectedChapterId]);
 
     // ============================================================
     // HANDLERS

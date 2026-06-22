@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ImageIcon, Hash, List } from 'lucide-react';
+import { indexHeadingsFromNotes } from '@/lib/headingIndex';
 
 interface SidebarTocPanelProps {
     notes?: string;
@@ -10,48 +11,7 @@ export function SidebarTocPanel({ notes, figures }: SidebarTocPanelProps) {
     
     // Parse headings from notes for TOC
     const noteHeadings = useMemo(() => {
-        if (!notes) return [];
-        const headings: { level: number; text: string; id: string }[] = [];
-
-        let isJson = false;
-        let parsedJson: any = null;
-        if (typeof notes === 'string' && notes.trim().startsWith('{')) {
-            try {
-                parsedJson = JSON.parse(notes);
-                isJson = true;
-            } catch (e) { }
-        }
-
-        if (isJson && parsedJson?.content) {
-            // Traverse JSON AST
-            const traverse = (node: any) => {
-                if (node.type === 'heading') {
-                    const level = node.attrs?.level || 1;
-                    const text = node.content?.map((c: any) => c.text || '').join('') || '';
-                    if (text) {
-                        const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
-                        headings.push({ level, text, id });
-                    }
-                }
-                if (node.content && Array.isArray(node.content)) {
-                    node.content.forEach(traverse);
-                }
-            };
-            traverse(parsedJson);
-        } else if (typeof notes === 'string') {
-            // Fallback for markdown
-            const lines = notes.split('\n');
-            lines.forEach(line => {
-                const match = line.match(/^(#{1,6})\s+(.+)$/);
-                if (match) {
-                    const level = match[1].length;
-                    const text = match[2];
-                    const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
-                    headings.push({ level, text, id });
-                }
-            });
-        }
-        return headings;
+        return indexHeadingsFromNotes(notes);
     }, [notes]);
 
     const scrollToElement = (id: string) => {

@@ -10,6 +10,7 @@ import { SlashCommand, suggestionOptions } from './slash-command';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { supabase } from '@/lib/supabaseClient';
 import { compressImage } from '@/lib/imageUtils';
+import { syncHeadingIdsInElement } from '@/lib/headingIndex';
 import { common, createLowlight } from 'lowlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { CodeBlockView } from './code-block-view';
@@ -43,13 +44,11 @@ async function deleteImageFromStorage(url: string, bucket: string) {
     }
 }
 
-// Custom Heading extension that generates id attributes from text content
+// Custom Heading extension; ids are synchronized after render to keep duplicates unique
 const HeadingWithId = Heading.extend({
     renderHTML({ node, HTMLAttributes }) {
         const level = node.attrs.level as number;
-        const text = node.textContent || '';
-        const id = 'heading-' + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '-').replace(/(^-|-$)/g, '');
-        return [`h${level}`, { ...HTMLAttributes, id }, 0];
+        return [`h${level}`, HTMLAttributes, 0];
     },
 });
 
@@ -273,6 +272,25 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
             editor.setEditable(editable);
         }
     }, [editable, editor]);
+
+    useEffect(() => {
+        if (!editor) return;
+
+        const syncHeadings = () => {
+            const root = editor.options.element;
+            if (!root || typeof root !== 'object' || !('querySelectorAll' in root)) return;
+            syncHeadingIdsInElement(root as ParentNode);
+        };
+
+        syncHeadings();
+        editor.on('create', syncHeadings);
+        editor.on('update', syncHeadings);
+
+        return () => {
+            editor.off('create', syncHeadings);
+            editor.off('update', syncHeadings);
+        };
+    }, [editor, value]);
 
     // Handle external value changes (only if editor content is deeply different)
     useEffect(() => {
