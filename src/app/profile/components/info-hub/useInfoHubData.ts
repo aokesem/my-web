@@ -14,7 +14,7 @@ import { addCalendarDays, getHubDayKey } from './hubDay';
 import { getDueFolderReminders } from '@/lib/infoItemReminder';
 import { getDaysSinceDate } from '@/lib/profileSocialRecords';
 
-const FRIEND_CONTACT_REMINDER_INTERVAL_DAYS = 30;
+export const DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS = 30;
 
 const QUEUED_BOOKMARK_SELECT_WITH_HUB =
     'id, title, category_type, created_at, parent_item_id, info_items(name)';
@@ -139,9 +139,9 @@ export function useInfoHubData(isOpen: boolean) {
                         .order('deadline', { ascending: true }),
                     supabase
                         .from('profile_friends')
-                        .select('id, name, last_contact_date, contact_reminder_snoozed_until')
-                        .not('last_contact_date', 'is', null)
-                        .order('last_contact_date', { ascending: true }),
+                        .select('id, name, last_contact_date, scheduled_contact_date, contact_reminder_muted')
+                        .not('scheduled_contact_date', 'is', null)
+                        .order('scheduled_contact_date', { ascending: true }),
                 ]);
 
             const hubNameById = new Map<number, string>();
@@ -198,17 +198,20 @@ export function useInfoHubData(isOpen: boolean) {
                 });
 
             if (friendsRes.data) {
+                const today = getHubDayKey();
                 const friendReminders = friendsRes.data
                     .map((friend) => {
+                        const scheduledDate = friend.scheduled_contact_date as string | null;
+                        const isMuted = Boolean(friend.contact_reminder_muted);
+                        if (!scheduledDate || isMuted || scheduledDate > today) return null;
                         const lastContact = friend.last_contact_date as string | null;
-                        if (!lastContact) return null;
-                        const snoozedUntil = friend.contact_reminder_snoozed_until as string | null;
-                        if (snoozedUntil && snoozedUntil >= getHubDayKey()) return null;
-                        const days = getDaysSinceDate(lastContact, getHubDayKey());
-                        if (days < FRIEND_CONTACT_REMINDER_INTERVAL_DAYS) return null;
+                        const days = lastContact ? getDaysSinceDate(lastContact, today) : null;
                         return {
                             id: `friend-contact-${friend.id}`,
-                            message: `${friend.name} 已经 ${days} 天没有联系`,
+                            message:
+                                days == null
+                                    ? `${friend.name} 已到预定联系日期`
+                                    : `${friend.name} 已经 ${days} 天没有联系`,
                             kind: 'friend_contact' as const,
                             friendId: friend.id as number,
                             tone: 'warn' as const,
@@ -371,14 +374,14 @@ export function useInfoHubData(isOpen: boolean) {
         setFolderReminders((prev) => prev.filter((f) => f.id !== itemId));
     };
 
-    const dismissFriendReminder = async (friendId: number) => {
+    const dismissFriendReminder = async (friendId: number, snoozeDays = DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS) => {
         const nextReminderDate = addCalendarDays(
             getHubDayKey(),
-            FRIEND_CONTACT_REMINDER_INTERVAL_DAYS
+            snoozeDays
         );
         const { error } = await supabase
             .from('profile_friends')
-            .update({ contact_reminder_snoozed_until: nextReminderDate })
+            .update({ scheduled_contact_date: nextReminderDate })
             .eq('id', friendId);
         if (error) throw error;
         setReminders((prev) =>

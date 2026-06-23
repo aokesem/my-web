@@ -23,6 +23,8 @@ export interface ProfileFriendRecord {
     id: number;
     name: string;
     last_contact_date: string | null;
+    scheduled_contact_date: string | null;
+    contact_reminder_muted: boolean;
     image_url: string | null;
     sort_order: number;
     created_at?: string;
@@ -56,6 +58,8 @@ type FriendRow = {
     id: number;
     name: string;
     last_contact_date: string | null;
+    scheduled_contact_date: string | null;
+    contact_reminder_muted: boolean | null;
     image_url: string | null;
     sort_order: number | null;
     created_at?: string;
@@ -202,6 +206,8 @@ export async function fetchProfileSocialRecords() {
             ...friend,
             image_url: friend.image_url ?? null,
             last_contact_date: friend.last_contact_date ?? null,
+            scheduled_contact_date: friend.scheduled_contact_date ?? null,
+            contact_reminder_muted: friend.contact_reminder_muted ?? false,
             sort_order: friend.sort_order ?? 0,
             hobby_ids: hobbyIds,
             tag_ids: tagIds,

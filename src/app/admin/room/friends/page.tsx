@@ -33,6 +33,8 @@ type SocialAdminTab = "friends" | "groups" | "tags";
 type FriendFormState = {
     name: string;
     last_contact_date: string;
+    scheduled_contact_date: string;
+    contact_reminder_muted: boolean;
     image_url: string;
     sort_order: number;
     hobby_ids: number[];
@@ -96,6 +98,8 @@ function buildEmptyFriendForm(nextOrder: number): FriendFormState {
     return {
         name: "",
         last_contact_date: "",
+        scheduled_contact_date: "",
+        contact_reminder_muted: false,
         image_url: "",
         sort_order: nextOrder,
         hobby_ids: [],
@@ -163,6 +167,7 @@ export default function FriendsAdminPage() {
     const [tagForm, setTagForm] = useState<TagFormState>(buildEmptyTagForm(1));
     const [customMemberName, setCustomMemberName] = useState("");
     const friendDateInputRef = useRef<HTMLInputElement | null>(null);
+    const friendScheduledDateInputRef = useRef<HTMLInputElement | null>(null);
 
     const nextFriendOrder = useMemo(
         () => (friends.length > 0 ? Math.max(...friends.map((item) => item.sort_order || 0)) + 1 : 1),
@@ -240,6 +245,8 @@ export default function FriendsAdminPage() {
         setFriendForm({
             name: friend.name,
             last_contact_date: friend.last_contact_date ?? "",
+            scheduled_contact_date: friend.scheduled_contact_date ?? "",
+            contact_reminder_muted: friend.contact_reminder_muted ?? false,
             image_url: friend.image_url ?? "",
             sort_order: friend.sort_order ?? 0,
             hobby_ids: friend.hobby_ids,
@@ -294,6 +301,8 @@ export default function FriendsAdminPage() {
             const payload = {
                 name,
                 last_contact_date: friendForm.last_contact_date || null,
+                scheduled_contact_date: friendForm.scheduled_contact_date || null,
+                contact_reminder_muted: friendForm.contact_reminder_muted,
                 image_url: friendForm.image_url || null,
                 sort_order: Number(friendForm.sort_order) || 0,
                 updated_at: new Date().toISOString(),
@@ -658,6 +667,61 @@ export default function FriendsAdminPage() {
                             </Button>
                         </div>
                     </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">预定接触日期</label>
+                        <div className="flex gap-2">
+                            <Input
+                                ref={friendScheduledDateInputRef}
+                                type="date"
+                                value={friendForm.scheduled_contact_date}
+                                onChange={(event) =>
+                                    setFriendForm((prev) => ({ ...prev, scheduled_contact_date: event.target.value }))
+                                }
+                                className="bg-black border-zinc-800 text-zinc-200"
+                            />
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="shrink-0"
+                                onClick={() => friendScheduledDateInputRef.current?.showPicker?.()}
+                                title="open-calendar"
+                            >
+                                <CalendarDays size={16} />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="shrink-0"
+                                onClick={() =>
+                                    setFriendForm((prev) => ({
+                                        ...prev,
+                                        scheduled_contact_date: "",
+                                    }))
+                                }
+                            >
+                                Clear
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">提醒设置</label>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setFriendForm((prev) => ({
+                                    ...prev,
+                                    contact_reminder_muted: !prev.contact_reminder_muted,
+                                }))
+                            }
+                            className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                                friendForm.contact_reminder_muted
+                                    ? "border-zinc-600 bg-zinc-800 text-zinc-100"
+                                    : "border-zinc-800 bg-black text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                            }`}
+                        >
+                            {friendForm.contact_reminder_muted ? "免提醒：开启" : "免提醒：关闭"}
+                        </button>
+                    </div>
                     <div className="space-y-2 md:col-span-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">图片</label>
                         <ImageUpload
@@ -754,8 +818,10 @@ export default function FriendsAdminPage() {
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-lg font-semibold text-zinc-100">{friend.name}</div>
-                                            <div className="mt-1 text-xs text-zinc-500">
-                                                最后联系：{friend.last_contact_date ? friend.last_contact_date : "未记录"}
+                                            <div className="mt-1 space-y-1 text-xs text-zinc-500">
+                                                <div>最后联系：{friend.last_contact_date ? friend.last_contact_date : "未记录"}</div>
+                                                <div>预定接触：{friend.scheduled_contact_date ? friend.scheduled_contact_date : "未设置"}</div>
+                                                <div>免提醒：{friend.contact_reminder_muted ? "开启" : "关闭"}</div>
                                             </div>
                                         </div>
                                         <div className="text-xs font-mono text-zinc-500">#{friend.sort_order}</div>

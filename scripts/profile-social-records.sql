@@ -6,6 +6,8 @@ create table if not exists public.profile_friends (
     name text not null,
     last_contact_date date null,
     contact_reminder_snoozed_until date null,
+    scheduled_contact_date date null,
+    contact_reminder_muted boolean not null default false,
     image_url text null,
     sort_order integer not null default 0,
     created_at timestamptz not null default now(),
@@ -13,7 +15,9 @@ create table if not exists public.profile_friends (
 );
 
 alter table if exists public.profile_friends
-    add column if not exists contact_reminder_snoozed_until date null;
+    add column if not exists contact_reminder_snoozed_until date null,
+    add column if not exists scheduled_contact_date date null,
+    add column if not exists contact_reminder_muted boolean not null default false;
 
 create table if not exists public.profile_friend_tags (
     id bigint generated always as identity primary key,
@@ -66,6 +70,9 @@ create unique index if not exists profile_group_members_friend_unique
 
 create index if not exists profile_friends_sort_order_idx
     on public.profile_friends (sort_order asc, created_at asc, id asc);
+
+create index if not exists profile_friends_scheduled_contact_idx
+    on public.profile_friends (contact_reminder_muted asc, scheduled_contact_date asc, id asc);
 
 create index if not exists profile_friend_tags_sort_order_idx
     on public.profile_friend_tags (sort_order asc, id asc);

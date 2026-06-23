@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,6 +53,7 @@ interface PlaceVisitRow {
     place_id: number;
     date: string;
     start_time: string | null;
+    duration: number | null;
 }
 
 interface PlaceItem {
@@ -62,6 +63,7 @@ interface PlaceItem {
     images: string[];
     visitCount: number;
     latestVisitDate: string | null;
+    totalDuration: number;
 }
 
 interface ToolboxWidgetProps {
@@ -105,7 +107,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             const [placesRes, imagesRes, visitsRes] = await Promise.all([
                 supabase.from('profile_places').select('*').order('sort_order', { ascending: true }),
                 supabase.from('profile_place_images').select('*').order('sort_order', { ascending: true }),
-                supabase.from('calendar_activities').select('place_id,date,start_time').not('place_id', 'is', null),
+                supabase.from('calendar_activities').select('place_id,date,start_time,duration').not('place_id', 'is', null),
             ]);
 
             const placeRows = (placesRes.data || []) as PlaceRow[];
@@ -122,6 +124,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                     .filter(v => v.place_id === place.id && v.start_time === null && !!v.date);
                 const uniqueDates = Array.from(new Set(visits.map(v => v.date)));
                 uniqueDates.sort((a, b) => b.localeCompare(a));
+                const totalDuration = visits.reduce((sum, visit) => sum + (visit.duration || 0), 0);
 
                 return {
                     id: place.id,
@@ -130,6 +133,7 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                     images,
                     visitCount: uniqueDates.length,
                     latestVisitDate: uniqueDates.length > 0 ? uniqueDates[0] : null,
+                    totalDuration,
                 };
             });
 
@@ -169,6 +173,12 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
             ...prev,
             [placeId]: ((prev[placeId] || 0) - 1 + total) % total,
         }));
+    };
+
+    const formatDuration = (hours: number) => {
+        if (hours === 0) return '0h';
+        if (Number.isInteger(hours)) return `${hours}h`;
+        return `${hours.toFixed(1)}h`;
     };
 
     return (
@@ -411,6 +421,12 @@ export default function ToolboxWidget({ isActive, onToggle }: ToolboxWidgetProps
                                                             <div className="text-[9px] font-mono uppercase text-slate-400 mb-1">Latest Visit</div>
                                                             <div className="text-sm font-bold text-slate-600 leading-none">
                                                                 {place.latestVisitDate ? place.latestVisitDate : '暂无'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-emerald-50/70 border border-emerald-100 rounded-lg px-3 py-2">
+                                                            <div className="text-[9px] font-mono uppercase text-slate-400 mb-1">Total Time</div>
+                                                            <div className="text-lg font-black text-emerald-600 leading-none">
+                                                                {formatDuration(place.totalDuration)}
                                                             </div>
                                                         </div>
                                                     </div>

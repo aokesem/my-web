@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -13,6 +13,7 @@ import {
     ChevronRight,
     CalendarDays,
     Check,
+    BellOff,
     Tags,
     Image as ImageIcon,
     type LucideIcon,
@@ -118,6 +119,11 @@ function formatContactDate(date: string | null) {
     return date.replace(/-/g, '.');
 }
 
+function formatScheduledContactDate(date: string | null) {
+    if (!date) return '未设置';
+    return date.replace(/-/g, '.');
+}
+
 function splitFriendHobbiesByCategory(hobbies: ProfileHobbyRecord[]) {
     const grouped: Record<Category, string[]> = {
         knowledge: [],
@@ -216,7 +222,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [editingContactFriendId, setEditingContactFriendId] = useState<number | null>(null);
     const [contactDraft, setContactDraft] = useState('');
+    const [editingScheduledFriendId, setEditingScheduledFriendId] = useState<number | null>(null);
+    const [scheduledDraft, setScheduledDraft] = useState('');
     const [isSavingContact, setIsSavingContact] = useState(false);
+    const [isSavingScheduled, setIsSavingScheduled] = useState(false);
 
     const visibleActiveTab: SocialTab = !isActive ? 'hobbies' : isLoggedIn ? activeTab : 'hobbies';
 
@@ -257,14 +266,30 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
 
     const startEditContactDate = (friend: ProfileFriendRecord, event: React.MouseEvent) => {
         event.stopPropagation();
+        setEditingScheduledFriendId(null);
+        setScheduledDraft('');
         setEditingContactFriendId(friend.id);
         setContactDraft(friend.last_contact_date ?? '');
+    };
+
+    const startEditScheduledDate = (friend: ProfileFriendRecord, event: React.MouseEvent) => {
+        event.stopPropagation();
+        setEditingContactFriendId(null);
+        setContactDraft('');
+        setEditingScheduledFriendId(friend.id);
+        setScheduledDraft(friend.scheduled_contact_date ?? '');
     };
 
     const cancelEditContactDate = (event?: React.MouseEvent) => {
         event?.stopPropagation();
         setEditingContactFriendId(null);
         setContactDraft('');
+    };
+
+    const cancelEditScheduledDate = (event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        setEditingScheduledFriendId(null);
+        setScheduledDraft('');
     };
 
     const saveContactDate = async (friendId: number, event?: React.MouseEvent) => {
@@ -294,6 +319,35 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
             setContactDraft('');
         } finally {
             setIsSavingContact(false);
+        }
+    };
+
+    const saveScheduledDate = async (friendId: number, event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        setIsSavingScheduled(true);
+        try {
+            const nextValue = scheduledDraft || null;
+            const { error } = await supabase
+                .from('profile_friends')
+                .update({
+                    scheduled_contact_date: nextValue,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', friendId);
+
+            if (error) throw error;
+
+            setFriends((prev) =>
+                prev.map((friend) =>
+                    friend.id === friendId
+                        ? { ...friend, scheduled_contact_date: nextValue }
+                        : friend
+                )
+            );
+            setEditingScheduledFriendId(null);
+            setScheduledDraft('');
+        } finally {
+            setIsSavingScheduled(false);
         }
     };
 
@@ -510,7 +564,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                 )}
                                                             </div>
 
-                                                            <div className="shrink-0 pt-1 text-right">
+                                                            <div className="flex shrink-0 flex-col items-end gap-2 pt-1 text-right">
                                                                 {isLoggedIn && editingContactFriendId === friend.id ? (
                                                                     <div className="flex items-center gap-2">
                                                                         <input
@@ -556,6 +610,59 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                         <span>{formatContactDate(friend.last_contact_date)}</span>
                                                                     </button>
                                                                 )}
+                                                                <div className="flex flex-col items-end gap-1.5">
+                                                                    {isLoggedIn && editingScheduledFriendId === friend.id ? (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <input
+                                                                                type="date"
+                                                                                value={scheduledDraft}
+                                                                                onClick={(event) => event.stopPropagation()}
+                                                                                onChange={(event) => setScheduledDraft(event.target.value)}
+                                                                                className="rounded-full border border-white/75 bg-white/85 px-3 py-2 text-sm font-mono text-slate-600 shadow-sm outline-none"
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(event) => saveScheduledDate(friend.id, event)}
+                                                                                disabled={isSavingScheduled}
+                                                                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/75 bg-white/85 text-slate-600 shadow-sm transition-colors hover:text-slate-900 disabled:opacity-50"
+                                                                            >
+                                                                                {isSavingScheduled ? (
+                                                                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                                                                                ) : (
+                                                                                    <Check size={15} />
+                                                                                )}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(event) => cancelEditScheduledDate(event)}
+                                                                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/75 bg-white/85 text-slate-500 shadow-sm transition-colors hover:text-slate-800"
+                                                                            >
+                                                                                <Minimize2 size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(event) =>
+                                                                                isLoggedIn
+                                                                                    ? startEditScheduledDate(friend, event)
+                                                                                    : event.stopPropagation()
+                                                                            }
+                                                                            className={`inline-flex items-center gap-2 rounded-full border border-white/65 bg-white/55 px-3 py-1.5 text-xs font-mono text-slate-500 shadow-sm ${
+                                                                                isLoggedIn ? 'transition-colors hover:text-slate-800' : ''
+                                                                            }`}
+                                                                        >
+                                                                            <CalendarDays size={13} className="text-blue-400" />
+                                                                            <span>预定 {formatScheduledContactDate(friend.scheduled_contact_date)}</span>
+                                                                        </button>
+                                                                    )}
+                                                                    {friend.contact_reminder_muted && (
+                                                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-slate-50/70 px-2.5 py-1 text-[11px] font-mono text-slate-500 shadow-sm">
+                                                                            <BellOff size={12} className="text-slate-400" />
+                                                                            <span>免提醒</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
 
