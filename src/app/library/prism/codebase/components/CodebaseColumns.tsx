@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 interface CodebaseColumnsProps {
+    isAdmin: boolean;
     languageId: string;
     nodes: CodebaseNode[];
     selectedPath: string[]; // Length determines depth: [L1_id, L2_id, L3_id]
@@ -19,7 +20,7 @@ interface CodebaseColumnsProps {
 
 const MAX_COLUMNS = 3; // L1, L2, L3
 
-export function CodebaseColumns({ languageId, nodes, selectedPath, onSelectPath, isLoading, onDataChange }: CodebaseColumnsProps) {
+export function CodebaseColumns({ languageId, nodes, selectedPath, onSelectPath, isLoading, onDataChange, isAdmin }: CodebaseColumnsProps) {
     // Generate data for each column based on selection
     const columnsData: { level: number; parentId: string | null; items: CodebaseNode[] }[] = [];
     
@@ -62,6 +63,7 @@ export function CodebaseColumns({ languageId, nodes, selectedPath, onSelectPath,
                     onSelect={(id) => onSelectPath(col.level, id)}
                     onDataChange={onDataChange}
                     allNodes={nodes}
+                    isAdmin={isAdmin}
                 />
             ))}
         </div>
@@ -72,7 +74,7 @@ export function CodebaseColumns({ languageId, nodes, selectedPath, onSelectPath,
 // INDIVIDUAL COLUMN COMPONENT
 // -------------------------------------------------------------
 
-function Column({ level, parentId, languageId, items, selectedId, onSelect, onDataChange, allNodes }: {
+function Column({ level, parentId, languageId, items, selectedId, onSelect, onDataChange, allNodes, isAdmin }: {
     level: number;
     parentId: string | null;
     languageId: string;
@@ -81,6 +83,7 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
     onSelect: (id: string) => void;
     onDataChange: () => void;
     allNodes: CodebaseNode[];
+    isAdmin: boolean;
 }) {
     const [isCreating, setIsCreating] = useState(false);
     const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -89,6 +92,7 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
     const isEnabled = level === 0 || parentId !== null;
 
     const handleCreate = async () => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         if (!editTitle.trim()) return;
         const { error } = await supabase.from('prism_codebase_nodes').insert([{
             language_id: languageId,
@@ -106,6 +110,7 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
     };
 
     const handleUpdate = async (id: string) => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         if (!editTitle.trim()) return;
         const { error } = await supabase.from('prism_codebase_nodes').update({ title: editTitle }).eq('id', id);
         if (error) toast.error("更新失败");
@@ -117,6 +122,7 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         if (!window.confirm("确定删除该节点及其所有子节点吗？")) return;
         const { error } = await supabase.from('prism_codebase_nodes').delete().eq('id', id);
         if (error) toast.error("删除失败");
@@ -132,14 +138,16 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
                 <span className="text-[10px] font-mono font-bold tracking-wider text-stone-400 capitalize">
                     {level === 0 ? 'Topics' : level === 1 ? 'Modules' : 'Items'}
                 </span>
-                <Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-stone-700" onClick={() => { setIsCreating(true); setEditTitle(""); }}>
-                    <Plus size={14} />
-                </Button>
+                {isAdmin && (
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-stone-700" onClick={() => { setIsCreating(true); setEditTitle(""); }}>
+                        <Plus size={14} />
+                    </Button>
+                )}
             </div>
 
             {/* List */}
             <div className={`flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar`}>
-                {isCreating && (
+                {isAdmin && isCreating && (
                     <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-purple-200 bg-purple-50">
                         <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Title..." className="h-6 text-xs bg-white border-stone-200 px-1.5 focus-visible:ring-1 focus-visible:ring-purple-400" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} />
                         <Button size="icon" variant="ghost" className="h-5 w-5 text-purple-600 shrink-0" onClick={handleCreate}><Check size={12} /></Button>
@@ -174,10 +182,10 @@ function Column({ level, parentId, languageId, items, selectedId, onSelect, onDa
                                     </div>
 
                                     <div className="flex items-center gap-0.5 shrink-0">
-                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {isAdmin && (<div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Button size="icon" variant="ghost" className="h-5 w-5 text-stone-400 hover:text-stone-700" onClick={(e) => { e.stopPropagation(); setIsEditing(item.id); setEditTitle(item.title); }}><Edit2 size={10} /></Button>
                                             <Button size="icon" variant="ghost" className="h-5 w-5 text-stone-400 hover:text-red-500" onClick={(e) => handleDelete(item.id, e)}><Trash2 size={10} /></Button>
-                                        </div>
+                                        </div>)}
                                         {/* Chevron for indicating it has children or can be opened */}
                                         <ChevronRight size={14} className={`shrink-0 ml-1 transition-colors ${isSelected ? 'text-purple-500 opacity-100' : 'text-stone-300 opacity-0 group-hover:opacity-100'}`} />
                                     </div>

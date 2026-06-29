@@ -10,6 +10,7 @@ export const ModernNode = ({ id, data, selected }: NodeProps) => {
     const { setNodes, setEdges } = useReactFlow();
     const updateNodeInternals = useUpdateNodeInternals();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const isReadOnly = !!data.readOnly;
 
     // Sync editText with data.label
     useEffect(() => {
@@ -18,12 +19,12 @@ export const ModernNode = ({ id, data, selected }: NodeProps) => {
 
     // Auto-enter edit mode for newly created nodes
     useEffect(() => {
-        if (data.isNew) {
+        if (data.isNew && !isReadOnly) {
             setIsEditing(true);
             // Clear the flag so it doesn't re-trigger
             setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, isNew: false } } : n));
         }
-    }, [data.isNew, id, setNodes]);
+    }, [data.isNew, id, setNodes, isReadOnly]);
 
     useEffect(() => {
         if (isEditing && textareaRef.current) {
@@ -74,7 +75,7 @@ export const ModernNode = ({ id, data, selected }: NodeProps) => {
     return (
         <div 
             className={`group relative min-w-[120px] max-w-[300px] transition-all duration-300 ${selected ? 'z-50' : 'z-10'}`}
-            onDoubleClick={() => setIsEditing(true)}
+            onDoubleClick={() => { if (!isReadOnly) setIsEditing(true); }}
         >
             {/* Main Content Box */}
             <div className={`
@@ -126,7 +127,7 @@ export const ModernNode = ({ id, data, selected }: NodeProps) => {
 
                 {/* Quick Actions (Floating) */}
                 <AnimatePresence>
-                    {!isEditing && (
+                    {!isEditing && !isReadOnly && (
                         <motion.div 
                             initial={{ opacity: 0, y: 10 }}
                             whileHover={{ opacity: 1, y: 0 }}

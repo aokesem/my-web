@@ -5,7 +5,7 @@ import { clearedAtForImmediateReminder } from '@/lib/infoItemReminder';
 import { InfoCategory, InfoItem, InfoBookmark } from '../types';
 import type { FolderReminderSettingsPayload } from '../components/FolderSettingsModal';
 
-export function useInfoSourceData(type: string) {
+export function useInfoSourceData(type: string, isAdmin: boolean) {
     const [isLoading, setIsLoading] = useState(true);
     const [mockCategories, setCategories] = useState<InfoCategory[]>([]);
     const [mockItems, setItems] = useState<InfoItem[]>([]);
@@ -56,12 +56,21 @@ export function useInfoSourceData(type: string) {
         fetchData();
     }, [fetchData]);
 
+    const requireAdmin = useCallback(() => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改信息溯源。');
+            return false;
+        }
+        return true;
+    }, [isAdmin]);
+
     const toggleStatus = async (
         e: React.MouseEvent | null,
         id: number,
         field: 'is_favorited' | 'is_queued'
     ) => {
         e?.stopPropagation();
+        if (!requireAdmin()) return;
         const item = mockItems.find((i) => i.id === id);
         if (!item) return;
 
@@ -81,6 +90,7 @@ export function useInfoSourceData(type: string) {
         field: 'is_favorited' | 'is_queued' | 'is_read'
     ) => {
         e?.stopPropagation();
+        if (!requireAdmin()) return;
         const item = mockBookmarks.find((i) => i.id === id);
         if (!item) return;
 
@@ -98,6 +108,7 @@ export function useInfoSourceData(type: string) {
     };
 
     const handleReorderItems = async (newOrder: InfoItem[]) => {
+        if (!requireAdmin()) return;
         const updatedOrder = newOrder.map((item, index) => ({
             ...item,
             sort_order: index,
@@ -123,6 +134,7 @@ export function useInfoSourceData(type: string) {
         itemId: number,
         payload: FolderReminderSettingsPayload
     ) => {
+        if (!requireAdmin()) throw new Error('只有本人才能修改信息溯源。');
         const existing = mockItems.find((i) => i.id === itemId);
         if (!existing) return;
 

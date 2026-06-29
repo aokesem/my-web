@@ -19,9 +19,10 @@ interface WindowViewProps {
     onOpenProtocol?: () => void;
     /** 从外链进入 Profile 时自动打开信息清单，如 /profile?hub=1 */
     requestOpenInfoHub?: boolean;
+    isAdmin: boolean;
 }
 
-export default function WindowView({ isOpen, onToggle, isBlurred, onOpenCalendar, onOpenProtocol, requestOpenInfoHub }: WindowViewProps) {
+export default function WindowView({ isOpen, onToggle, isBlurred, onOpenCalendar, onOpenProtocol, requestOpenInfoHub, isAdmin }: WindowViewProps) {
     // [新增] 解决 Hydration Error 的核心：挂载状态
     const [mounted, setMounted] = useState(false);
     // [新增] Playbook展开状态
@@ -376,6 +377,7 @@ export default function WindowView({ isOpen, onToggle, isBlurred, onOpenCalendar
                     onClose={() => setIsInfoHubOpen(false)}
                     onOpenCalendar={onOpenCalendar}
                     onOpenProtocol={onOpenProtocol}
+                    isAdmin={isAdmin}
                 />
             )}
 

@@ -19,10 +19,11 @@ interface CodebaseContentProps {
     languageId: string;
     onDataChange: () => void;
     editorRef: React.RefObject<BlockEditorRef | null>;
+    isAdmin: boolean;
 }
 
 export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContentProps>(function CodebaseContent(
-    { nodes, selectedPath, languageId, onDataChange, editorRef },
+    { nodes, selectedPath, languageId, onDataChange, editorRef, isAdmin },
     ref
 ) {
     const [isEditing, setIsEditing] = useState(false);
@@ -68,6 +69,7 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
     }, [isEditing, isDirty]);
 
     const handleSave = useCallback(async () => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         if (!targetNode || !editorRef.current || !editorRef.current.editor) return;
         const notesJson = JSON.stringify(editorRef.current.editor.getJSON());
 
@@ -88,16 +90,17 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "s") {
                 e.preventDefault();
-                if (isEditing && targetNode) {
+                if (isAdmin && isEditing && targetNode) {
                     void handleSave();
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isEditing, targetNode, handleSave]);
+    }, [isEditing, targetNode, handleSave, isAdmin]);
 
     const beginEditing = () => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         skipNextDirtyFromEditorRef.current = true;
         setIsEditing(true);
         setIsDirty(false);
@@ -149,8 +152,8 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
             </div>
 
             {/* Editor Area */}
-            <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar relative group" onDoubleClick={() => !isEditing && beginEditing()}>
-                {!isEditing && (
+            <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar relative group" onDoubleClick={() => isAdmin && !isEditing && beginEditing()}>
+                {isAdmin && !isEditing && (
                     <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-stone-400 font-mono pointer-events-none select-none">
                         Double click to edit
                     </div>
@@ -163,7 +166,7 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
                         key={targetNodeId}
                         ref={editorRef}
                         value={targetNode.notes || ""}
-                        editable={isEditing}
+                        editable={isAdmin && isEditing}
                         onChange={() => {
                             if (!isEditing) return;
                             if (skipNextDirtyFromEditorRef.current) {

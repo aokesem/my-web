@@ -80,13 +80,21 @@ export default function MindMapMatrixPage() {
         checkUser();
     }, []);
 
+    const requireUser = () => {
+        if (!user) {
+            toast.warning("只有本人才能编辑思维导图。");
+            return false;
+        }
+        return true;
+    };
+
     const handleCreate = async () => {
         if (!newMapData.title || !newMapData.id) {
             toast.error("Title and ID are required.");
             return;
         }
         if (!user) {
-            toast.error("Please sign in to create maps.");
+            toast.warning("只有本人才能创建思维导图。");
             return;
         }
 
@@ -118,6 +126,7 @@ export default function MindMapMatrixPage() {
     };
 
     const confirmDelete = async () => {
+        if (!requireUser()) return;
         if (!mapToDelete) return;
 
         setIsDeleting(true);
@@ -141,6 +150,7 @@ export default function MindMapMatrixPage() {
     };
 
     const handleEditOpen = (map: any) => {
+        if (!requireUser()) return;
         setMapToEdit(map);
         setEditMapData({
             title: map.title || '',
@@ -153,6 +163,7 @@ export default function MindMapMatrixPage() {
     };
 
     const confirmEdit = async () => {
+        if (!requireUser()) return;
         if (!mapToEdit) return;
         setIsUpdating(true);
         try {

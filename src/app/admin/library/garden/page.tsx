@@ -194,8 +194,8 @@ export default function GardenAdminPage() {
     };
 
     const handleSavePost = async () => {
-        if (!postForm.title || !postForm.content) {
-            toast.error("标题和内容为必填项");
+        if (!postForm.title) {
+            toast.error("标题为必填项");
             return;
         }
 

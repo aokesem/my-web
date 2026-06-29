@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 import { LanguageSidebar } from "./components/LanguageSidebar";
 import { CodebaseColumns } from "./components/CodebaseColumns";
 import { CodebaseContent, type CodebaseContentHandle } from "./components/CodebaseContent";
@@ -10,6 +11,13 @@ import { useCodebaseLanguages, useCodebaseNodes } from "../hooks/useCodebaseData
 import { BlockEditorRef } from "@/components/ui/block-editor";
 
 export default function CodebasePage() {
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAdmin(!!session);
+        });
+    }, []);
     // 1. App State
     const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
     // An array of selected node IDs representing the active path
@@ -63,6 +71,7 @@ export default function CodebasePage() {
                 onSelectLanguage={handleSelectLanguage}
                 isLoading={isLoadingLanguages}
                 onDataChange={mutateLanguages}
+                isAdmin={isAdmin}
             />
 
             {/* Main Content Area */}
@@ -77,6 +86,7 @@ export default function CodebasePage() {
                             onSelectPath={handleSelectPath}
                             isLoading={isLoadingNodes}
                             onDataChange={mutateNodes}
+                            isAdmin={isAdmin}
                         />
                     </div>
 
@@ -89,6 +99,7 @@ export default function CodebasePage() {
                             languageId={selectedLanguageId}
                             onDataChange={mutateNodes}
                             editorRef={editorRef}
+                            isAdmin={isAdmin}
                         />
                     </div>
                 </div>

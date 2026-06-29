@@ -3,11 +3,12 @@ import { NodeProps, NodeResizer, useReactFlow } from 'reactflow';
 
 export const ModernGroup = ({ id, data, selected }: NodeProps) => {
     const { setNodes } = useReactFlow();
+    const isReadOnly = !!data.readOnly;
 
     return (
         <div className="relative w-full h-full group">
             <NodeResizer
-                isVisible={selected}
+                isVisible={selected && !isReadOnly}
                 minWidth={100}
                 minHeight={100}
                 onResize={(evt, params) => {

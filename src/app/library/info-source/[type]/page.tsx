@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
 import { InfoSidebar } from '../components/InfoSidebar';
 import { InfoItemModal } from '../components/InfoItemModal';
 import { BookmarkModal } from '../components/BookmarkModal';
@@ -24,6 +25,13 @@ export default function InfoSourceListPage() {
     }
 
     const isStudy = type === 'study';
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAdmin(!!session);
+        });
+    }, []);
 
     const theme = useMemo(() => ({
         bg: isStudy ? 'bg-[#0f172a]' : 'bg-[#fdfbf7]',
@@ -43,7 +51,7 @@ export default function InfoSourceListPage() {
         iconHoverBg: isStudy ? 'hover:bg-slate-700' : 'hover:bg-stone-100',
     }), [isStudy]);
 
-    const data = useInfoSourceData(type);
+    const data = useInfoSourceData(type, isAdmin);
 
     const filters = useInfoSourceFilters(
         type, data.mockCategories, data.mockItems, data.mockBookmarks, data.isLoading
@@ -55,7 +63,8 @@ export default function InfoSourceListPage() {
         filters.sidebarSelection,
         data.setItems,
         data.setBookmarks,
-        data.mockItems
+        data.mockItems,
+        isAdmin
     );
 
     const [folderSettingsItem, setFolderSettingsItem] = useState<InfoItem | null>(null);
@@ -63,6 +72,10 @@ export default function InfoSourceListPage() {
     const [isFolderSaving, setIsFolderSaving] = useState(false);
 
     const handleOpenFolderSettings = (item: InfoItem) => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改信息溯源。');
+            return;
+        }
         setFolderSettingsItem(item);
         setIsFolderSettingsOpen(true);
     };
@@ -71,6 +84,10 @@ export default function InfoSourceListPage() {
         name: string;
         reminder_interval_days: number;
     }) => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改信息溯源。');
+            return;
+        }
         if (!folderSettingsItem) return;
         setIsFolderSaving(true);
         try {

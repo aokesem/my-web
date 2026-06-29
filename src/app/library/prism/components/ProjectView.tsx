@@ -24,9 +24,10 @@ interface ProjectViewProps {
     allPapers: PaperDetail[];
     onOpenPaper: (id: string) => void;
     onUpdateProjects: () => Promise<void>;
+    isAdmin: boolean;
 }
 
-export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdateProjects }: ProjectViewProps) {
+export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdateProjects, isAdmin }: ProjectViewProps) {
     const [activeProjectName, setActiveProjectName] = useState<string>(projects[0]?.name || '');
     const [isTimelineOpen, setIsTimelineOpen] = useState(false);
     const [selectedTimelineIndex, setSelectedTimelineIndex] = useState<number | null>(null);
@@ -52,6 +53,14 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     const [newItemPaperIds, setNewItemPaperIds] = useState<string[]>([]);
     const [newItemSurveyIds, setNewItemSurveyIds] = useState<string[]>([]);
     const [newItemDirection, setNewItemDirection] = useState<string | null>(null);
+
+    const requireAdmin = useCallback(() => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改认知棱镜。');
+            return false;
+        }
+        return true;
+    }, [isAdmin]);
 
     const activeProject = projects.find(p => p.name === activeProjectName);
 
@@ -93,6 +102,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
 
     // === API Handlers ===
     const handleSave = async () => {
+        if (!requireAdmin()) return;
         if (!editingId) return;
         setIsSaving(true);
         try {
@@ -142,6 +152,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     };
 
     const handleAddPaperToProject = async (paperId: string) => {
+        if (!requireAdmin()) return;
         if (!activeProject) return;
         setIsSaving(true);
         try {
@@ -169,6 +180,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     };
 
     const handleCreateItem = async () => {
+        if (!requireAdmin()) return;
         if (!creatingIn || !newItemContent.trim() || !activeProject) return;
         if (!newItemTitle.trim()) {
             toast.error('请填写启示标题');
@@ -222,6 +234,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
     };
 
     const handleDeleteItem = async (id: string) => {
+        if (!requireAdmin()) return;
         if (!window.confirm('确定删除该条目吗？')) return;
         setIsSaving(true);
         try {
@@ -371,6 +384,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                         isSaving={isSaving}
                         papersGrouped={papersGrouped}
                         onOpenPaper={onOpenPaper}
+                    isAdmin={isAdmin}
                     />
 
                     <InsightsColumn
@@ -410,6 +424,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
                         handleCreateItem={handleCreateItem}
                         handleBoldShortcut={handleBoldShortcut}
                         onOpenPaper={onOpenPaper}
+                    isAdmin={isAdmin}
                     />
                 </div>
             </div>

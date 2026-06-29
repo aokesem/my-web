@@ -47,6 +47,21 @@ export const MindMapBoard = () => {
     const { fitView } = useReactFlow();
     const updateNodeInternals = useUpdateNodeInternals();
     const [isSaving, setIsSaving] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAdmin(!!session);
+        });
+    }, []);
+
+    const requireAdmin = useCallback(() => {
+        if (!isAdmin) {
+            toast.warning("只有本人才能编辑思维导图。");
+            return false;
+        }
+        return true;
+    }, [isAdmin]);
 
     // Tool States
     const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('pan');
@@ -71,6 +86,11 @@ export const MindMapBoard = () => {
     const lastSavedDataRef = useRef<{ nodes: Node[], edges: Edge[] }>({ nodes: [], edges: [] });
     const currentDataRef = useRef<{ nodes: Node[], edges: Edge[] }>({ nodes: [], edges: [] });
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    const displayNodes = useMemo(() => nodes.map(node => ({
+        ...node,
+        data: { ...node.data, readOnly: !isAdmin },
+    })), [nodes, isAdmin]);
 
     // Keep currentDataRef in sync for unmount accessibility
     useEffect(() => {
@@ -98,7 +118,7 @@ export const MindMapBoard = () => {
     // Exit protection
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (hasUnsavedChanges) {
+            if (isAdmin && hasUnsavedChanges) {
                 e.preventDefault();
                 e.returnValue = '';
             }
@@ -113,7 +133,7 @@ export const MindMapBoard = () => {
             const isDirty = JSON.stringify(lastSavedDataRef.current.nodes) !== JSON.stringify(currentDataRef.current.nodes) ||
                 JSON.stringify(lastSavedDataRef.current.edges) !== JSON.stringify(currentDataRef.current.edges);
 
-            if (isDirty) {
+            if (isAdmin && isDirty) {
                 // Fire and forget update on unmount
                 supabase
                     .from('mind_maps')
@@ -128,7 +148,7 @@ export const MindMapBoard = () => {
                     });
             }
         };
-    }, [hasUnsavedChanges, categoryId]);
+    }, [hasUnsavedChanges, categoryId, isAdmin]);
 
     useEffect(() => {
         const loadMap = async () => {
@@ -183,6 +203,7 @@ export const MindMapBoard = () => {
     }, [reactFlowWrapper]);
 
     const handleSave = useCallback(async () => {
+        if (!requireAdmin()) return;
         setIsSaving(true);
         try {
             const flowData = { nodes, edges };
@@ -212,7 +233,7 @@ export const MindMapBoard = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [nodes, edges, categoryId, captureThumbnail]);
+    }, [nodes, edges, categoryId, captureThumbnail, requireAdmin]);
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -280,6 +301,7 @@ export const MindMapBoard = () => {
     }, []);
 
     const onLayout = useCallback((direction: string, options?: { skipFitView?: boolean, skipHistory?: boolean }) => {
+        if (!requireAdmin()) return;
         if (!options?.skipHistory) saveToHistory();
         const layoutedNodes = getLayoutedElements(nodes, edges, direction);
 
@@ -297,11 +319,11 @@ export const MindMapBoard = () => {
                 updateNodeInternals(node.id);
             });
         });
-    }, [nodes, edges, getLayoutedElements, setNodes, saveToHistory, updateNodeInternals]);
+    }, [nodes, edges, getLayoutedElements, setNodes, saveToHistory, updateNodeInternals, requireAdmin]);
 
     // Auto-layout: re-run layout when nodes/edges are added while mode is active
     useEffect(() => {
-        if (!autoLayoutMode || !initialDataLoaded) return;
+        if (!isAdmin || !autoLayoutMode || !initialDataLoaded) return;
         const nodeCount = nodes.length;
         const edgeCount = edges.length;
 
@@ -313,15 +335,17 @@ export const MindMapBoard = () => {
             prevNodeCountRef.current = nodeCount;
             prevEdgeCountRef.current = edgeCount;
         }
-    }, [nodes.length, edges.length, autoLayoutMode, autoLayoutDirection, initialDataLoaded, onLayout]);
+    }, [nodes.length, edges.length, autoLayoutMode, autoLayoutDirection, initialDataLoaded, onLayout, isAdmin]);
 
     const onConnect = useCallback((params: Connection) => {
+        if (!requireAdmin()) return;
         saveToHistory();
         setEdges((eds) => addEdge(params, eds));
-    }, [setEdges, saveToHistory]);
+    }, [setEdges, saveToHistory, requireAdmin]);
 
     // Create Free Node (Sticky Note)
     const createFreeNode = useCallback(() => {
+        if (!requireAdmin()) return;
         saveToHistory();
         const id = `node-${Date.now()}`;
         const position = reactFlowInstance ? reactFlowInstance.screenToFlowPosition({
@@ -336,10 +360,11 @@ export const MindMapBoard = () => {
             data: { label: '灵感片段...', colorId: 'white', isNew: true },
         };
         setNodes(nds => nds.concat(newNode));
-    }, [reactFlowInstance, setNodes, saveToHistory]);
+    }, [reactFlowInstance, setNodes, saveToHistory, requireAdmin]);
 
     // Create Group Frame
     const createGroupFrame = useCallback(() => {
+        if (!requireAdmin()) return;
         saveToHistory();
         const id = `group-${Date.now()}`;
         const position = reactFlowInstance ? reactFlowInstance.screenToFlowPosition({
@@ -356,10 +381,11 @@ export const MindMapBoard = () => {
             zIndex: -1,
         };
         setNodes(nds => nds.concat(newGroup));
-    }, [reactFlowInstance, setNodes, saveToHistory]);
+    }, [reactFlowInstance, setNodes, saveToHistory, requireAdmin]);
 
     // Create Child Node (Intelligent)
     const createChildNode = useCallback(() => {
+        if (!requireAdmin()) return;
         const selectedNode = nodes.find(n => n.selected && (n.type === 'modern' || n.type === 'rough'));
         if (!selectedNode) return;
 
@@ -382,10 +408,11 @@ export const MindMapBoard = () => {
 
         setNodes(nds => nds.concat(newNode));
         setEdges(eds => eds.concat(newEdge));
-    }, [nodes, setNodes, setEdges, saveToHistory]);
+    }, [nodes, setNodes, setEdges, saveToHistory, requireAdmin]);
 
     // Create Sibling Node
     const createSiblingNode = useCallback(() => {
+        if (!requireAdmin()) return;
         const selectedNode = nodes.find(n => n.selected && (n.type === 'modern' || n.type === 'rough'));
         if (!selectedNode) return;
 
@@ -417,10 +444,11 @@ export const MindMapBoard = () => {
         }
 
         setNodes(nds => nds.concat(newNode));
-    }, [nodes, edges, setNodes, setEdges, saveToHistory]);
+    }, [nodes, edges, setNodes, setEdges, saveToHistory, requireAdmin]);
 
     // Manual Connect (Link nodes based on selection order)
     const connectSelectedNodes = useCallback(() => {
+        if (!requireAdmin()) return;
         if (selectedIds.length < 2) return;
 
         saveToHistory();
@@ -437,26 +465,29 @@ export const MindMapBoard = () => {
             markerEnd: { type: MarkerType.Arrow, color: '#94a3b8' }
         };
         setEdges(eds => addEdge(newEdge, eds));
-    }, [selectedIds, setEdges, saveToHistory]);
+    }, [selectedIds, setEdges, saveToHistory, requireAdmin]);
 
     const updateSelectedNodesStyle = useCallback((styleUpdates: any) => {
+        if (!requireAdmin()) return;
         saveToHistory();
         setNodes(nds => nds.map(node =>
             node.selected ? { ...node, data: { ...node.data, ...styleUpdates } } : node
         ));
-    }, [setNodes, saveToHistory]);
+    }, [setNodes, saveToHistory, requireAdmin]);
 
     const deleteSelected = useCallback(() => {
+        if (!requireAdmin()) return;
         if (nodes.some(n => n.selected) || edges.some(e => e.selected)) {
             saveToHistory();
             setNodes(nds => nds.filter(n => !n.selected));
             setEdges(eds => eds.filter(e => !e.selected));
         }
-    }, [nodes, edges, setNodes, setEdges, saveToHistory]);
+    }, [nodes, edges, setNodes, setEdges, saveToHistory, requireAdmin]);
 
     // Keyboard Listeners
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isAdmin) return;
             if (e.key === 'Tab') {
                 e.preventDefault();
                 createChildNode();
@@ -484,7 +515,7 @@ export const MindMapBoard = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo, createChildNode, deleteSelected]);
+    }, [undo, redo, createChildNode, createSiblingNode, deleteSelected, isAdmin]);
 
     // === Export Logic ===
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -581,7 +612,7 @@ export const MindMapBoard = () => {
                 <Link
                     href="/library/mindmap"
                     onClick={(e) => {
-                        if (hasUnsavedChanges) {
+                        if (isAdmin && hasUnsavedChanges) {
                             // Non-blocking hint: we will try to auto-save on unmount, 
                             // but we can give a quick toast or log.
                             console.log("Navigating away with unsaved changes. Auto-save triggered.");
@@ -606,6 +637,7 @@ export const MindMapBoard = () => {
             {/* --- Sidebar UI Controls --- */}
             <div className="absolute left-8 top-1/2 -translate-y-1/2 z-50 flex flex-row items-center gap-4 no-export">
                 {/* Advanced Toolbar */}
+                {isAdmin && (
                 <div className="flex flex-col items-center gap-2 p-2 bg-stone-800/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
                     {/* Mode Switchers */}
                     <div className="flex flex-col bg-stone-900/50 rounded-xl p-0.5 border border-white/5">
@@ -684,10 +716,11 @@ export const MindMapBoard = () => {
                         <Trash2 size={18} strokeWidth={1.5} />
                     </button>
                 </div>
+                )}
 
                 {/* --- Style Toolbar (Conditional) --- */}
                 <AnimatePresence mode="wait">
-                    {selectedIds.length > 0 && !nodes.find(n => n.id === selectedIds[0] && n.type === 'roughGroup') && (
+                    {isAdmin && selectedIds.length > 0 && !nodes.find(n => n.id === selectedIds[0] && n.type === 'roughGroup') && (
                         <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -735,6 +768,7 @@ export const MindMapBoard = () => {
 
             <div className="absolute top-8 right-8 z-50 flex items-center gap-6 no-export">
                 {/* Layout Mode Toggles (Top Right) */}
+                {isAdmin && (
                 <div className="flex bg-white/80 backdrop-blur-md rounded-2xl p-1 border border-stone-200/60 shadow-sm items-center gap-1">
                     <button
                         onClick={() => {
@@ -767,8 +801,10 @@ export const MindMapBoard = () => {
                         <Route size={18} strokeWidth={1.5} />
                     </button>
                 </div>
+                )}
 
                 <div className="flex items-center gap-3">
+                    {isAdmin && (
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
@@ -780,8 +816,9 @@ export const MindMapBoard = () => {
                             Save (Ctrl+S)
                         </span>
                     </button>
+                    )}
 
-                    <div className="w-px h-6 bg-stone-300/50" />
+                    {isAdmin && <div className="w-px h-6 bg-stone-300/50" />}
 
                     <button
                         onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
@@ -828,11 +865,11 @@ export const MindMapBoard = () => {
             {/* --- React Flow Canvas --- */}
             <div className="w-full h-full z-10 cursor-crosshair">
                 <ReactFlow
-                    nodes={nodes}
+                    nodes={displayNodes}
                     edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
+                    onNodesChange={isAdmin ? onNodesChange : undefined}
+                    onEdgesChange={isAdmin ? onEdgesChange : undefined}
+                    onConnect={isAdmin ? onConnect : undefined}
                     onInit={setReactFlowInstance}
                     onSelectionChange={onSelectionChange}
                     nodeTypes={nodeTypes}
@@ -841,8 +878,10 @@ export const MindMapBoard = () => {
                     minZoom={0.2}
                     maxZoom={2}
                     deleteKeyCode={null}
-                    nodesDraggable={!autoLayoutMode}
-                    selectionOnDrag={interactionMode === 'select'}
+                    nodesDraggable={isAdmin && !autoLayoutMode}
+                    nodesConnectable={isAdmin}
+                    elementsSelectable={isAdmin}
+                    selectionOnDrag={isAdmin && interactionMode === 'select'}
                     panOnDrag={interactionMode === 'pan'}
                     selectionMode={interactionMode === 'select' ? /** SelectionMode.Full */ undefined : undefined}
                 >

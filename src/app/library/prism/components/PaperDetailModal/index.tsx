@@ -22,6 +22,7 @@ export interface PaperDetailModalProps {
     hasNext?: boolean;
     onPrev?: () => void;
     onNext?: () => void;
+    isAdmin: boolean;
 }
 
 export default function PaperDetailModal({
@@ -33,7 +34,8 @@ export default function PaperDetailModal({
     hasPrev,
     hasNext,
     onPrev,
-    onNext
+    onNext,
+    isAdmin
 }: PaperDetailModalProps) {
     const [leftPanel, setLeftPanel] = useState<'info' | 'toc'>('info');
     const [isEditing, setIsEditing] = useState(false);
@@ -79,6 +81,10 @@ export default function PaperDetailModal({
 
     // DB Update Handler
     const handleUpdateField = async (field: keyof PaperDetail, value: any) => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改认知棱镜。');
+            return;
+        }
         if (!paper) return;
         try {
             if (field === 'figures') {

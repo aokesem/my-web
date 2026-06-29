@@ -672,6 +672,7 @@ export default function ProfilePage() {
                         setActiveModule('protocol');
                     }}
                     requestOpenInfoHub={openHubFromUrl}
+                    isAdmin={isAdmin}
                 />
             </div>
             {activeModule !== 'idle' && (

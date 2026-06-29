@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 import {
     InfoItem,
     InfoBookmark,
@@ -25,7 +26,8 @@ export function useInfoSourceModals(
     sidebarSelection: InfoSidebarSelection,
     setItems: React.Dispatch<React.SetStateAction<InfoItem[]>>,
     setBookmarks: React.Dispatch<React.SetStateAction<InfoBookmark[]>>,
-    mockItems: InfoItem[]
+    mockItems: InfoItem[],
+    isAdmin: boolean
 ) {
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -54,6 +56,14 @@ export function useInfoSourceModals(
         effective_date_end: '',
     });
 
+    const requireAdmin = () => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改信息溯源。');
+            return false;
+        }
+        return true;
+    };
+
     const defaultParentItemId = (): string => {
         if (typeof sidebarSelection === 'number') {
             return sidebarSelection.toString();
@@ -62,6 +72,7 @@ export function useInfoSourceModals(
     };
 
     const handleCreate = () => {
+        if (!requireAdmin()) return;
         if (viewMode === 'entries') {
             setBookmarkFormMode('create');
             setEditingBookmark(null);
@@ -91,6 +102,7 @@ export function useInfoSourceModals(
     };
 
     const handleEditItem = (item: InfoItem) => {
+        if (!requireAdmin()) return;
         setFormMode('edit');
         setEditingItem(item);
         setFormData({
@@ -104,6 +116,7 @@ export function useInfoSourceModals(
     };
 
     const handleEditBookmark = (bookmark: InfoBookmark) => {
+        if (!requireAdmin()) return;
         setBookmarkFormMode('edit');
         setEditingBookmark(bookmark);
         setBookmarkFormData({
@@ -123,6 +136,7 @@ export function useInfoSourceModals(
     };
 
     const handleSaveBookmark = async () => {
+        if (!requireAdmin()) return;
         if (!bookmarkFormData.title.trim()) return alert('请填写标题');
         const dates = parseEffectiveDates(
             bookmarkFormData.effective_date_start,
@@ -177,6 +191,7 @@ export function useInfoSourceModals(
     };
 
     const handleSave = async () => {
+        if (!requireAdmin()) return;
         if (!formData.name.trim()) return alert('请填写标题');
         setIsSaving(true);
 

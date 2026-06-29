@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 interface LanguageSidebarProps {
+    isAdmin: boolean;
     languages: CodebaseLanguage[];
     selectedLanguageId: string | null;
     onSelectLanguage: (id: string) => void;
@@ -16,12 +17,13 @@ interface LanguageSidebarProps {
     onDataChange: () => void;
 }
 
-export function LanguageSidebar({ languages, selectedLanguageId, onSelectLanguage, isLoading, onDataChange }: LanguageSidebarProps) {
+export function LanguageSidebar({ languages, selectedLanguageId, onSelectLanguage, isLoading, onDataChange, isAdmin }: LanguageSidebarProps) {
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [editName, setEditName] = useState("");
 
     const handleCreate = async () => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         if (!editName.trim()) return;
         const { error } = await supabase.from('prism_codebase_languages').insert([{
             name: editName,
@@ -36,6 +38,7 @@ export function LanguageSidebar({ languages, selectedLanguageId, onSelectLanguag
     };
 
     const handleUpdate = async (id: string) => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         if (!editName.trim()) return;
         const { error } = await supabase.from('prism_codebase_languages').update({ name: editName }).eq('id', id);
         if (error) toast.error("更新失败");
@@ -46,6 +49,7 @@ export function LanguageSidebar({ languages, selectedLanguageId, onSelectLanguag
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
+        if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
         e.stopPropagation();
         if (!window.confirm("确定删除该语言及其所有内容吗？")) return;
         const { error } = await supabase.from('prism_codebase_languages').delete().eq('id', id);
@@ -57,15 +61,15 @@ export function LanguageSidebar({ languages, selectedLanguageId, onSelectLanguag
         <div className="w-[18%] min-w-[200px] h-full bg-stone-100/80 text-stone-700 flex flex-col border-r border-stone-200/60 shrink-0 pt-24 pb-4 px-4 z-10 transition-all">
             <div className="flex items-center justify-between mb-6 px-2">
                 <span className="text-xs font-mono font-bold tracking-[0.2em] uppercase text-zinc-500">Libraries</span>
-                <Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-stone-700" onClick={() => {setIsCreating(true); setEditName("");}}>
+                {isAdmin && (<Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-stone-700" onClick={() => {setIsCreating(true); setEditName("");}}>
                     <Plus size={14} />
-                </Button>
+                </Button>)}
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
                 {isLoading && <div className="flex justify-center p-4"><Loader2 className="animate-spin w-4 h-4 text-zinc-500" /></div>}
                 
-                {isCreating && (
+                {isAdmin && isCreating && (
                     <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-stone-200">
                         <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Name..." className="h-7 text-xs bg-transparent border-0 px-1 text-stone-800 focus-visible:ring-0" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} />
                         <Button size="icon" variant="ghost" className="h-5 w-5 text-stone-400 hover:text-stone-700" onClick={handleCreate}><Save size={12} /></Button>
@@ -87,8 +91,8 @@ export function LanguageSidebar({ languages, selectedLanguageId, onSelectLanguag
                                     <span className="text-sm truncate">{lang.name}</span>
                                 </div>
                                 <div className="opacity-0 group-hover:opacity-100 flex items-center transition-opacity shrink-0">
-                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-stone-700" onClick={(e) => {e.stopPropagation(); setIsEditing(lang.id); setEditName(lang.name);}}><Edit2 size={12}/></Button>
-                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-red-500" onClick={(e) => handleDelete(lang.id, e)}><Trash2 size={12}/></Button>
+                                    {isAdmin && (<><Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-stone-700" onClick={(e) => {e.stopPropagation(); setIsEditing(lang.id); setEditName(lang.name);}}><Edit2 size={12}/></Button>
+                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-stone-400 hover:text-red-500" onClick={(e) => handleDelete(lang.id, e)}><Trash2 size={12}/></Button></>)}
                                 </div>
                             </>
                         )}

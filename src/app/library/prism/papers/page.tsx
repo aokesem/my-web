@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
@@ -14,6 +14,7 @@ import {
     Search,
 } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 import PaperDetailModal from '../components/PaperDetailModal';
 import ProjectView from '../components/ProjectView';
 import DirectionView from '../components/DirectionView';
@@ -177,6 +178,13 @@ function PaperCard({ paper, index, onClick }: { paper: Paper; index: number; onC
 // ============================================================
 
 export default function LibraryPapersPage() {
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAdmin(!!session);
+        });
+    }, []);
     // API Data Fetching
     const { papers: allPapers, isLoading: papersLoading, mutate } = usePrismPapers();
     const { projects: allProjects, isLoading: projectsLoading, mutate: mutateProjects } = usePrismProjects();
@@ -508,6 +516,7 @@ export default function LibraryPapersPage() {
                     allPapers={allPapers}
                     onOpenPaper={(id) => setSelectedPaperId(id)}
                     onUpdateProjects={async () => { await mutateProjects(); }}
+                    isAdmin={isAdmin}
                 />
             )}
 
@@ -518,7 +527,7 @@ export default function LibraryPapersPage() {
             )}
 
                 {!isLoading && activeTab === 'data' && (
-                <DataView papers={allPapers} />
+                <DataView papers={allPapers} isAdmin={isAdmin} />
             )}
 
             </div>
@@ -543,6 +552,7 @@ export default function LibraryPapersPage() {
                 onNext={handleNext}
                 hasPrev={selectedIndex > 0}
                 hasNext={selectedIndex !== -1 && selectedIndex < sortedPapers.length - 1}
+                isAdmin={isAdmin}
             />
         </div>
     );

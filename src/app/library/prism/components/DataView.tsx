@@ -24,9 +24,10 @@ type DictKind = 'datasets' | 'metrics';
 
 interface DataViewProps {
     papers: PaperDetail[];
+    isAdmin: boolean;
 }
 
-export default function DataView({ papers }: DataViewProps) {
+export default function DataView({ papers, isAdmin }: DataViewProps) {
     const { bundle, isLoading, mutate } = usePrismPaperData();
     const [viewMode, setViewMode] = useState<ViewMode>('paper');
     const [paperSearch, setPaperSearch] = useState('');
@@ -42,6 +43,14 @@ export default function DataView({ papers }: DataViewProps) {
     const [newMetricName, setNewMetricName] = useState('');
     const [onlyWithData, setOnlyWithData] = useState(true);
     const [newDictName, setNewDictName] = useState('');
+
+    const requireAdmin = useCallback(() => {
+        if (!isAdmin) {
+            toast.warning('只有本人才能修改认知棱镜。');
+            return false;
+        }
+        return true;
+    }, [isAdmin]);
 
     const filteredPapers = useMemo(() => {
         const q = paperSearch.trim().toLowerCase();
@@ -94,6 +103,7 @@ export default function DataView({ papers }: DataViewProps) {
     }, [selectedPaperId, bundle.notesByPaper]);
 
     const handleSaveNotes = async () => {
+        if (!requireAdmin()) return;
         if (!selectedPaperId) return;
         setSavingNotes(true);
         try {
@@ -108,6 +118,7 @@ export default function DataView({ papers }: DataViewProps) {
     };
 
     const handleToggleDataset = async (datasetId: string) => {
+        if (!requireAdmin()) return;
         if (!selectedPaperId) return;
         const linked = paperLinks.datasetIds.includes(datasetId);
         try {
@@ -119,6 +130,7 @@ export default function DataView({ papers }: DataViewProps) {
     };
 
     const handleToggleMetric = async (metricId: string) => {
+        if (!requireAdmin()) return;
         if (!selectedPaperId) return;
         const linked = paperLinks.metricIds.includes(metricId);
         try {
@@ -130,6 +142,7 @@ export default function DataView({ papers }: DataViewProps) {
     };
 
     const handleCreateAndLinkDataset = async () => {
+        if (!requireAdmin()) return;
         if (!selectedPaperId || !newDatasetName.trim()) return;
         try {
             const created = await createDataset(newDatasetName.trim());
@@ -143,6 +156,7 @@ export default function DataView({ papers }: DataViewProps) {
     };
 
     const handleCreateAndLinkMetric = async () => {
+        if (!requireAdmin()) return;
         if (!selectedPaperId || !newMetricName.trim()) return;
         try {
             const created = await createMetric(newMetricName.trim());
@@ -179,6 +193,7 @@ export default function DataView({ papers }: DataViewProps) {
     }, [selectedDict, dictKind, papers, bundle.linksByPaper]);
 
     const handleCreateDict = async () => {
+        if (!requireAdmin()) return;
         const name = newDictName.trim();
         if (!name) return;
         try {
@@ -194,6 +209,7 @@ export default function DataView({ papers }: DataViewProps) {
     };
 
     const handleSaveDict = async (payload: { name: string; format_note: string }) => {
+        if (!requireAdmin()) return;
         if (!selectedDict) return;
         try {
             if (dictKind === 'datasets') {
@@ -216,6 +232,7 @@ export default function DataView({ papers }: DataViewProps) {
     }, []);
 
     const handleDeleteDict = async () => {
+        if (!requireAdmin()) return;
         if (!selectedDict) return;
         const usage =
             dictKind === 'datasets'

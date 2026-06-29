@@ -39,6 +39,7 @@ interface InfoHubModalProps {
     onClose: () => void;
     onOpenCalendar?: () => void;
     onOpenProtocol?: () => void;
+    isAdmin: boolean;
 }
 
 type CollapseKey = "reminders" | "tasks" | "longTerm";
@@ -326,6 +327,7 @@ export default function InfoHubModal({
     onClose,
     onOpenCalendar,
     onOpenProtocol,
+    isAdmin,
 }: InfoHubModalProps) {
     const [mounted, setMounted] = useState(false);
     const [draftTitle, setDraftTitle] = useState("");
@@ -350,6 +352,14 @@ export default function InfoHubModal({
 
     const hub = useInfoHubData(isOpen);
 
+    const requireAdmin = () => {
+        if (!isAdmin) {
+            toast.warning("只有本人才能修改信息清单。");
+            return false;
+        }
+        return true;
+    };
+
     useEffect(() => setMounted(true), []);
 
     useEffect(() => {
@@ -369,6 +379,7 @@ export default function InfoHubModal({
     }, [isOpen]);
 
     const handleAdd = async () => {
+        if (!requireAdmin()) return;
         const title = draftTitle.trim();
         if (!title) return;
         setIsSubmitting(true);
@@ -385,6 +396,7 @@ export default function InfoHubModal({
     };
 
     const startArchive = (capture: HubCapture) => {
+        if (!requireAdmin()) return;
         setArchivingCaptureId(capture.id);
         setArchiveParentItemId("");
     };
@@ -395,6 +407,7 @@ export default function InfoHubModal({
     };
 
     const confirmArchive = async (capture: HubCapture) => {
+        if (!requireAdmin()) return;
         const folderLabel =
             archiveParentItemId === ""
                 ? "未归入收藏夹"
@@ -425,6 +438,7 @@ export default function InfoHubModal({
     };
 
     const handleDelete = async (id: number, title: string) => {
+        if (!requireAdmin()) return;
         if (!confirm(`删除「${title}」？此操作不可撤销。`)) return;
         try {
             await hub.deleteCapture(id);
@@ -434,6 +448,7 @@ export default function InfoHubModal({
     };
 
     const handleUnqueue = async (bookmark: HubQueuedBookmark) => {
+        if (!requireAdmin()) return;
         if (!confirm(`将「${bookmark.title}」移出待看？`)) return;
         try {
             await hub.unqueueBookmark(bookmark.id);
@@ -443,6 +458,7 @@ export default function InfoHubModal({
     };
 
     const handleClearFolderReminder = async (folder: HubFolderReminder) => {
+        if (!requireAdmin()) return;
         if (
             !confirm(
                 `清除「${folder.name}」的回顾提醒？\n清除后将从今日重新计算周期。`
@@ -459,6 +475,7 @@ export default function InfoHubModal({
     };
 
     const handleIgnoreFriendReminder = async (friendId: number) => {
+        if (!requireAdmin()) return;
         const rawValue = snoozeDayDrafts[friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`;
         const snoozeDays = Number.parseInt(rawValue, 10);
         if (!Number.isFinite(snoozeDays) || snoozeDays < 1) {
@@ -480,6 +497,7 @@ export default function InfoHubModal({
     };
 
     const startEditingCapture = (capture: HubCapture) => {
+        if (!requireAdmin()) return;
         cancelArchive();
         setEditingCaptureId(capture.id);
         setEditTitle(capture.title);
@@ -491,6 +509,7 @@ export default function InfoHubModal({
     };
 
     const handleSaveCaptureEdit = async () => {
+        if (!requireAdmin()) return;
         const title = editTitle.trim();
         if (!title || editingCaptureId == null) return;
         setIsSubmitting(true);

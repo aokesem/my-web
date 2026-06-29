@@ -44,6 +44,7 @@ interface InsightsColumnProps {
     handleCreateItem: () => Promise<void>;
     handleBoldShortcut: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onOpenPaper: (id: string) => void;
+    isAdmin: boolean;
 }
 
 export function InsightsColumn({
@@ -82,7 +83,8 @@ export function InsightsColumn({
     setNewItemDirection,
     handleCreateItem,
     handleBoldShortcut,
-    onOpenPaper
+    onOpenPaper,
+    isAdmin
 }: InsightsColumnProps) {
     const hasSurveyLink = surveyItemOptions.length > 0;
     const [editLinkTab, setEditLinkTab] = useState<'papers' | 'surveys'>('papers');
@@ -93,7 +95,7 @@ export function InsightsColumn({
             icon={Lightbulb}
             color="amber"
             count={filteredInsights.reduce((acc, c) => acc + c.items.length, 0)}
-            action={
+            action={isAdmin ? (
                 <button
                     onClick={() => {
                         const cat = filteredInsights[0]?.category || '默认';
@@ -108,9 +110,9 @@ export function InsightsColumn({
                 >
                     <Plus size={14} />
                 </button>
-            }
+            ) : null}
         >
-            {creatingIn && (
+            {isAdmin && creatingIn && (
                 <NewItemForm
                     category={creatingIn.category}
                     categories={filteredInsights.map(g => g.category)}

@@ -18,6 +18,7 @@ interface PapersColumnProps {
     isSaving: boolean;
     papersGrouped: { category: string; papers: PaperDetail[] }[];
     onOpenPaper: (id: string) => void;
+    isAdmin: boolean;
 }
 
 export function PapersColumn({
@@ -33,7 +34,8 @@ export function PapersColumn({
     handleAddPaperToProject,
     isSaving,
     papersGrouped,
-    onOpenPaper
+    onOpenPaper,
+    isAdmin
 }: PapersColumnProps) {
     return (
         <BoardColumn
@@ -51,17 +53,19 @@ export function PapersColumn({
                         <option value="direction">按方向</option>
                         <option value="type">按性质</option>
                     </select>
-                    <button
-                        onClick={() => { setIsAddingPaper(!isAddingPaper); setAddPaperDirection(null); }}
-                        className={`p-1 rounded-md transition-colors ${isAddingPaper ? 'bg-cyan-100 text-cyan-600' : 'text-stone-400 hover:text-cyan-600 hover:bg-cyan-50'}`}
-                    >
-                        <Plus size={14} />
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => { setIsAddingPaper(!isAddingPaper); setAddPaperDirection(null); }}
+                            className={`p-1 rounded-md transition-colors ${isAddingPaper ? 'bg-cyan-100 text-cyan-600' : 'text-stone-400 hover:text-cyan-600 hover:bg-cyan-50'}`}
+                        >
+                            <Plus size={14} />
+                        </button>
+                    )}
                 </div>
             }
         >
             {/* Paper Add Selector */}
-            {isAddingPaper && (
+            {isAdmin && isAddingPaper && (
                 <div className="p-3 rounded-xl border border-cyan-200 bg-cyan-50/50 space-y-2 mb-2">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-mono font-bold text-cyan-600 uppercase">添加论文到项目</span>
