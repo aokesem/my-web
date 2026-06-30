@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, BookText, Download, Upload, FileJson } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, BookText, Download, Upload, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { exportCourseToZip, importChapterFromJson } from "@/lib/prismIO";
+import { exportAllCoursesToZip, exportCourseToZip, importChapterFromJson } from "@/lib/prismIO";
 import JSZip from "jszip";
 import {
     Dialog,
@@ -83,6 +83,57 @@ export default function CoursesTab() {
         fetchData();
     }, []);
 
+
+    const createImportedCourse = async (manifest: any, sortOrder: number) => {
+        const dateKey = new Date().toISOString().slice(0, 10);
+        const { data: newCourse, error } = await supabase
+            .from("prism_courses")
+            .insert([{
+                name: `${manifest.name || "Imported Course"}_Imported_${dateKey}`,
+                name_en: manifest.name_en || null,
+                description: manifest.description || null,
+                icon: manifest.icon || null,
+                color: manifest.color || "violet",
+                sort_order: sortOrder
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return newCourse;
+    };
+
+    const importCourseFromZip = async (zip: JSZip, basePath: string, sortOrder: number) => {
+        const manifestFile = zip.file(`${basePath}manifest.json`);
+        if (!manifestFile) throw new Error("无效的课程备份包：缺少 manifest.json");
+
+        const manifest = JSON.parse(await manifestFile.async("string"));
+        const newCourse = await createImportedCourse(manifest, sortOrder);
+        const chapterPrefix = `${basePath}chapters/`;
+        const chapterFiles = Object.keys(zip.files)
+            .filter(name => name.startsWith(chapterPrefix) && name.endsWith(".json"))
+            .sort();
+
+        for (const fileName of chapterFiles) {
+            const content = await zip.file(fileName)?.async("string");
+            if (!content) continue;
+            await importChapterFromJson(newCourse.id, JSON.parse(content));
+        }
+
+        return { courseName: manifest.name || newCourse.name, chapterCount: chapterFiles.length };
+    };
+
+    const pickZipFile = (onFile: (file: File) => Promise<void>) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".zip";
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (file) await onFile(file);
+        };
+        input.click();
+    };
+
     const handleExport = async (course: CourseItem) => {
         try {
             toast.info(`正在准备导出课程「${course.name}」...`);
@@ -93,97 +144,69 @@ export default function CoursesTab() {
         }
     };
 
-    const handleImportChapter = async (courseId: string) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".json";
-        input.onchange = async (e: any) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-
-            setImporting(true);
-            try {
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const json = JSON.parse(event.target?.result as string);
-                        const finalTitle = await importChapterFromJson(courseId, json);
-                        toast.success(`章节「${finalTitle}」已导入并插入课程`);
-                    } catch (err: any) {
-                        toast.error("解析或导入失败: " + err.message);
-                    } finally {
-                        setImporting(false);
-                    }
-                };
-                reader.readAsText(file);
-            } catch (e: any) {
-                toast.error("读取文件失败");
-                setImporting(false);
-            }
-        };
-        input.click();
+    const handleExportAll = async () => {
+        if (courses.length === 0) return toast.warning("没有可导出的课程");
+        try {
+            toast.info(`正在准备导出 ${courses.length} 门课程...`);
+            await exportAllCoursesToZip(courses);
+            toast.success("全部课程导出成功");
+        } catch (e: any) {
+            toast.error("导出失败: " + e.message);
+        }
     };
 
-    const handleImportFullCourse = async () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".zip";
-        input.onchange = async (e: any) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
+    const handleImportSingleCourse = async () => {
+        pickZipFile(async (file) => {
+            setImporting(true);
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const result = await importCourseFromZip(zip, "", courses.length);
+                toast.success(`课程「${result.courseName}」已导入，包含 ${result.chapterCount} 个章节`);
+                fetchData();
+            } catch (err: any) {
+                toast.error("单课导入失败: " + err.message);
+            } finally {
+                setImporting(false);
+            }
+        });
+    };
 
+    const handleImportAllCourses = async () => {
+        pickZipFile(async (file) => {
             setImporting(true);
             try {
                 const zip = await JSZip.loadAsync(file);
                 const manifestFile = zip.file("manifest.json");
-                if (!manifestFile) throw new Error("无效的备份包：缺少 manifest.json");
+                if (!manifestFile) throw new Error("无效的全体课程备份包：缺少 manifest.json");
 
                 const manifest = JSON.parse(await manifestFile.async("string"));
-                
-                // 1. 创建新课程 (增量插入)
-                const { data: newCourse, error: cError } = await supabase
-                    .from("prism_courses")
-                    .insert([{
-                        name: `${manifest.name}_Imported_${new Date().toLocaleDateString()}`,
-                        name_en: manifest.name_en,
-                        description: manifest.description,
-                        icon: manifest.icon,
-                        color: manifest.color,
-                        sort_order: courses.length
-                    }])
-                    .select()
-                    .single();
-                
-                if (cError) throw cError;
-
-                // 2. 批量导入章节
-                const chaptersFolder = zip.folder("chapters");
-                if (chaptersFolder) {
-                    const chapterFiles: string[] = [];
-                    chaptersFolder.forEach((relativePath) => {
-                        if (relativePath.endsWith(".json")) chapterFiles.push(relativePath);
-                    });
-
-                    toast.info(`正在导入 ${chapterFiles.length} 个章节...`);
-                    
-                    for (const fileName of chapterFiles.sort()) {
-                        const content = await chaptersFolder.file(fileName)?.async("string");
-                        if (content) {
-                            const chData = JSON.parse(content);
-                            await importChapterFromJson(newCourse.id, chData);
-                        }
-                    }
+                if (manifest.type !== "prism_courses_backup") {
+                    throw new Error("这不是全体课程备份包；如需导入单课，请使用“导入单课”");
                 }
 
-                toast.success(`课程「${manifest.name}」完整导入成功`);
+                const courseManifestPaths = Object.keys(zip.files)
+                    .filter(name => /^courses\/[^/]+\/manifest\.json$/.test(name))
+                    .sort();
+
+                if (courseManifestPaths.length === 0) throw new Error("备份包中没有课程数据");
+
+                let importedCount = 0;
+                let chapterCount = 0;
+                for (const manifestPath of courseManifestPaths) {
+                    const basePath = manifestPath.replace(/manifest\.json$/, "");
+                    const result = await importCourseFromZip(zip, basePath, courses.length + importedCount);
+                    importedCount += 1;
+                    chapterCount += result.chapterCount;
+                }
+
+                toast.success(`已导入 ${importedCount} 门课程，共 ${chapterCount} 个章节`);
                 fetchData();
             } catch (err: any) {
-                toast.error("全量导入失败: " + err.message);
+                toast.error("全体导入失败: " + err.message);
             } finally {
                 setImporting(false);
             }
-        };
-        input.click();
+        });
     };
 
     const handleOpen = (item?: CourseItem) => {
@@ -253,14 +276,47 @@ export default function CoursesTab() {
                 <p className="text-sm text-zinc-400">
                     共 {courses.length} 门课程。课程内的章节与公式在前台页面中管理。
                 </p>
-                <Button
-                    size="sm"
-                    className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
-                    onClick={() => handleOpen()}
-                >
-                    <Plus size={14} />
-                    新建课程
-                </Button>
+                <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                        onClick={handleExportAll}
+                        disabled={importing || courses.length === 0}
+                    >
+                        <Archive size={14} />
+                        导出全部
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                        onClick={handleImportSingleCourse}
+                        disabled={importing}
+                    >
+                        <Upload size={14} />
+                        导入单课
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                        onClick={handleImportAllCourses}
+                        disabled={importing}
+                    >
+                        {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                        导入全部
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
+                        onClick={() => handleOpen()}
+                        disabled={importing}
+                    >
+                        <Plus size={14} />
+                        新建课程
+                    </Button>
+                </div>
             </div>
 
             {/* Course List */}
@@ -279,7 +335,7 @@ export default function CoursesTab() {
                                 <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">英文缩写</th>
                                 <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">描述</th>
                                 <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider w-20">颜色</th>
-                                <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider w-20 text-right">操作</th>
+                                <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider w-28 text-right">操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -308,10 +364,13 @@ export default function CoursesTab() {
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-white" onClick={() => handleOpen(course)}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-emerald-300" title="导出课程" onClick={() => handleExport(course)} disabled={importing}>
+                                                    <Download size={12} />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-white" title="编辑课程" onClick={() => handleOpen(course)} disabled={importing}>
                                                     <Pencil size={12} />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-red-400" onClick={() => handleDelete(course.id, course.name)}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-red-400" title="删除课程" onClick={() => handleDelete(course.id, course.name)} disabled={importing}>
                                                     <Trash2 size={12} />
                                                 </Button>
                                             </div>

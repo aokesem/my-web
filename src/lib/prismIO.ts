@@ -53,10 +53,21 @@ export function tiptapToMarkdown(json: any): string {
 /**
  * 导出课程为 ZIP
  */
-export async function exportCourseToZip(course: any) {
-    const zip = new JSZip();
 
-    // 1. 获取所有章节
+type CourseExportRecord = {
+    id: string;
+    name: string;
+    name_en?: string | null;
+    description?: string | null;
+    icon?: string | null;
+    color?: string | null;
+};
+
+function safeArchiveName(value: string | undefined | null, fallback = 'untitled') {
+    return (value || fallback).replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, '_');
+}
+
+async function writeCourseBackup(folder: JSZip, course: CourseExportRecord) {
     const { data: chapters, error: chError } = await supabase
         .from('prism_course_chapters')
         .select('*')
@@ -65,7 +76,6 @@ export async function exportCourseToZip(course: any) {
 
     if (chError) throw chError;
 
-    // 2. 获取所有公式
     const { data: formulas, error: fError } = await supabase
         .from('prism_course_formulas')
         .select('*')
@@ -74,7 +84,6 @@ export async function exportCourseToZip(course: any) {
 
     if (fError) throw fError;
 
-    // 3. 生成 manifest.json (元数据)
     const manifest = {
         name: course.name,
         name_en: course.name_en,
@@ -82,48 +91,89 @@ export async function exportCourseToZip(course: any) {
         icon: course.icon,
         color: course.color,
         export_date: new Date().toISOString(),
-        version: "1.0"
+        version: '1.0'
     };
-    zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+    folder.file('manifest.json', JSON.stringify(manifest, null, 2));
 
-    // 4. 打包章节
-    const chaptersFolder = zip.folder("chapters");
-    if (chaptersFolder) {
-        for (const ch of (chapters || [])) {
-            let mdPreview = '';
-            try {
-                if (ch.notes) mdPreview = tiptapToMarkdown(JSON.parse(ch.notes));
-            } catch (e) {
-                console.warn(`Failed to parse notes for chapter: ${ch.title}`);
-            }
+    const chaptersFolder = folder.folder('chapters');
+    if (!chaptersFolder) return;
 
-            const chapterData = {
-                title: ch.title,
-                notes_json: ch.notes,
-                notes_md: mdPreview,
-                formulas: (formulas || [])
-                    .filter(f => f.chapter_id === ch.id)
-                    .map(f => ({
-                        name: f.name,
-                        latex: f.latex,
-                        description: f.description,
-                        sort_order: f.sort_order
-                    })),
-                sort_order: ch.sort_order
-            };
-
-            // 文件名处理：移除非法字符
-            const safeTitle = ch.title.replace(/[\\/:*?"<>|]/g, '_');
-            chaptersFolder.file(`${ch.sort_order.toString().padStart(2, '0')}_${safeTitle}.json`, JSON.stringify(chapterData, null, 2));
+    for (const ch of (chapters || [])) {
+        let mdPreview = '';
+        try {
+            if (ch.notes) mdPreview = tiptapToMarkdown(JSON.parse(ch.notes));
+        } catch (e) {
+            console.warn(`Failed to parse notes for chapter: ${ch.title}`);
         }
+
+        const chapterData = {
+            title: ch.title,
+            notes_json: ch.notes,
+            notes_md: mdPreview,
+            formulas: (formulas || [])
+                .filter(f => f.chapter_id === ch.id)
+                .map(f => ({
+                    name: f.name,
+                    latex: f.latex,
+                    description: f.description,
+                    sort_order: f.sort_order
+                })),
+            sort_order: ch.sort_order
+        };
+
+        chaptersFolder.file(
+            `${ch.sort_order.toString().padStart(2, '0')}_${safeArchiveName(ch.title)}.json`,
+            JSON.stringify(chapterData, null, 2)
+        );
+    }
+}
+
+/**
+ * 导出单门课程为 ZIP。
+ */
+export async function exportCourseToZip(course: CourseExportRecord) {
+    const zip = new JSZip();
+    await writeCourseBackup(zip, course);
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Course_${safeArchiveName(course.name)}_Backup.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * 导出全部课程为一个总 ZIP。每门课程仍保留单课备份结构，方便拆分导入。
+ */
+export async function exportAllCoursesToZip(courses: CourseExportRecord[]) {
+    const zip = new JSZip();
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 16).replace('T', '_');
+
+    zip.file('manifest.json', JSON.stringify({
+        type: 'prism_courses_backup',
+        version: '1.0',
+        export_date: now.toISOString(),
+        course_count: courses.length
+    }, null, 2));
+
+    const coursesFolder = zip.folder('courses');
+    if (!coursesFolder) return;
+
+    for (const [index, course] of courses.entries()) {
+        const courseFolder = coursesFolder.folder(`${String(index + 1).padStart(2, '0')}_${safeArchiveName(course.name)}`);
+        if (courseFolder) await writeCourseBackup(courseFolder, course);
     }
 
-    // 5. 触发下载
-    const content = await zip.generateAsync({ type: "blob" });
+    const content = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(content);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
-    link.download = `Course_${course.name.replace(/\s+/g, '_')}_Backup.zip`;
+    link.download = `Prism_Courses_Full_Backup_${timestamp}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
