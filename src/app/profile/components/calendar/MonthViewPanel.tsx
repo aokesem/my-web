@@ -118,27 +118,52 @@ export default function MonthViewPanel({
     };
 
     const routineVisual = useMemo(() => {
-        const AXIS_START = 7 * 60 + 30;   // 07:30
-        const AXIS_END = 25 * 60;         // 次日 01:00
+        const AXIS_START = 6 * 60;       // 06:00
+        const AXIS_END = 26 * 60;        // 次日 02:00
+        const GREEN_END = 7 * 60 + 30;   // 07:30
+        const RED_START = 24 * 60;       // 24:00
 
         const wake = parseMinutes(wakeTimeInput);
         const sleep = parseMinutes(sleepTimeInput);
         if (wake === null || sleep === null) {
-            return { ready: false, leftPct: 0, widthPct: 0, durationText: '' };
+            return { ready: false, segments: [], durationText: '' };
         }
 
-        const sleepMapped = sleep < AXIS_START ? sleep + 24 * 60 : sleep;
+        const sleepMapped = sleep < wake ? sleep + 24 * 60 : sleep;
         const durationMin = sleepMapped - wake;
         const safeDurationMin = durationMin > 0 ? durationMin : 0;
         const durationText = `${Math.floor(safeDurationMin / 60)}h${String(safeDurationMin % 60).padStart(2, '0')}m`;
 
-        const clampedStart = Math.max(AXIS_START, Math.min(wake, AXIS_END));
-        const clampedEnd = Math.max(AXIS_START, Math.min(sleepMapped, AXIS_END));
-        const total = AXIS_END - AXIS_START;
-        const leftPct = ((clampedStart - AXIS_START) / total) * 100;
-        const widthPct = Math.max(0, ((clampedEnd - clampedStart) / total) * 100);
+        const total = AXIS_END - AXIS_START; // 1200 min
+        const toPct = (start: number, end: number) => ({
+            leftPct: ((start - AXIS_START) / total) * 100,
+            widthPct: Math.max(0, ((end - start) / total) * 100),
+        });
 
-        return { ready: true, leftPct, widthPct, durationText };
+        const segments: Array<{ leftPct: number; widthPct: number; color: string }> = [];
+
+        // 绿色段：06:00 – 07:30
+        const greenStart = Math.max(wake, AXIS_START);
+        const greenEnd = Math.min(sleepMapped, GREEN_END);
+        if (greenEnd > greenStart) {
+            segments.push({ ...toPct(greenStart, greenEnd), color: 'bg-emerald-500/70' });
+        }
+
+        // 蓝色段：07:30 – 24:00
+        const blueStart = Math.max(wake, GREEN_END);
+        const blueEnd = Math.min(sleepMapped, RED_START);
+        if (blueEnd > blueStart) {
+            segments.push({ ...toPct(blueStart, blueEnd), color: 'bg-blue-500/80' });
+        }
+
+        // 红色段：24:00 – 02:00
+        const redStart = Math.max(wake, RED_START);
+        const redEnd = Math.min(sleepMapped, AXIS_END);
+        if (redEnd > redStart) {
+            segments.push({ ...toPct(redStart, redEnd), color: 'bg-red-500/70' });
+        }
+
+        return { ready: true, segments, durationText };
     }, [wakeTimeInput, sleepTimeInput]);
 
     // 检查明天是否有单次任务规划
@@ -597,16 +622,23 @@ export default function MonthViewPanel({
                                 </div>
                                 <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-3">
                                     <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase mb-2">
-                                        <span>07:30</span>
-                                        <span>01:00</span>
+                                        <span>06:00</span>
+                                        <span className="text-emerald-400/60">07:30</span>
+                                        <span className="text-slate-400/50">24:00</span>
+                                        <span>02:00</span>
                                     </div>
                                     <div className="relative h-4 rounded-full bg-slate-200/80 overflow-hidden">
-                                        {routineVisual.ready && routineVisual.widthPct > 0 && (
+                                        {routineVisual.ready && routineVisual.segments.map((seg, i) => (
                                             <div
-                                                className="absolute top-0 h-full bg-blue-500/80"
-                                                style={{ left: `${routineVisual.leftPct}%`, width: `${routineVisual.widthPct}%` }}
+                                                key={i}
+                                                className={`absolute top-0 h-full ${seg.color}`}
+                                                style={{ left: `${seg.leftPct}%`, width: `${seg.widthPct}%` }}
                                             />
-                                        )}
+                                        ))}
+                                        {/* 07:30 时间节点标记 */}
+                                        <div className="absolute top-0 bottom-0 w-px bg-emerald-500/40" style={{ left: `${((7.5 * 60 - 6 * 60) / (20 * 60)) * 100}%` }} />
+                                        {/* 24:00 时间节点标记 */}
+                                        <div className="absolute top-0 bottom-0 w-px bg-red-500/40" style={{ left: `${((24 * 60 - 6 * 60) / (20 * 60)) * 100}%` }} />
                                     </div>
                                     <div className="mt-2 text-[11px] text-slate-500">
                                         {hasRoutineRecord ? (

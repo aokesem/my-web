@@ -5,6 +5,15 @@ import { InfoBookmark } from '../types';
 import { formatEffectiveDateRange } from '../lib/formatEffectiveDateRange';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
 
+function extractDomain(url: string): string | null {
+    try {
+        const hostname = new URL(url).hostname;
+        return hostname.replace(/^www\./, '');
+    } catch {
+        return null;
+    }
+}
+
 interface BookmarkCardProps {
     bookmark: InfoBookmark;
     theme: any;
@@ -106,6 +115,11 @@ export function BookmarkCard({
                         className={`inline-flex items-center gap-1.5 text-sm font-bold whitespace-nowrap ${theme.primary} hover:underline underline-offset-2`}
                     >
                         <span>访问原链</span>
+                        {extractDomain(bookmark.url) && (
+                            <span className={`text-xs font-medium opacity-60 ${theme.textMuted}`}>
+                                · {extractDomain(bookmark.url)}
+                            </span>
+                        )}
                         <ExternalLink size={14} />
                     </a>
                 )}
