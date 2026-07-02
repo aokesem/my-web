@@ -210,6 +210,10 @@ function ReminderRow({
     onIgnoreFriendReminder,
     friendSnoozeDays,
     onFriendSnoozeDaysChange,
+    onUpdateFriendLastContact,
+    friendLastContactDate,
+    onFriendLastContactDateChange,
+    isUpdatingLastContact,
 }: {
     reminder: HubReminder;
     onOpenCalendar?: () => void;
@@ -218,6 +222,10 @@ function ReminderRow({
     onIgnoreFriendReminder?: (friendId: number) => void;
     friendSnoozeDays?: string;
     onFriendSnoozeDaysChange?: (value: string) => void;
+    onUpdateFriendLastContact?: (friendId: number) => void;
+    friendLastContactDate?: string;
+    onFriendLastContactDateChange?: (value: string) => void;
+    isUpdatingLastContact?: boolean;
 }) {
     const handleCalendar = () => {
         onClose();
@@ -287,26 +295,60 @@ function ReminderRow({
             className={`flex items-start gap-2 text-sm border rounded-lg px-3 py-2.5 ${reminderStyles(reminder.tone)}`}
         >
             <Icon size={16} className="shrink-0 mt-0.5 opacity-80" />
-            <span className="flex-1 leading-snug">{reminder.message}</span>
+            <span className="flex-1 leading-snug">
+                {reminder.message}
+                {reminder.kind === "friend_contact" && reminder.friendScheduledDate && (
+                    <span className="text-[10px] font-mono text-slate-400 ml-1.5">
+                        预定 {reminder.friendScheduledDate.replace(/-/g, '.')}
+                    </span>
+                )}
+            </span>
             {reminder.kind === "friend_contact" && reminder.friendId && onIgnoreFriendReminder && (
-                <div className="flex shrink-0 items-center gap-1.5">
-                    <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        inputMode="numeric"
-                        aria-label="推迟提醒天数"
-                        value={friendSnoozeDays ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`}
-                        onChange={(event) => onFriendSnoozeDaysChange?.(event.target.value)}
-                        className="h-7 w-14 rounded-md border border-amber-200/70 bg-white/70 px-2 text-right text-[11px] font-mono text-amber-800 outline-none transition-colors focus:border-amber-300 focus:bg-white"
-                    />
-                    <button
-                        type="button"
-                        onClick={() => onIgnoreFriendReminder(reminder.friendId!)}
-                        className="rounded-md border border-amber-200/70 px-2 py-1 text-[11px] font-mono text-amber-700/80 transition-colors hover:bg-amber-100/60 hover:text-amber-800"
-                    >
-                        天后提醒
-                    </button>
+                <div className="flex shrink-0 items-center gap-2">
+                    {/* 更新最后联系日期 */}
+                    {onUpdateFriendLastContact && (
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono text-slate-400">联系日</span>
+                            <input
+                                type="date"
+                                aria-label="更新最后联系日期"
+                                value={friendLastContactDate ?? ''}
+                                onChange={(event) => onFriendLastContactDateChange?.(event.target.value)}
+                                className="h-7 w-[120px] rounded-md border border-slate-200/70 bg-white/70 px-2 text-[11px] font-mono text-slate-700 outline-none transition-colors focus:border-slate-300 focus:bg-white"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => onUpdateFriendLastContact(reminder.friendId!)}
+                                disabled={isUpdatingLastContact || !friendLastContactDate}
+                                className="rounded-md border border-slate-200/70 px-2 py-1 text-[11px] font-mono text-emerald-600/80 transition-colors hover:bg-emerald-50/80 hover:text-emerald-700 disabled:opacity-30"
+                                title="确认更新联系日期"
+                            >
+                                <Check size={13} />
+                            </button>
+                        </div>
+                    )}
+                    {/* 分隔 */}
+                    <div className="h-5 w-px bg-amber-200/60" />
+                    {/* 推迟提醒 */}
+                    <div className="flex items-center gap-1.5">
+                        <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            inputMode="numeric"
+                            aria-label="推迟提醒天数"
+                            value={friendSnoozeDays ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`}
+                            onChange={(event) => onFriendSnoozeDaysChange?.(event.target.value)}
+                            className="h-7 w-14 rounded-md border border-amber-200/70 bg-white/70 px-2 text-right text-[11px] font-mono text-amber-800 outline-none transition-colors focus:border-amber-300 focus:bg-white"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => onIgnoreFriendReminder(reminder.friendId!)}
+                            className="rounded-md border border-amber-200/70 px-2 py-1 text-[11px] font-mono text-amber-700/80 transition-colors hover:bg-amber-100/60 hover:text-amber-800"
+                        >
+                            天后提醒
+                        </button>
+                    </div>
                 </div>
             )}
             {reminder.action && (reminder.action === "calendar" ? onOpenCalendar : onOpenProtocol) && (
@@ -349,6 +391,8 @@ export default function InfoHubModal({
         queuedBookmarks: true,
     });
     const [snoozeDayDrafts, setSnoozeDayDrafts] = useState<Record<number, string>>({});
+    const [lastContactDates, setLastContactDates] = useState<Record<number, string>>({});
+    const [updatingLastContactId, setUpdatingLastContactId] = useState<number | null>(null);
 
     const hub = useInfoHubData(isOpen);
 
@@ -496,6 +540,27 @@ export default function InfoHubModal({
         }
     };
 
+    const handleUpdateFriendLastContact = async (friendId: number) => {
+        if (!requireAdmin()) return;
+        const date = lastContactDates[friendId];
+        if (!date) return;
+
+        try {
+            setUpdatingLastContactId(friendId);
+            await hub.updateFriendLastContact(friendId, date);
+            setLastContactDates((prev: Record<number, string>) => {
+                const next = { ...prev };
+                delete next[friendId];
+                return next;
+            });
+            toast.success("已更新联系日期");
+        } catch {
+            toast.error("操作失败");
+        } finally {
+            setUpdatingLastContactId(null);
+        }
+    };
+
     const startEditingCapture = (capture: HubCapture) => {
         if (!requireAdmin()) return;
         cancelArchive();
@@ -615,6 +680,24 @@ export default function InfoHubModal({
                                                                         [r.friendId!]: value,
                                                                     }))
                                                                 : undefined
+                                                        }
+                                                        onUpdateFriendLastContact={handleUpdateFriendLastContact}
+                                                        friendLastContactDate={
+                                                            r.friendId
+                                                                ? lastContactDates[r.friendId] ?? ''
+                                                                : undefined
+                                                        }
+                                                        onFriendLastContactDateChange={
+                                                            r.friendId
+                                                                ? (value: string) =>
+                                                                    setLastContactDates((prev: Record<number, string>) => ({
+                                                                        ...prev,
+                                                                        [r.friendId!]: value,
+                                                                    }))
+                                                                : undefined
+                                                        }
+                                                        isUpdatingLastContact={
+                                                            r.friendId != null && updatingLastContactId === r.friendId
                                                         }
                                                     />
                                                 ))}

@@ -41,6 +41,7 @@ export interface HubReminder {
     tone?: HubReminderTone;
     kind?: HubReminderKind;
     friendId?: number;
+    friendScheduledDate?: string;
     deadlineTitle?: string;
     deadlineDate?: string;
     deadlineWhen?: string;

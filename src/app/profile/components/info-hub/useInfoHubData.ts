@@ -214,6 +214,7 @@ export function useInfoHubData(isOpen: boolean) {
                                     : `${friend.name} 已经 ${days} 天没有联系`,
                             kind: 'friend_contact' as const,
                             friendId: friend.id as number,
+                            friendScheduledDate: scheduledDate,
                             tone: 'warn' as const,
                         };
                     })
@@ -225,6 +226,7 @@ export function useInfoHubData(isOpen: boolean) {
                             message: string;
                             kind: 'friend_contact';
                             friendId: number;
+                            friendScheduledDate: string;
                             tone: 'warn';
                         } => item !== null
                     );
@@ -392,6 +394,15 @@ export function useInfoHubData(isOpen: boolean) {
         );
     };
 
+    const updateFriendLastContact = async (friendId: number, date: string) => {
+        const { error } = await supabase
+            .from('profile_friends')
+            .update({ last_contact_date: date })
+            .eq('id', friendId);
+        if (error) throw error;
+        await fetchAll();
+    };
+
     return {
         isLoading,
         captures,
@@ -408,5 +419,6 @@ export function useInfoHubData(isOpen: boolean) {
         unqueueBookmark,
         clearFolderReminder,
         dismissFriendReminder,
+        updateFriendLastContact,
     };
 }
