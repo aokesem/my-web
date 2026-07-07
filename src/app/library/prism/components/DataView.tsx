@@ -248,7 +248,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
         }
     };
 
-    const handleSaveDict = async (payload: { name: string; format_note: string; category_id?: string | null }) => {
+    const handleSaveDict = async (payload: { name: string; format_note: string; category_id?: string | null; access_url?: string | null }) => {
         if (!requireAdmin()) return;
         if (!selectedDict) return;
         try {
@@ -712,19 +712,21 @@ function DictEntryEditor({
     kind: DictKind;
     categories: PrismDataCategory[];
     papersForDict: PaperDetail[];
-    onSave: (payload: { name: string; format_note: string; category_id?: string | null }) => Promise<void>;
+    onSave: (payload: { name: string; format_note: string; category_id?: string | null; access_url?: string | null }) => Promise<void>;
     onDelete: () => void;
 }) {
     const [name, setName] = useState(item.name);
+    const [accessUrl, setAccessUrl] = useState('access_url' in item ? item.access_url || '' : '');
     const [formatNote, setFormatNote] = useState(item.format_note || '');
     const [categoryId, setCategoryId] = useState<string>(item.category_id || '');
     const [saving, setSaving] = useState(false);
 
     React.useEffect(() => {
         setName(item.name);
+        setAccessUrl('access_url' in item ? item.access_url || '' : '');
         setFormatNote(item.format_note || '');
         setCategoryId(item.category_id || '');
-    }, [item.id, item.name, item.format_note, item.category_id]);
+    }, [item.id, item.name, item, item.format_note, item.category_id]);
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -733,7 +735,12 @@ function DictEntryEditor({
         }
         setSaving(true);
         try {
-            await onSave({ name, format_note: formatNote, category_id: categoryId || null });
+            await onSave({
+                name,
+                format_note: formatNote,
+                category_id: categoryId || null,
+                ...(kind === 'datasets' ? { access_url: accessUrl } : {}),
+            });
         } finally {
             setSaving(false);
         }
@@ -749,6 +756,29 @@ function DictEntryEditor({
                     className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200"
                 />
             </div>
+            {kind === 'datasets' && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <label className="text-xs font-medium text-stone-500">获取链接</label>
+                        {accessUrl.trim() ? (
+                            <a
+                                href={accessUrl.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-medium text-teal-600 hover:text-teal-700"
+                            >
+                                打开
+                            </a>
+                        ) : null}
+                    </div>
+                    <input
+                        value={accessUrl}
+                        onChange={(e) => setAccessUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200"
+                    />
+                </div>
+            )}
             <div className="space-y-3">
                 <label className="text-xs font-medium text-stone-500">所属分类</label>
                 <select

@@ -135,12 +135,13 @@ export async function togglePaperMetric(paperId: string, metricId: string, linke
     }
 }
 
-export async function createDataset(name: string, formatNote = '', categoryId?: string | null) {
-    const payload: { name: string; format_note: string; category_id?: string | null } = {
+export async function createDataset(name: string, formatNote = '', categoryId?: string | null, accessUrl?: string | null) {
+    const payload: { name: string; format_note: string; category_id?: string | null; access_url?: string | null } = {
         name: name.trim(),
         format_note: formatNote,
     };
     if (categoryId !== undefined) payload.category_id = categoryId;
+    if (accessUrl !== undefined) payload.access_url = accessUrl;
 
     const { data, error } = await supabase
         .from('prism_datasets')
@@ -169,13 +170,14 @@ export async function createMetric(name: string, formatNote = '', categoryId?: s
 
 export async function updateDataset(
     id: string,
-    payload: { name: string; format_note: string; category_id?: string | null },
+    payload: { name: string; format_note: string; category_id?: string | null; access_url?: string | null },
 ) {
-    const updatePayload: { name: string; format_note: string; category_id?: string | null } = {
+    const updatePayload: { name: string; format_note: string; category_id?: string | null; access_url?: string | null } = {
         name: payload.name.trim(),
         format_note: payload.format_note,
     };
     if ('category_id' in payload) updatePayload.category_id = payload.category_id;
+    if ('access_url' in payload) updatePayload.access_url = payload.access_url?.trim() || null;
 
     const { error } = await supabase
         .from('prism_datasets')

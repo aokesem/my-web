@@ -178,6 +178,69 @@ function TaskGroupBlock({
     );
 }
 
+function FolderReminderGroup({
+    folders,
+    isOpen,
+    onToggle,
+    onClose,
+    onClear,
+}: {
+    folders: HubFolderReminder[];
+    isOpen: boolean;
+    onToggle: () => void;
+    onClose: () => void;
+    onClear: (folder: HubFolderReminder) => void;
+}) {
+    if (folders.length === 0) return null;
+
+    return (
+        <TaskGroupBlock title="收藏夹提醒" count={folders.length} isOpen={isOpen} onToggle={onToggle}>
+            <ul className="space-y-2">
+                {folders.map((folder) => {
+                    const styles = folderReminderRowStyles(folder.category_type);
+                    return (
+                        <li
+                            key={`f-${folder.id}`}
+                            className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${styles.row}`}
+                        >
+                            <div
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${styles.icon}`}
+                            >
+                                <FolderOpen size={15} />
+                            </div>
+                            <span className="flex-1 min-w-0">
+                                <span className="block text-sm font-semibold text-slate-800 truncate">
+                                    {folder.name}
+                                </span>
+                                <span className={`text-[10px] font-mono mt-0.5 block ${styles.meta}`}>
+                                    {formatFolderReminderInterval(folder.reminder_interval_days)} · 回顾
+                                </span>
+                            </span>
+                            <CategoryTag type={folder.category_type} />
+                            <Link
+                                href={`/library/info-source/${folder.category_type}`}
+                                onClick={onClose}
+                                className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
+                                title="打开信息溯源"
+                            >
+                                <ExternalLink size={14} />
+                            </Link>
+                            <button
+                                type="button"
+                                title="清除提醒"
+                                onClick={() => onClear(folder)}
+                                className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
+                            >
+                                <BellOff size={14} />
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+        </TaskGroupBlock>
+    );
+}
+
 function CategoryTag({ type }: { type: HubCategoryType }) {
     return (
         <span
@@ -717,7 +780,8 @@ export default function InfoHubModal({
         setExpandedTaskGroups((prev) => ({ ...prev, [group]: !prev[group] }));
     };
 
-    const taskTotalCount = hub.captures.length + hub.folderReminders.length + hub.queuedBookmarks.length;
+    const reminderTotalCount = hub.reminders.length + hub.folderReminders.length;
+    const taskTotalCount = hub.captures.length + hub.queuedBookmarks.length;
 
     if (!mounted) return null;
 
@@ -768,96 +832,108 @@ export default function InfoHubModal({
                                 </div>
                             ) : (
                                 <>
-                                    <SectionBlock title="提醒" count={hub.reminders.length} isOpen={expandedSections.reminders} onToggle={() => toggleSection("reminders")}>
-                                        {hub.reminders.length === 0 ? (
+                                    <SectionBlock title="提醒" count={reminderTotalCount} isOpen={expandedSections.reminders} onToggle={() => toggleSection("reminders")}>
+                                        {hub.reminders.length === 0 && hub.folderReminders.length === 0 ? (
                                             <p className="text-sm text-slate-400 italic pl-0.5">
                                                 暂无提醒
                                             </p>
                                         ) : (
-                                            <ul className="space-y-2">
-                                                {hub.reminders.map((r) => (
-                                                    <ReminderRow
-                                                        key={r.id}
-                                                        reminder={r}
-                                                        onClose={onClose}
-                                                        onOpenCalendar={onOpenCalendar}
-                                                        onOpenProtocol={onOpenProtocol}
-                                                        onIgnoreFriendReminder={handleIgnoreFriendReminder}
-                                                        friendSnoozeDays={
-                                                            r.friendId
-                                                                ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
-                                                                : undefined
-                                                        }
-                                                        onFriendSnoozeDaysChange={
-                                                            r.friendId
-                                                                ? (value: string) =>
-                                                                    setSnoozeDayDrafts((prev: Record<number, string>) => ({
-                                                                        ...prev,
-                                                                        [r.friendId!]: value,
-                                                                    }))
-                                                                : undefined
-                                                        }
-                                                        onUpdateFriendLastContact={handleUpdateFriendLastContact}
-                                                        friendLastContactDate={
-                                                            r.friendId
-                                                                ? lastContactDates[r.friendId] ?? ''
-                                                                : undefined
-                                                        }
-                                                        onFriendLastContactDateChange={
-                                                            r.friendId
-                                                                ? (value: string) =>
-                                                                    setLastContactDates((prev: Record<number, string>) => ({
-                                                                        ...prev,
-                                                                        [r.friendId!]: value,
-                                                                    }))
-                                                                : undefined
-                                                        }
-                                                        isUpdatingLastContact={
-                                                            r.friendId != null && updatingLastContactId === r.friendId
-                                                        }
-                                                        onUpdateRhythmReminder={handleUpdateRhythmReminder}
-                                                        rhythmEventName={
-                                                            r.rhythmCategory
-                                                                ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
-                                                                : undefined
-                                                        }
-                                                        onRhythmEventNameChange={
-                                                            r.rhythmCategory
-                                                                ? (value: string) =>
-                                                                    setRhythmDrafts((prev) => ({
-                                                                        ...prev,
-                                                                        [r.rhythmCategory!]: {
-                                                                            eventName: value,
-                                                                            eventDate:
-                                                                                prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
-                                                                        },
-                                                                    }))
-                                                                : undefined
-                                                        }
-                                                        rhythmEventDate={
-                                                            r.rhythmCategory
-                                                                ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
-                                                                : undefined
-                                                        }
-                                                        onRhythmEventDateChange={
-                                                            r.rhythmCategory
-                                                                ? (value: string) =>
-                                                                    setRhythmDrafts((prev) => ({
-                                                                        ...prev,
-                                                                        [r.rhythmCategory!]: {
-                                                                            eventName:
-                                                                                prev[r.rhythmCategory!]?.eventName ?? "",
-                                                                            eventDate: value,
-                                                                        },
-                                                                    }))
-                                                                : undefined
-                                                        }
-                                                        isUpdatingRhythm={
-                                                            r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
-                                                        }
-                                                    />
-                                                ))}
-                                            </ul>
+                                            <div className="space-y-4">
+                                                {hub.reminders.length > 0 && (
+                                                    <ul className="space-y-2">
+                                                        {hub.reminders.map((r) => (
+                                                            <ReminderRow
+                                                                key={r.id}
+                                                                reminder={r}
+                                                                onClose={onClose}
+                                                                onOpenCalendar={onOpenCalendar}
+                                                                onOpenProtocol={onOpenProtocol}
+                                                                onIgnoreFriendReminder={handleIgnoreFriendReminder}
+                                                                friendSnoozeDays={
+                                                                    r.friendId
+                                                                        ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
+                                                                        : undefined
+                                                                }
+                                                                onFriendSnoozeDaysChange={
+                                                                    r.friendId
+                                                                        ? (value: string) =>
+                                                                            setSnoozeDayDrafts((prev: Record<number, string>) => ({
+                                                                                ...prev,
+                                                                                [r.friendId!]: value,
+                                                                            }))
+                                                                        : undefined
+                                                                }
+                                                                onUpdateFriendLastContact={handleUpdateFriendLastContact}
+                                                                friendLastContactDate={
+                                                                    r.friendId
+                                                                        ? lastContactDates[r.friendId] ?? ''
+                                                                        : undefined
+                                                                }
+                                                                onFriendLastContactDateChange={
+                                                                    r.friendId
+                                                                        ? (value: string) =>
+                                                                            setLastContactDates((prev: Record<number, string>) => ({
+                                                                                ...prev,
+                                                                                [r.friendId!]: value,
+                                                                            }))
+                                                                        : undefined
+                                                                }
+                                                                isUpdatingLastContact={
+                                                                    r.friendId != null && updatingLastContactId === r.friendId
+                                                                }
+                                                                onUpdateRhythmReminder={handleUpdateRhythmReminder}
+                                                                rhythmEventName={
+                                                                    r.rhythmCategory
+                                                                        ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
+                                                                        : undefined
+                                                                }
+                                                                onRhythmEventNameChange={
+                                                                    r.rhythmCategory
+                                                                        ? (value: string) =>
+                                                                            setRhythmDrafts((prev) => ({
+                                                                                ...prev,
+                                                                                [r.rhythmCategory!]: {
+                                                                                    eventName: value,
+                                                                                    eventDate:
+                                                                                        prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
+                                                                                },
+                                                                            }))
+                                                                        : undefined
+                                                                }
+                                                                rhythmEventDate={
+                                                                    r.rhythmCategory
+                                                                        ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
+                                                                        : undefined
+                                                                }
+                                                                onRhythmEventDateChange={
+                                                                    r.rhythmCategory
+                                                                        ? (value: string) =>
+                                                                            setRhythmDrafts((prev) => ({
+                                                                                ...prev,
+                                                                                [r.rhythmCategory!]: {
+                                                                                    eventName:
+                                                                                        prev[r.rhythmCategory!]?.eventName ?? "",
+                                                                                    eventDate: value,
+                                                                                },
+                                                                            }))
+                                                                        : undefined
+                                                                }
+                                                                isUpdatingRhythm={
+                                                                    r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
+                                                                }
+                                                            />
+                                                        ))}
+                                                    </ul>
+                                                )}
+
+                                                <FolderReminderGroup
+                                                    folders={hub.folderReminders}
+                                                    isOpen={expandedTaskGroups.folderReminders}
+                                                    onToggle={() => toggleTaskGroup("folderReminders")}
+                                                    onClose={onClose}
+                                                    onClear={handleClearFolderReminder}
+                                                />
+                                            </div>
                                         )}
                                     </SectionBlock>
 
@@ -901,8 +977,7 @@ export default function InfoHubModal({
                                         </div>
 
                                         {hub.captures.length === 0 &&
-                                            hub.queuedBookmarks.length === 0 &&
-                                            hub.folderReminders.length === 0 ? (
+                                            hub.queuedBookmarks.length === 0 ? (
                                             <p className="text-sm text-slate-400 italic pl-0.5">
                                                 暂无待处理项
                                             </p>
@@ -1098,63 +1173,6 @@ export default function InfoHubModal({
                                                                                 </button>
                                                                             </>
                                                                         )}
-                                                                    </li>
-                                                                );
-                                                            })}
-                                                        </ul>
-                                                    </TaskGroupBlock>
-                                                )}
-
-                                                {hub.folderReminders.length > 0 && (
-                                                    <TaskGroupBlock title="收藏夹提醒" count={hub.folderReminders.length} isOpen={expandedTaskGroups.folderReminders} onToggle={() => toggleTaskGroup("folderReminders")}>
-                                                        <ul className="space-y-2">
-                                                            {hub.folderReminders.map((folder) => {
-                                                                const styles =
-                                                                    folderReminderRowStyles(
-                                                                        folder.category_type
-                                                                    );
-                                                                return (
-                                                                    <li
-                                                                        key={`f-${folder.id}`}
-                                                                        className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${styles.row}`}
-                                                                    >
-                                                                        <div
-                                                                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${styles.icon}`}
-                                                                        >
-                                                                            <FolderOpen size={15} />
-                                                                        </div>
-                                                                        <span className="flex-1 min-w-0">
-                                                                            <span className="block text-sm font-semibold text-slate-800 truncate">
-                                                                                {folder.name}
-                                                                            </span>
-                                                                            <span
-                                                                                className={`text-[10px] font-mono mt-0.5 block ${styles.meta}`}
-                                                                            >
-                                                                                {formatFolderReminderInterval(
-                                                                                    folder.reminder_interval_days
-                                                                                )}{" "}
-                                                                                · 回顾
-                                                                            </span>
-                                                                        </span>
-                                                                        <CategoryTag type={folder.category_type} />
-                                                                        <Link
-                                                                            href={`/library/info-source/${folder.category_type}`}
-                                                                            onClick={onClose}
-                                                                            className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
-                                                                            title="打开信息溯源"
-                                                                        >
-                                                                            <ExternalLink size={14} />
-                                                                        </Link>
-                                                                        <button
-                                                                            type="button"
-                                                                            title="清除提醒"
-                                                                            onClick={() =>
-                                                                                handleClearFolderReminder(folder)
-                                                                            }
-                                                                            className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
-                                                                        >
-                                                                            <BellOff size={14} />
-                                                                        </button>
                                                                     </li>
                                                                 );
                                                             })}

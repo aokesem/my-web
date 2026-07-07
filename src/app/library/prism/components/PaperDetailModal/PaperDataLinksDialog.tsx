@@ -42,6 +42,7 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
     const [activeKind, setActiveKind] = useState<DataKind>("datasets");
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [nameDraft, setNameDraft] = useState("");
+    const [accessUrlDraft, setAccessUrlDraft] = useState("");
     const [formatDraft, setFormatDraft] = useState("");
     const [categoryDraft, setCategoryDraft] = useState("");
     const [newName, setNewName] = useState("");
@@ -86,14 +87,16 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
     React.useEffect(() => {
         if (!selectedEntry) {
             setNameDraft("");
+            setAccessUrlDraft("");
             setFormatDraft("");
             setCategoryDraft("");
             return;
         }
         setNameDraft(selectedEntry.name);
+        setAccessUrlDraft("access_url" in selectedEntry ? selectedEntry.access_url || "" : "");
         setFormatDraft(selectedEntry.format_note || "");
         setCategoryDraft(selectedEntry.category_id || "");
-    }, [selectedEntry?.id, selectedEntry?.name, selectedEntry?.format_note, selectedEntry?.category_id]);
+    }, [selectedEntry?.id, selectedEntry?.name, selectedEntry, selectedEntry?.format_note, selectedEntry?.category_id]);
 
     const openWithKind = (kind: DataKind) => {
         setActiveKind(kind);
@@ -116,11 +119,19 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
         }
         setSaving(true);
         try {
-            const payload = { name: nameDraft, format_note: formatDraft, category_id: categoryDraft || null };
             if (activeKind === "datasets") {
-                await updateDataset(selectedEntry.id, payload);
+                await updateDataset(selectedEntry.id, {
+                    name: nameDraft,
+                    access_url: accessUrlDraft,
+                    format_note: formatDraft,
+                    category_id: categoryDraft || null,
+                });
             } else {
-                await updateMetric(selectedEntry.id, payload);
+                await updateMetric(selectedEntry.id, {
+                    name: nameDraft,
+                    format_note: formatDraft,
+                    category_id: categoryDraft || null,
+                });
             }
             toast.success("已保存");
             await mutate();
@@ -429,6 +440,31 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
                                                 className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60"
                                             />
                                         </div>
+
+                                        {activeKind === "datasets" && (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <label className="text-xs font-medium text-stone-500">获取链接</label>
+                                                    {accessUrlDraft.trim() ? (
+                                                        <a
+                                                            href={accessUrlDraft.trim()}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[11px] font-medium text-teal-600 hover:text-teal-700"
+                                                        >
+                                                            打开
+                                                        </a>
+                                                    ) : null}
+                                                </div>
+                                                <input
+                                                    value={accessUrlDraft}
+                                                    onChange={(event) => setAccessUrlDraft(event.target.value)}
+                                                    placeholder="https://..."
+                                                    disabled={!isAdmin || saving}
+                                                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60"
+                                                />
+                                            </div>
+                                        )}
 
                                         <div className="space-y-2">
                                             <label className="text-xs font-medium text-stone-500">所属分类</label>

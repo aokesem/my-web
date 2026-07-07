@@ -22,6 +22,7 @@ export interface PaperDetail {
 export interface PrismDataset {
     id: string;
     name: string;
+    access_url?: string | null;
     format_note: string;
     sort_order: number;
     category_id?: string | null;
