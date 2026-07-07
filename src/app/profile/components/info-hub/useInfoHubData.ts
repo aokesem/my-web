@@ -8,6 +8,7 @@ import type {
     HubLongTermTask,
     HubQueuedBookmark,
     HubReminder,
+    HubRhythmCategory,
 } from './types';
 import { buildHubReminders } from './hubReminders';
 import { addCalendarDays, getHubDayKey } from './hubDay';
@@ -30,6 +31,47 @@ function logSupabaseError(label: string, error: unknown) {
         label,
         [e.message, e.code, e.details, e.hint].filter(Boolean).join(' · ') || error
     );
+}
+
+
+type RhythmReminderRow = {
+    category: HubRhythmCategory;
+    event_name: string | null;
+    event_date: string | null;
+    remind_after_days: number | null;
+};
+
+const RHYTHM_LABELS: Record<HubRhythmCategory, string> = {
+    study: '学习',
+    exercise: '运动',
+    arts: '文艺',
+};
+
+function buildRhythmReminder(row: RhythmReminderRow, today: string): HubReminder | null {
+    const label = RHYTHM_LABELS[row.category] || row.category;
+    const interval = row.remind_after_days ?? 3;
+
+    if (!row.event_date) {
+        return {
+            id: `rhythm-${row.category}`,
+            kind: 'rhythm',
+            rhythmCategory: row.category,
+            message: `${label}尚未记录事件`,
+            tone: 'warn',
+        };
+    }
+
+    const days = getDaysSinceDate(row.event_date, today);
+    if (days < interval) return null;
+
+    const eventName = row.event_name?.trim() || '未命名事件';
+    return {
+        id: `rhythm-${row.category}`,
+        kind: 'rhythm',
+        rhythmCategory: row.category,
+        message: `${label}已经 ${days} 天未记录，上次是 ${row.event_date}：${eventName}`,
+        tone: 'warn',
+    };
 }
 
 function mapQueuedRow(
@@ -113,7 +155,7 @@ export function useInfoHubData(isOpen: boolean) {
     const fetchAll = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [capRes, itemsRes, routineRes, actsRes, tpRes, deadlineItemsRes, msRes, tasksRes, friendsRes] =
+            const [capRes, itemsRes, routineRes, actsRes, tpRes, deadlineItemsRes, msRes, tasksRes, friendsRes, rhythmRes] =
                 await Promise.all([
                     supabase
                         .from('info_hub_captures')
@@ -142,6 +184,10 @@ export function useInfoHubData(isOpen: boolean) {
                         .select('id, name, last_contact_date, scheduled_contact_date, contact_reminder_muted')
                         .not('scheduled_contact_date', 'is', null)
                         .order('scheduled_contact_date', { ascending: true }),
+                    supabase
+                        .from('profile_rhythm_reminders')
+                        .select('category, event_name, event_date, remind_after_days')
+                        .order('category', { ascending: true }),
                 ]);
 
             const hubNameById = new Map<number, string>();
@@ -232,6 +278,16 @@ export function useInfoHubData(isOpen: boolean) {
                     );
 
                 nextReminders.push(...friendReminders);
+            }
+
+            if (rhythmRes.error) {
+                logSupabaseError('profile_rhythm_reminders', rhythmRes.error);
+            } else if (rhythmRes.data) {
+                const today = getHubDayKey();
+                const rhythmReminders = (rhythmRes.data as RhythmReminderRow[])
+                    .map((row) => buildRhythmReminder(row, today))
+                    .filter((item): item is HubReminder => item !== null);
+                nextReminders.push(...rhythmReminders);
             }
 
             setReminders(nextReminders);
@@ -403,6 +459,22 @@ export function useInfoHubData(isOpen: boolean) {
         await fetchAll();
     };
 
+    const updateRhythmReminder = async (category: HubRhythmCategory, eventName: string, eventDate: string) => {
+        const { error } = await supabase
+            .from('profile_rhythm_reminders')
+            .upsert(
+                {
+                    category,
+                    event_name: eventName,
+                    event_date: eventDate,
+                    remind_after_days: 3,
+                },
+                { onConflict: 'category' }
+            );
+        if (error) throw error;
+        await fetchAll();
+    };
+
     return {
         isLoading,
         captures,
@@ -420,5 +492,6 @@ export function useInfoHubData(isOpen: boolean) {
         clearFolderReminder,
         dismissFriendReminder,
         updateFriendLastContact,
+        updateRhythmReminder,
     };
 }

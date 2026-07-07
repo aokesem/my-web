@@ -19,6 +19,9 @@ import {
     FolderOpen,
     BellOff,
     ChevronDown,
+    BookOpen,
+    Activity,
+    Palette,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -29,8 +32,10 @@ import type {
     HubFolderReminder,
     HubQueuedBookmark,
     HubReminder,
+    HubRhythmCategory,
 } from "./types";
 import { formatDeadlineCountdown, formatHubRowTime } from "./formatTime";
+import { getHubDayKey } from "./hubDay";
 import { formatFolderReminderInterval } from "@/lib/infoItemReminder";
 import { CATEGORY_CONFIG, type Category } from "../daily-protocol/types";
 
@@ -44,6 +49,8 @@ interface InfoHubModalProps {
 
 type CollapseKey = "reminders" | "tasks" | "longTerm";
 type TaskGroupKey = "captures" | "folderReminders" | "queuedBookmarks";
+
+type RhythmDraft = { eventName: string; eventDate: string };
 
 function SectionBlock({
     title,
@@ -202,6 +209,37 @@ function deadlineReminderStyles(tone: HubReminder["tone"]) {
     return "border-violet-200/70 bg-gradient-to-r from-violet-50/80 via-white/90 to-violet-50/30 shadow-[inset_3px_0_0_0_rgba(139,92,246,0.45)]";
 }
 
+function rhythmReminderTheme(category?: HubRhythmCategory) {
+    switch (category) {
+        case "study":
+            return {
+                Icon: BookOpen,
+                row: "border-blue-200/80 bg-blue-50/90 text-blue-950 shadow-[inset_3px_0_0_0_rgba(59,130,246,0.45)]",
+                icon: "border-blue-200/80 bg-blue-100/80 text-blue-600",
+                input: "border-blue-200/70 bg-white/75 text-blue-950 placeholder:text-blue-700/35 focus:border-blue-300 focus:bg-white",
+                button: "border-blue-200/70 text-blue-700/85 hover:bg-blue-100/60 hover:text-blue-800",
+            };
+        case "exercise":
+            return {
+                Icon: Activity,
+                row: "border-rose-200/80 bg-rose-50/90 text-rose-950 shadow-[inset_3px_0_0_0_rgba(244,63,94,0.45)]",
+                icon: "border-rose-200/80 bg-rose-100/80 text-rose-600",
+                input: "border-rose-200/70 bg-white/75 text-rose-950 placeholder:text-rose-700/35 focus:border-rose-300 focus:bg-white",
+                button: "border-rose-200/70 text-rose-700/85 hover:bg-rose-100/60 hover:text-rose-800",
+            };
+        case "arts":
+            return {
+                Icon: Palette,
+                row: "border-emerald-200/80 bg-emerald-50/90 text-emerald-950 shadow-[inset_3px_0_0_0_rgba(16,185,129,0.45)]",
+                icon: "border-emerald-200/80 bg-emerald-100/80 text-emerald-600",
+                input: "border-emerald-200/70 bg-white/75 text-emerald-950 placeholder:text-emerald-700/35 focus:border-emerald-300 focus:bg-white",
+                button: "border-emerald-200/70 text-emerald-700/85 hover:bg-emerald-100/60 hover:text-emerald-800",
+            };
+        default:
+            return null;
+    }
+}
+
 function ReminderRow({
     reminder,
     onOpenCalendar,
@@ -214,6 +252,12 @@ function ReminderRow({
     friendLastContactDate,
     onFriendLastContactDateChange,
     isUpdatingLastContact,
+    onUpdateRhythmReminder,
+    rhythmEventName,
+    onRhythmEventNameChange,
+    rhythmEventDate,
+    onRhythmEventDateChange,
+    isUpdatingRhythm,
 }: {
     reminder: HubReminder;
     onOpenCalendar?: () => void;
@@ -226,6 +270,12 @@ function ReminderRow({
     friendLastContactDate?: string;
     onFriendLastContactDateChange?: (value: string) => void;
     isUpdatingLastContact?: boolean;
+    onUpdateRhythmReminder?: (category: HubRhythmCategory) => void;
+    rhythmEventName?: string;
+    onRhythmEventNameChange?: (value: string) => void;
+    rhythmEventDate?: string;
+    onRhythmEventDateChange?: (value: string) => void;
+    isUpdatingRhythm?: boolean;
 }) {
     const handleCalendar = () => {
         onClose();
@@ -288,13 +338,20 @@ function ReminderRow({
         );
     }
 
-    const Icon = reminder.tone === "warn" ? AlertCircle : Info;
+    const rhythmTheme = reminder.kind === "rhythm" ? rhythmReminderTheme(reminder.rhythmCategory) : null;
+    const Icon = rhythmTheme?.Icon ?? (reminder.tone === "warn" ? AlertCircle : Info);
 
     return (
         <li
-            className={`flex items-start gap-2 text-sm border rounded-lg px-3 py-2.5 ${reminderStyles(reminder.tone)}`}
+            className={`flex items-start gap-2 text-sm border rounded-lg px-3 py-2.5 ${rhythmTheme?.row ?? reminderStyles(reminder.tone)}`}
         >
-            <Icon size={16} className="shrink-0 mt-0.5 opacity-80" />
+            {rhythmTheme ? (
+                <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${rhythmTheme.icon}`}>
+                    <Icon size={15} strokeWidth={2.25} />
+                </div>
+            ) : (
+                <Icon size={16} className="shrink-0 mt-0.5 opacity-80" />
+            )}
             <span className="flex-1 leading-snug">
                 {reminder.message}
                 {reminder.kind === "friend_contact" && reminder.friendScheduledDate && (
@@ -351,6 +408,34 @@ function ReminderRow({
                     </div>
                 </div>
             )}
+            {reminder.kind === "rhythm" && reminder.rhythmCategory && onUpdateRhythmReminder && (
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    <input
+                        type="text"
+                        aria-label="节奏事件名称"
+                        placeholder="事件"
+                        value={rhythmEventName ?? ""}
+                        onChange={(event) => onRhythmEventNameChange?.(event.target.value)}
+                        className={`h-7 w-[120px] rounded-md border px-2 text-[11px] outline-none transition-colors ${rhythmTheme?.input ?? "border-amber-200/70 bg-white/70 text-amber-900 placeholder:text-amber-700/35 focus:border-amber-300 focus:bg-white"}`}
+                    />
+                    <input
+                        type="date"
+                        aria-label="节奏事件日期"
+                        value={rhythmEventDate ?? ""}
+                        onChange={(event) => onRhythmEventDateChange?.(event.target.value)}
+                        className={`h-7 w-[120px] rounded-md border px-2 text-[11px] font-mono outline-none transition-colors ${rhythmTheme?.input ?? "border-amber-200/70 bg-white/70 text-amber-900 focus:border-amber-300 focus:bg-white"}`}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => onUpdateRhythmReminder(reminder.rhythmCategory!)}
+                        disabled={isUpdatingRhythm || !rhythmEventName?.trim() || !rhythmEventDate}
+                        className={`rounded-md border px-2 py-1 text-[11px] font-mono transition-colors disabled:opacity-30 ${rhythmTheme?.button ?? "border-amber-200/70 text-amber-700/80 hover:bg-amber-100/60 hover:text-amber-800"}`}
+                        title="记录新事件"
+                    >
+                        {isUpdatingRhythm ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                    </button>
+                </div>
+            )}
             {reminder.action && (reminder.action === "calendar" ? onOpenCalendar : onOpenProtocol) && (
                 <button
                     type="button"
@@ -393,6 +478,8 @@ export default function InfoHubModal({
     const [snoozeDayDrafts, setSnoozeDayDrafts] = useState<Record<number, string>>({});
     const [lastContactDates, setLastContactDates] = useState<Record<number, string>>({});
     const [updatingLastContactId, setUpdatingLastContactId] = useState<number | null>(null);
+    const [rhythmDrafts, setRhythmDrafts] = useState<Partial<Record<HubRhythmCategory, RhythmDraft>>>({});
+    const [updatingRhythmCategory, setUpdatingRhythmCategory] = useState<HubRhythmCategory | null>(null);
 
     const hub = useInfoHubData(isOpen);
 
@@ -561,6 +648,35 @@ export default function InfoHubModal({
         }
     };
 
+    const handleUpdateRhythmReminder = async (category: HubRhythmCategory) => {
+        if (!requireAdmin()) return;
+        const draft = rhythmDrafts[category] ?? { eventName: "", eventDate: getHubDayKey() };
+        const eventName = draft.eventName.trim();
+        if (!eventName) {
+            toast.error("请输入事件名称");
+            return;
+        }
+        if (!draft.eventDate) {
+            toast.error("请选择日期");
+            return;
+        }
+
+        try {
+            setUpdatingRhythmCategory(category);
+            await hub.updateRhythmReminder(category, eventName, draft.eventDate);
+            setRhythmDrafts((prev) => {
+                const next = { ...prev };
+                delete next[category];
+                return next;
+            });
+            toast.success("已记录节奏事件");
+        } catch {
+            toast.error("操作失败");
+        } finally {
+            setUpdatingRhythmCategory(null);
+        }
+    };
+
     const startEditingCapture = (capture: HubCapture) => {
         if (!requireAdmin()) return;
         cancelArchive();
@@ -698,6 +814,46 @@ export default function InfoHubModal({
                                                         }
                                                         isUpdatingLastContact={
                                                             r.friendId != null && updatingLastContactId === r.friendId
+                                                        }
+                                                        onUpdateRhythmReminder={handleUpdateRhythmReminder}
+                                                        rhythmEventName={
+                                                            r.rhythmCategory
+                                                                ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
+                                                                : undefined
+                                                        }
+                                                        onRhythmEventNameChange={
+                                                            r.rhythmCategory
+                                                                ? (value: string) =>
+                                                                    setRhythmDrafts((prev) => ({
+                                                                        ...prev,
+                                                                        [r.rhythmCategory!]: {
+                                                                            eventName: value,
+                                                                            eventDate:
+                                                                                prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
+                                                                        },
+                                                                    }))
+                                                                : undefined
+                                                        }
+                                                        rhythmEventDate={
+                                                            r.rhythmCategory
+                                                                ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
+                                                                : undefined
+                                                        }
+                                                        onRhythmEventDateChange={
+                                                            r.rhythmCategory
+                                                                ? (value: string) =>
+                                                                    setRhythmDrafts((prev) => ({
+                                                                        ...prev,
+                                                                        [r.rhythmCategory!]: {
+                                                                            eventName:
+                                                                                prev[r.rhythmCategory!]?.eventName ?? "",
+                                                                            eventDate: value,
+                                                                        },
+                                                                    }))
+                                                                : undefined
+                                                        }
+                                                        isUpdatingRhythm={
+                                                            r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
                                                         }
                                                     />
                                                 ))}
