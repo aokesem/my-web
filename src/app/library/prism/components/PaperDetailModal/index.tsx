@@ -209,6 +209,7 @@ export default function PaperDetailModal({
                                         paper={paper}
                                         editorRef={editorRef}
                                         onUpdate={handleUpdateField}
+                                        isAdmin={isAdmin}
                                     />
                                 ) : (
                                     <SidebarTocPanel

@@ -3,6 +3,7 @@ import { BookOpen, Eye, Star, FileDown, Printer, ListChecks, Pencil, Loader2, Sa
 import Link from 'next/link';
 import type { PaperDetail } from '../../types';
 import type { BlockEditorRef } from '@/components/ui/block-editor';
+import { PaperDataLinksDialog } from './PaperDataLinksDialog';
 
 const TAG_STYLES: Record<string, { bg: string, text: string, border: string, dot: string }> = {
     project: { bg: 'bg-indigo-50/50', text: 'text-indigo-600', border: 'border-indigo-100', dot: 'bg-indigo-400' },
@@ -15,9 +16,10 @@ interface SidebarInfoPanelProps {
     editorRef: React.RefObject<BlockEditorRef | null | any>;
     onUpdate: (field: keyof PaperDetail, value: any) => Promise<void>;
     onEditingChange?: (isEditing: boolean) => void;
+    isAdmin: boolean;
 }
 
-export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange }: SidebarInfoPanelProps) {
+export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange, isAdmin }: SidebarInfoPanelProps) {
     const [editingKeyContributions, setEditingKeyContributions] = useState(false);
     // Notify parent about editing state
     React.useEffect(() => {
@@ -25,6 +27,11 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange }
     }, [editingKeyContributions]);
     const [tempKeyContributions, setTempKeyContributions] = useState<string[]>(paper.key_contributions || []);
     const [isSaving, setIsSaving] = useState(false);
+
+    React.useEffect(() => {
+        setEditingKeyContributions(false);
+        setTempKeyContributions(paper.key_contributions || []);
+    }, [paper.id, paper.key_contributions]);
 
     const allTags = useMemo(() => {
         const tags: { label: string; kind: 'project' | 'direction' | 'type' }[] = [];
@@ -267,7 +274,12 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange }
                         </h3>
                     </div>
                     <button
-                        onClick={() => setEditingKeyContributions(!editingKeyContributions)}
+                        onClick={() => {
+                            if (!editingKeyContributions) {
+                                setTempKeyContributions(paper.key_contributions || []);
+                            }
+                            setEditingKeyContributions(!editingKeyContributions);
+                        }}
                         className="opacity-0 group-hover/contributions:opacity-100 text-[11px] font-mono flex items-center gap-1 text-stone-400 hover:text-stone-600 transition-colors"
                     >
                         <Pencil size={10} />
@@ -339,6 +351,8 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange }
                     )
                 )}
             </div>
+
+            <PaperDataLinksDialog paper={paper} isAdmin={isAdmin} />
 
             <div className="flex-1" />
 
