@@ -1,8 +1,15 @@
 import useSWR from 'swr';
 import { supabase } from '@/lib/supabaseClient';
-import type { PaperDataLinks, PrismDataset, PrismMetric } from '../types';
+import type {
+    PaperDataLinks,
+    PrismDataCategory,
+    PrismDataCategoryKind,
+    PrismDataset,
+    PrismMetric,
+} from '../types';
 
 export interface PaperDataBundle {
+    categories: PrismDataCategory[];
     datasets: PrismDataset[];
     metrics: PrismMetric[];
     /** paper_id -> links */
@@ -16,12 +23,14 @@ export interface PaperDataBundle {
 
 async function fetchPaperDataBundle(): Promise<PaperDataBundle> {
     const [
+        { data: categories, error: cErr },
         { data: datasets, error: dErr },
         { data: metrics, error: mErr },
         { data: paperDatasets, error: pdErr },
         { data: paperMetrics, error: pmErr },
         { data: papers, error: pErr },
     ] = await Promise.all([
+        supabase.from('prism_data_categories').select('*').order('kind').order('sort_order'),
         supabase.from('prism_datasets').select('*').order('sort_order'),
         supabase.from('prism_metrics').select('*').order('sort_order'),
         supabase.from('prism_paper_datasets').select('paper_id, dataset_id'),
@@ -29,6 +38,8 @@ async function fetchPaperDataBundle(): Promise<PaperDataBundle> {
         supabase.from('prism_papers').select('id, data_notes'),
     ]);
 
+    // Keep the data tab readable before the migration is applied; category features need the migration.
+    if (cErr) console.warn('Failed to fetch prism data categories:', cErr.message);
     if (dErr) throw dErr;
     if (mErr) throw mErr;
     if (pdErr) throw pdErr;
@@ -62,6 +73,7 @@ async function fetchPaperDataBundle(): Promise<PaperDataBundle> {
     });
 
     return {
+        categories: (categories || []) as PrismDataCategory[],
         datasets: (datasets || []) as PrismDataset[],
         metrics: (metrics || []) as PrismMetric[],
         linksByPaper,
@@ -76,6 +88,7 @@ export function usePrismPaperData() {
 
     return {
         bundle: data ?? {
+            categories: [],
             datasets: [],
             metrics: [],
             linksByPaper: {},
@@ -122,38 +135,68 @@ export async function togglePaperMetric(paperId: string, metricId: string, linke
     }
 }
 
-export async function createDataset(name: string, formatNote = '') {
+export async function createDataset(name: string, formatNote = '', categoryId?: string | null) {
+    const payload: { name: string; format_note: string; category_id?: string | null } = {
+        name: name.trim(),
+        format_note: formatNote,
+    };
+    if (categoryId !== undefined) payload.category_id = categoryId;
+
     const { data, error } = await supabase
         .from('prism_datasets')
-        .insert([{ name: name.trim(), format_note: formatNote }])
+        .insert([payload])
         .select()
         .single();
     if (error) throw error;
     return data as PrismDataset;
 }
 
-export async function createMetric(name: string, formatNote = '') {
+export async function createMetric(name: string, formatNote = '', categoryId?: string | null) {
+    const payload: { name: string; format_note: string; category_id?: string | null } = {
+        name: name.trim(),
+        format_note: formatNote,
+    };
+    if (categoryId !== undefined) payload.category_id = categoryId;
+
     const { data, error } = await supabase
         .from('prism_metrics')
-        .insert([{ name: name.trim(), format_note: formatNote }])
+        .insert([payload])
         .select()
         .single();
     if (error) throw error;
     return data as PrismMetric;
 }
 
-export async function updateDataset(id: string, payload: { name: string; format_note: string }) {
+export async function updateDataset(
+    id: string,
+    payload: { name: string; format_note: string; category_id?: string | null },
+) {
+    const updatePayload: { name: string; format_note: string; category_id?: string | null } = {
+        name: payload.name.trim(),
+        format_note: payload.format_note,
+    };
+    if ('category_id' in payload) updatePayload.category_id = payload.category_id;
+
     const { error } = await supabase
         .from('prism_datasets')
-        .update({ name: payload.name.trim(), format_note: payload.format_note })
+        .update(updatePayload)
         .eq('id', id);
     if (error) throw error;
 }
 
-export async function updateMetric(id: string, payload: { name: string; format_note: string }) {
+export async function updateMetric(
+    id: string,
+    payload: { name: string; format_note: string; category_id?: string | null },
+) {
+    const updatePayload: { name: string; format_note: string; category_id?: string | null } = {
+        name: payload.name.trim(),
+        format_note: payload.format_note,
+    };
+    if ('category_id' in payload) updatePayload.category_id = payload.category_id;
+
     const { error } = await supabase
         .from('prism_metrics')
-        .update({ name: payload.name.trim(), format_note: payload.format_note })
+        .update(updatePayload)
         .eq('id', id);
     if (error) throw error;
 }
@@ -165,6 +208,51 @@ export async function deleteDataset(id: string) {
 
 export async function deleteMetric(id: string) {
     const { error } = await supabase.from('prism_metrics').delete().eq('id', id);
+    if (error) throw error;
+}
+
+export async function createDataCategory(kind: PrismDataCategoryKind, name: string) {
+    const { data, error } = await supabase
+        .from('prism_data_categories')
+        .insert([{ kind, name: name.trim() }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data as PrismDataCategory;
+}
+
+export async function updateDataCategory(
+    id: string,
+    payload: { name: string; sort_order?: number },
+) {
+    const updatePayload: { name: string; sort_order?: number } = { name: payload.name.trim() };
+    if (payload.sort_order !== undefined) updatePayload.sort_order = payload.sort_order;
+
+    const { error } = await supabase
+        .from('prism_data_categories')
+        .update(updatePayload)
+        .eq('id', id);
+    if (error) throw error;
+}
+
+export async function deleteDataCategory(id: string) {
+    const { error } = await supabase.from('prism_data_categories').delete().eq('id', id);
+    if (error) throw error;
+}
+
+export async function moveDatasetToCategory(id: string, categoryId: string | null) {
+    const { error } = await supabase
+        .from('prism_datasets')
+        .update({ category_id: categoryId })
+        .eq('id', id);
+    if (error) throw error;
+}
+
+export async function moveMetricToCategory(id: string, categoryId: string | null) {
+    const { error } = await supabase
+        .from('prism_metrics')
+        .update({ category_id: categoryId })
+        .eq('id', id);
     if (error) throw error;
 }
 

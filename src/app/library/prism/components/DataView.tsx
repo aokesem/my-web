@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Database, Loader2, Search, X, Plus, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { PaperDetail, PrismDataset, PrismMetric } from '../types';
+import type { PaperDetail, PrismDataCategory, PrismDataset, PrismMetric } from '../types';
 import {
     usePrismPaperData,
     savePaperDataNotes,
@@ -15,12 +15,16 @@ import {
     updateMetric,
     deleteDataset,
     deleteMetric,
+    createDataCategory,
+    updateDataCategory,
+    deleteDataCategory,
     paperHasData,
 } from '../hooks/usePrismPaperData';
 import { LatexNoteField } from './LatexRichText';
 
 type ViewMode = 'paper' | 'library';
 type DictKind = 'datasets' | 'metrics';
+type CategoryFilter = 'all' | 'uncategorized' | string;
 
 interface DataViewProps {
     papers: PaperDetail[];
@@ -35,6 +39,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
 
     const [dictKind, setDictKind] = useState<DictKind>('datasets');
     const [dictSearch, setDictSearch] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryFilter>('all');
     const [selectedDictId, setSelectedDictId] = useState<string | null>(null);
 
     const [notesDraft, setNotesDraft] = useState('');
@@ -43,6 +48,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
     const [newMetricName, setNewMetricName] = useState('');
     const [onlyWithData, setOnlyWithData] = useState(true);
     const [newDictName, setNewDictName] = useState('');
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const requireAdmin = useCallback(() => {
         if (!isAdmin) {
@@ -170,16 +176,44 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
     };
 
     const dictList = dictKind === 'datasets' ? bundle.datasets : bundle.metrics;
+    const activeCategories = useMemo(
+        () => bundle.categories.filter((category) => category.kind === dictKind),
+        [bundle.categories, dictKind],
+    );
+
+    const getCategoryItemCount = useCallback(
+        (categoryId: CategoryFilter) => {
+            if (categoryId === 'all') return dictList.length;
+            if (categoryId === 'uncategorized') {
+                return dictList.filter((item) => !item.category_id).length;
+            }
+            return dictList.filter((item) => item.category_id === categoryId).length;
+        },
+        [dictList],
+    );
+
     const filteredDict = useMemo(() => {
         const q = dictSearch.trim().toLowerCase();
-        if (!q) return dictList;
-        return dictList.filter((d) => d.name.toLowerCase().includes(q));
-    }, [dictList, dictSearch]);
+        let list = [...dictList];
+        if (selectedCategoryId === 'uncategorized') {
+            list = list.filter((d) => !d.category_id);
+        } else if (selectedCategoryId !== 'all') {
+            list = list.filter((d) => d.category_id === selectedCategoryId);
+        }
+        if (!q) return list;
+        return list.filter((d) => d.name.toLowerCase().includes(q));
+    }, [dictList, dictSearch, selectedCategoryId]);
 
     const selectedDict = filteredDict.find((d) => d.id === selectedDictId) ?? filteredDict[0] ?? null;
 
     React.useEffect(() => {
-        if (viewMode === 'library' && filteredDict.length > 0 && !selectedDictId) {
+        if (viewMode !== 'library') return;
+        if (filteredDict.length === 0) {
+            setSelectedDictId(null);
+            return;
+        }
+        const stillVisible = filteredDict.some((item) => item.id === selectedDictId);
+        if (!selectedDictId || !stillVisible) {
             setSelectedDictId(filteredDict[0].id);
         }
     }, [viewMode, filteredDict, selectedDictId]);
@@ -196,9 +230,15 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
         if (!requireAdmin()) return;
         const name = newDictName.trim();
         if (!name) return;
+        const categoryId =
+            selectedCategoryId === 'all' || selectedCategoryId === 'uncategorized'
+                ? null
+                : selectedCategoryId;
         try {
             const created =
-                dictKind === 'datasets' ? await createDataset(name) : await createMetric(name);
+                dictKind === 'datasets'
+                    ? await createDataset(name, '', categoryId)
+                    : await createMetric(name, '', categoryId);
             setNewDictName('');
             setSelectedDictId(created.id);
             toast.success('已创建');
@@ -208,7 +248,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
         }
     };
 
-    const handleSaveDict = async (payload: { name: string; format_note: string }) => {
+    const handleSaveDict = async (payload: { name: string; format_note: string; category_id?: string | null }) => {
         if (!requireAdmin()) return;
         if (!selectedDict) return;
         try {
@@ -224,9 +264,64 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
         }
     };
 
+    const handleCreateCategory = async () => {
+        if (!requireAdmin()) return;
+        const name = newCategoryName.trim();
+        if (!name) return;
+        try {
+            const created = await createDataCategory(dictKind, name);
+            setNewCategoryName('');
+            setSelectedCategoryId(created.id);
+            setSelectedDictId(null);
+            toast.success('分类已创建');
+            await mutate();
+        } catch (e: unknown) {
+            toast.error('创建分类失败: ' + (e instanceof Error ? e.message : String(e)));
+        }
+    };
+
+    const handleRenameCategory = async (category: PrismDataCategory) => {
+        if (!requireAdmin()) return;
+        const nextName = window.prompt('重命名分类', category.name)?.trim();
+        if (!nextName || nextName === category.name) return;
+        try {
+            await updateDataCategory(category.id, { name: nextName });
+            toast.success('分类已更新');
+            await mutate();
+        } catch (e: unknown) {
+            toast.error('更新分类失败: ' + (e instanceof Error ? e.message : String(e)));
+        }
+    };
+
+    const handleDeleteCategory = async (category: PrismDataCategory) => {
+        if (!requireAdmin()) return;
+        const count = getCategoryItemCount(category.id);
+        if (
+            !window.confirm(
+                count > 0
+                    ? `确定删除分类 "${category.name}"？其中 ${count} 个条目会回到未分类。`
+                    : `确定删除分类 "${category.name}"？`,
+            )
+        ) {
+            return;
+        }
+        try {
+            await deleteDataCategory(category.id);
+            if (selectedCategoryId === category.id) {
+                setSelectedCategoryId('all');
+                setSelectedDictId(null);
+            }
+            toast.success('分类已删除');
+            await mutate();
+        } catch (e: unknown) {
+            toast.error('删除分类失败: ' + (e instanceof Error ? e.message : String(e)));
+        }
+    };
+
     const openDictInLibrary = useCallback((kind: DictKind, id: string) => {
         setViewMode('library');
         setDictKind(kind);
+        setSelectedCategoryId('all');
         setSelectedDictId(id);
         setDictSearch('');
     }, []);
@@ -403,6 +498,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
                                         title="使用的数据集"
                                         emptyHint="尚未关联数据集"
                                         items={bundle.datasets}
+                                        categories={bundle.categories.filter((category) => category.kind === 'datasets')}
                                         selectedIds={paperLinks.datasetIds}
                                         onOpenLinked={(id) => openDictInLibrary('datasets', id)}
                                         onUnlink={handleToggleDataset}
@@ -417,6 +513,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
                                         title="涉及的指标"
                                         emptyHint="尚未关联指标"
                                         items={bundle.metrics}
+                                        categories={bundle.categories.filter((category) => category.kind === 'metrics')}
                                         selectedIds={paperLinks.metricIds}
                                         onOpenLinked={(id) => openDictInLibrary('metrics', id)}
                                         onUnlink={handleToggleMetric}
@@ -437,6 +534,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
                                 active={dictKind === 'datasets'}
                                 onClick={() => {
                                     setDictKind('datasets');
+                                    setSelectedCategoryId('all');
                                     setSelectedDictId(null);
                                 }}
                                 label="数据集"
@@ -445,10 +543,79 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
                                 active={dictKind === 'metrics'}
                                 onClick={() => {
                                     setDictKind('metrics');
+                                    setSelectedCategoryId('all');
                                     setSelectedDictId(null);
                                 }}
                                 label="指标"
                             />
+                        </div>
+
+                        <div className="w-[190px] shrink-0 border-r border-stone-100 flex flex-col">
+                            <div className="p-3 border-b border-stone-100">
+                                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400">
+                                    分类
+                                </p>
+                            </div>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                <CategoryButton
+                                    active={selectedCategoryId === 'all'}
+                                    label="全部"
+                                    count={getCategoryItemCount('all')}
+                                    onClick={() => {
+                                        setSelectedCategoryId('all');
+                                        setSelectedDictId(null);
+                                    }}
+                                />
+                                <CategoryButton
+                                    active={selectedCategoryId === 'uncategorized'}
+                                    label="未分类"
+                                    count={getCategoryItemCount('uncategorized')}
+                                    onClick={() => {
+                                        setSelectedCategoryId('uncategorized');
+                                        setSelectedDictId(null);
+                                    }}
+                                />
+                                <div className="my-2 border-t border-stone-100" />
+                                {activeCategories.length === 0 ? (
+                                    <p className="px-2 py-4 text-xs text-stone-400">暂无分类</p>
+                                ) : (
+                                    activeCategories.map((category) => (
+                                        <CategoryButton
+                                            key={category.id}
+                                            active={selectedCategoryId === category.id}
+                                            label={category.name}
+                                            count={getCategoryItemCount(category.id)}
+                                            onClick={() => {
+                                                setSelectedCategoryId(category.id);
+                                                setSelectedDictId(null);
+                                            }}
+                                            onRename={isAdmin ? () => handleRenameCategory(category) : undefined}
+                                            onDelete={isAdmin ? () => handleDeleteCategory(category) : undefined}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                            {isAdmin && (
+                                <div className="p-2 border-t border-stone-100 flex gap-1.5">
+                                    <input
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder="新建分类…"
+                                        className="min-w-0 flex-1 text-xs rounded-lg border border-stone-200 px-2 py-2 outline-none focus:ring-1 focus:ring-teal-200"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') void handleCreateCategory();
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleCreateCategory()}
+                                        disabled={!newCategoryName.trim()}
+                                        className="shrink-0 p-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-teal-50 hover:text-teal-700 disabled:opacity-40"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="w-[240px] shrink-0 border-r border-stone-100 flex flex-col">
@@ -519,6 +686,7 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
                                     key={selectedDict.id}
                                     item={selectedDict}
                                     kind={dictKind}
+                                    categories={activeCategories}
                                     papersForDict={papersForDict}
                                     onSave={handleSaveDict}
                                     onDelete={() => void handleDeleteDict()}
@@ -535,24 +703,28 @@ export default function DataView({ papers, isAdmin }: DataViewProps) {
 function DictEntryEditor({
     item,
     kind,
+    categories,
     papersForDict,
     onSave,
     onDelete,
 }: {
     item: PrismDataset | PrismMetric;
     kind: DictKind;
+    categories: PrismDataCategory[];
     papersForDict: PaperDetail[];
-    onSave: (payload: { name: string; format_note: string }) => Promise<void>;
+    onSave: (payload: { name: string; format_note: string; category_id?: string | null }) => Promise<void>;
     onDelete: () => void;
 }) {
     const [name, setName] = useState(item.name);
     const [formatNote, setFormatNote] = useState(item.format_note || '');
+    const [categoryId, setCategoryId] = useState<string>(item.category_id || '');
     const [saving, setSaving] = useState(false);
 
     React.useEffect(() => {
         setName(item.name);
         setFormatNote(item.format_note || '');
-    }, [item.id, item.name, item.format_note]);
+        setCategoryId(item.category_id || '');
+    }, [item.id, item.name, item.format_note, item.category_id]);
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -561,7 +733,7 @@ function DictEntryEditor({
         }
         setSaving(true);
         try {
-            await onSave({ name, format_note: formatNote });
+            await onSave({ name, format_note: formatNote, category_id: categoryId || null });
         } finally {
             setSaving(false);
         }
@@ -576,6 +748,21 @@ function DictEntryEditor({
                     onChange={(e) => setName(e.target.value)}
                     className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200"
                 />
+            </div>
+            <div className="space-y-3">
+                <label className="text-xs font-medium text-stone-500">所属分类</label>
+                <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 bg-white"
+                >
+                    <option value="">未分类</option>
+                    {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                            {category.name}
+                        </option>
+                    ))}
+                </select>
             </div>
             <div className="space-y-2">
                 <label className="text-xs font-medium text-stone-500">样例 / 格式说明</label>
@@ -653,10 +840,74 @@ function DictNavButton({
     );
 }
 
+function CategoryButton({
+    active,
+    label,
+    count,
+    onClick,
+    onRename,
+    onDelete,
+}: {
+    active: boolean;
+    label: string;
+    count: number;
+    onClick: () => void;
+    onRename?: () => void;
+    onDelete?: () => void;
+}) {
+    return (
+        <div
+            className={`group/category flex items-center rounded-lg transition-all ${
+                active
+                    ? 'bg-teal-50 text-teal-800 border border-teal-100'
+                    : 'text-stone-600 hover:bg-stone-50 border border-transparent'
+            }`}
+        >
+            <button
+                type="button"
+                onClick={onClick}
+                className="min-w-0 flex-1 text-left px-2.5 py-2"
+            >
+                <span className="block text-sm font-medium truncate">{label}</span>
+                <span className="text-[10px] font-mono text-stone-400">{count} 项</span>
+            </button>
+            {(onRename || onDelete) && (
+                <div className="shrink-0 flex items-center pr-1 opacity-0 group-hover/category:opacity-100 transition-opacity">
+                    {onRename && (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onRename();
+                            }}
+                            className="px-1.5 py-1 text-[10px] text-stone-400 hover:text-teal-700"
+                        >
+                            改
+                        </button>
+                    )}
+                    {onDelete && (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onDelete();
+                            }}
+                            className="px-1.5 py-1 text-[10px] text-stone-400 hover:text-red-600"
+                        >
+                            删
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function TagSection({
     title,
     emptyHint,
     items,
+    categories,
     selectedIds,
     onOpenLinked,
     onUnlink,
@@ -668,7 +919,8 @@ function TagSection({
 }: {
     title: string;
     emptyHint: string;
-    items: { id: string; name: string }[];
+    items: { id: string; name: string; category_id?: string | null }[];
+    categories: PrismDataCategory[];
     selectedIds: string[];
     onOpenLinked: (id: string) => void;
     onUnlink: (id: string) => void;
@@ -680,6 +932,7 @@ function TagSection({
 }) {
     const selected = items.filter((i) => selectedIds.includes(i.id));
     const unselected = items.filter((i) => !selectedIds.includes(i.id));
+    const unselectedGroups = groupDataItemsByCategory(unselected, categories);
 
     return (
         <section className="space-y-3">
@@ -714,17 +967,26 @@ function TagSection({
                     ))
                 )}
             </div>
-            {unselected.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                    {unselected.map((item) => (
-                        <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => onLink(item.id)}
-                            className="px-2 py-0.5 rounded-md border border-dashed border-stone-200 text-xs text-stone-500 hover:border-teal-300 hover:text-teal-700"
-                        >
-                            + {item.name}
-                        </button>
+            {unselectedGroups.length > 0 && (
+                <div className="space-y-3">
+                    {unselectedGroups.map((group) => (
+                        <div key={group.id}>
+                            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400 mb-1.5">
+                                {group.name}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {group.items.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => onLink(item.id)}
+                                        className="px-2 py-0.5 rounded-md border border-dashed border-stone-200 text-xs text-stone-500 hover:border-teal-300 hover:text-teal-700"
+                                    >
+                                        + {item.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
@@ -746,4 +1008,22 @@ function TagSection({
             </div>
         </section>
     );
+}
+
+function groupDataItemsByCategory<T extends { category_id?: string | null }>(
+    items: T[],
+    categories: PrismDataCategory[],
+) {
+    const groups = categories
+        .map((category) => ({
+            id: category.id,
+            name: category.name,
+            items: items.filter((item) => item.category_id === category.id),
+        }))
+        .filter((group) => group.items.length > 0);
+    const uncategorized = items.filter((item) => !item.category_id);
+    if (uncategorized.length > 0) {
+        groups.push({ id: 'uncategorized', name: '未分类', items: uncategorized });
+    }
+    return groups;
 }

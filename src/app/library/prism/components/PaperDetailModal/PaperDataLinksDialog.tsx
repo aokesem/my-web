@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, Database, Loader2, Pencil, Plus, Save, Unlink, X } from "lucide-react";
 import { toast } from "sonner";
-import type { PaperDetail, PrismDataset, PrismMetric } from "../../types";
+import type { PaperDetail, PrismDataCategory, PrismDataset, PrismMetric } from "../../types";
 import {
     createDataset,
     createMetric,
@@ -43,7 +43,9 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [nameDraft, setNameDraft] = useState("");
     const [formatDraft, setFormatDraft] = useState("");
+    const [categoryDraft, setCategoryDraft] = useState("");
     const [newName, setNewName] = useState("");
+    const [newCategoryId, setNewCategoryId] = useState("");
     const [saving, setSaving] = useState(false);
     const [linking, setLinking] = useState(false);
 
@@ -61,8 +63,13 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
 
     const activeEntries: DataEntry[] = activeKind === "datasets" ? linkedDatasets : linkedMetrics;
     const allEntries: DataEntry[] = activeKind === "datasets" ? bundle.datasets : bundle.metrics;
+    const activeCategories = useMemo(
+        () => bundle.categories.filter((category) => category.kind === activeKind),
+        [bundle.categories, activeKind],
+    );
     const activeIds = activeKind === "datasets" ? paperLinks.datasetIds : paperLinks.metricIds;
     const unlinkedEntries = allEntries.filter((item) => !activeIds.includes(item.id));
+    const unlinkedGroups = groupDataItemsByCategory(unlinkedEntries, activeCategories);
     const selectedEntry = activeEntries.find((item) => item.id === selectedId) ?? activeEntries[0] ?? null;
 
     React.useEffect(() => {
@@ -80,17 +87,20 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
         if (!selectedEntry) {
             setNameDraft("");
             setFormatDraft("");
+            setCategoryDraft("");
             return;
         }
         setNameDraft(selectedEntry.name);
         setFormatDraft(selectedEntry.format_note || "");
-    }, [selectedEntry?.id, selectedEntry?.name, selectedEntry?.format_note]);
+        setCategoryDraft(selectedEntry.category_id || "");
+    }, [selectedEntry?.id, selectedEntry?.name, selectedEntry?.format_note, selectedEntry?.category_id]);
 
     const openWithKind = (kind: DataKind) => {
         setActiveKind(kind);
         const first = kind === "datasets" ? linkedDatasets[0] : linkedMetrics[0];
         setSelectedId(first?.id ?? null);
         setNewName("");
+        setNewCategoryId("");
         setOpen(true);
     };
 
@@ -106,7 +116,7 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
         }
         setSaving(true);
         try {
-            const payload = { name: nameDraft, format_note: formatDraft };
+            const payload = { name: nameDraft, format_note: formatDraft, category_id: categoryDraft || null };
             if (activeKind === "datasets") {
                 await updateDataset(selectedEntry.id, payload);
             } else {
@@ -153,13 +163,16 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
         setLinking(true);
         try {
             const created =
-                activeKind === "datasets" ? await createDataset(name) : await createMetric(name);
+                activeKind === "datasets"
+                    ? await createDataset(name, "", newCategoryId || null)
+                    : await createMetric(name, "", newCategoryId || null);
             if (activeKind === "datasets") {
                 await togglePaperDataset(paper.id, created.id, false);
             } else {
                 await togglePaperMetric(paper.id, created.id, false);
             }
             setNewName("");
+            setNewCategoryId("");
             setSelectedId(created.id);
             toast.success("已创建并关联");
             await mutate();
@@ -296,6 +309,13 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
                                                 }`}
                                             >
                                                 <p className="text-sm font-semibold line-clamp-2">{item.name}</p>
+                                                <p
+                                                    className={`mt-1 text-[10px] font-mono ${
+                                                        selectedEntry?.id === item.id ? "text-teal-100" : "text-stone-400"
+                                                    }`}
+                                                >
+                                                    {getCategoryName(item.category_id, activeCategories)}
+                                                </p>
                                                 {item.format_note ? (
                                                     <p
                                                         className={`mt-1 text-[11px] line-clamp-2 ${
@@ -321,17 +341,26 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
                                                     暂无可关联的{KIND_META[activeKind].label}
                                                 </p>
                                             ) : (
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {unlinkedEntries.map((item) => (
-                                                        <button
-                                                            key={item.id}
-                                                            type="button"
-                                                            onClick={() => handleLinkExisting(item.id)}
-                                                            disabled={linking}
-                                                            className="px-2 py-1 rounded-md border border-dashed border-stone-200 text-xs text-stone-500 hover:border-teal-300 hover:text-teal-700 disabled:opacity-50"
-                                                        >
-                                                            + {item.name}
-                                                        </button>
+                                                <div className="space-y-3">
+                                                    {unlinkedGroups.map((group) => (
+                                                        <div key={group.id}>
+                                                            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-400 mb-1.5">
+                                                                {group.name}
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {group.items.map((item) => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        type="button"
+                                                                        onClick={() => handleLinkExisting(item.id)}
+                                                                        disabled={linking}
+                                                                        className="px-2 py-1 rounded-md border border-dashed border-stone-200 text-xs text-stone-500 hover:border-teal-300 hover:text-teal-700 disabled:opacity-50"
+                                                                    >
+                                                                        + {item.name}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             )}
@@ -341,23 +370,38 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
                                             <p className="text-[11px] font-mono font-bold uppercase tracking-widest text-stone-400 mb-2">
                                                 新建并关联
                                             </p>
-                                            <div className="flex gap-2">
+                                            <div className="space-y-2">
                                                 <input
                                                     value={newName}
                                                     onChange={(event) => setNewName(event.target.value)}
                                                     placeholder={`新建${KIND_META[activeKind].label}`}
                                                     disabled={linking}
-                                                    className="min-w-0 flex-1 rounded-lg border border-stone-200 px-2.5 py-2 text-xs text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60"
+                                                    className="w-full rounded-lg border border-stone-200 px-2.5 py-2 text-xs text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60"
                                                 />
-                                                <button
-                                                    type="button"
-                                                    onClick={handleCreateAndLink}
-                                                    disabled={!newName.trim() || linking}
-                                                    className="shrink-0 p-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-teal-50 hover:text-teal-700 disabled:opacity-40"
-                                                    aria-label={`新建${KIND_META[activeKind].label}并关联`}
-                                                >
-                                                    {linking ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={newCategoryId}
+                                                        onChange={(event) => setNewCategoryId(event.target.value)}
+                                                        disabled={linking}
+                                                        className="min-w-0 flex-1 rounded-lg border border-stone-200 px-2.5 py-2 text-xs text-stone-700 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60 bg-white"
+                                                    >
+                                                        <option value="">未分类</option>
+                                                        {activeCategories.map((category) => (
+                                                            <option key={category.id} value={category.id}>
+                                                                {category.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCreateAndLink}
+                                                        disabled={!newName.trim() || linking}
+                                                        className="shrink-0 p-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-teal-50 hover:text-teal-700 disabled:opacity-40"
+                                                        aria-label={`新建${KIND_META[activeKind].label}并关联`}
+                                                    >
+                                                        {linking ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -384,6 +428,23 @@ export function PaperDataLinksDialog({ paper, isAdmin }: PaperDataLinksDialogPro
                                                 disabled={!isAdmin || saving}
                                                 className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60"
                                             />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-medium text-stone-500">所属分类</label>
+                                            <select
+                                                value={categoryDraft}
+                                                onChange={(event) => setCategoryDraft(event.target.value)}
+                                                disabled={!isAdmin || saving}
+                                                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-1 focus:ring-teal-200 disabled:opacity-60 bg-white"
+                                            >
+                                                <option value="">未分类</option>
+                                                {activeCategories.map((category) => (
+                                                    <option key={category.id} value={category.id}>
+                                                        {category.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
 
                                         <div className="space-y-2">
@@ -470,6 +531,29 @@ function DataLinkButton({
             <span className="shrink-0 text-[11px] font-mono font-bold">{count}</span>
         </button>
     );
+}
+
+function getCategoryName(categoryId: string | null | undefined, categories: PrismDataCategory[]) {
+    if (!categoryId) return "未分类";
+    return categories.find((category) => category.id === categoryId)?.name ?? "未分类";
+}
+
+function groupDataItemsByCategory<T extends { category_id?: string | null }>(
+    items: T[],
+    categories: PrismDataCategory[],
+) {
+    const groups = categories
+        .map((category) => ({
+            id: category.id,
+            name: category.name,
+            items: items.filter((item) => item.category_id === category.id),
+        }))
+        .filter((group) => group.items.length > 0);
+    const uncategorized = items.filter((item) => !item.category_id);
+    if (uncategorized.length > 0) {
+        groups.push({ id: "uncategorized", name: "未分类", items: uncategorized });
+    }
+    return groups;
 }
 
 function KindTab({

@@ -260,7 +260,7 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange, 
                     className="flex-1 hidden md:flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-50 text-stone-600 rounded-lg text-xs font-bold hover:bg-stone-100/80 hover:text-stone-800 transition-colors border border-stone-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] shadow-stone-200/50"
                 >
                     <Printer size={14} />
-                    存为 PDF(暂不可用)
+                    存为 PDF
                 </button>
             </div>
 

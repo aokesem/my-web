@@ -24,6 +24,7 @@ export interface PrismDataset {
     name: string;
     format_note: string;
     sort_order: number;
+    category_id?: string | null;
     created_at?: string;
 }
 
@@ -31,6 +32,17 @@ export interface PrismMetric {
     id: string;
     name: string;
     format_note: string;
+    sort_order: number;
+    category_id?: string | null;
+    created_at?: string;
+}
+
+export type PrismDataCategoryKind = 'datasets' | 'metrics';
+
+export interface PrismDataCategory {
+    id: string;
+    kind: PrismDataCategoryKind;
+    name: string;
     sort_order: number;
     created_at?: string;
 }
