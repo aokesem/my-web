@@ -504,6 +504,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         deadlineTimepoints={deadlineTimepoints}
                                         deadlineItems={deadlineItems}
                                         allActivities={allActivities}
+                                        routineLogs={routineLogs}
                                     />
                                 </>
                             ) : (

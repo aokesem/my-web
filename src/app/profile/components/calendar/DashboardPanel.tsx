@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { Activity as ActivityIcon, CheckCircle2, Zap, Flame } from 'lucide-react';
-import { DayData, DeadlineTimepoint, DeadlineItem, Activity, formatDateKey, STATUS_COLORS } from './types';
+import { Activity as ActivityIcon, CheckCircle2, Zap, Flame, Sunrise, Sunset } from 'lucide-react';
+import { DayData, DeadlineTimepoint, DeadlineItem, Activity, RoutineLog, formatDateKey, STATUS_COLORS } from './types';
 
 interface DashboardPanelProps {
     calendarData: Record<string, DayData>;
     deadlineTimepoints: DeadlineTimepoint[];
     deadlineItems: DeadlineItem[];
     allActivities: Activity[];
+    routineLogs: Record<string, RoutineLog>;
 }
 
-export default function DashboardPanel({ calendarData, deadlineTimepoints, deadlineItems, allActivities }: DashboardPanelProps) {
+export default function DashboardPanel({ calendarData, deadlineTimepoints, deadlineItems, allActivities, routineLogs }: DashboardPanelProps) {
     const today = useMemo(() => new Date(), []);
     const todayStr = useMemo(() => formatDateKey(today.getFullYear(), today.getMonth(), today.getDate()), [today]);
 
@@ -112,6 +113,62 @@ export default function DashboardPanel({ calendarData, deadlineTimepoints, deadl
         return (totalHours / 7).toFixed(1);
     }, [past7DaysKeys, calendarData]);
 
+    // === 作息时间解析工具 ===
+    const parseMinutes = (time: string | null | undefined): number | null => {
+        if (!time || !time.includes(':')) return null;
+        const parts = time.split(':');
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (Number.isNaN(h) || Number.isNaN(m)) return null;
+        return h * 60 + m;
+    };
+
+    const WAKE_THRESHOLD = 7 * 60 + 30;  // 07:30
+    const SLEEP_THRESHOLD = 24 * 60;      // 24:00
+
+    // 5. 过去 7 天作息时间统计（累计早/晚了多少分钟）
+    const sleepStats = useMemo(() => {
+        let earlyWakeMin = 0;   // 比 07:30 早起的累计分钟数
+        let lateWakeMin = 0;    // 比 07:30 晚起的累计分钟数
+        let earlySleepMin = 0;  // 比 24:00 早睡的累计分钟数
+        let lateSleepMin = 0;   // 比 24:00 晚睡的累计分钟数
+
+        past7DaysKeys.forEach(key => {
+            const log = routineLogs[key];
+            const wakeMin = parseMinutes(log?.wake_time);
+            const sleepMin = parseMinutes(log?.sleep_time);
+
+            if (wakeMin !== null) {
+                const diff = wakeMin - WAKE_THRESHOLD; // 正=晚起, 负=早起
+                if (diff < 0) earlyWakeMin += Math.abs(diff);
+                else lateWakeMin += diff;
+            }
+            if (sleepMin !== null) {
+                // 凌晨时间（如 01:30）视为次日，+24h 后再与 24:00 比较
+                let sleepMapped = sleepMin;
+                if (sleepMin < 12 * 60) sleepMapped += 24 * 60;
+                const diff = sleepMapped - SLEEP_THRESHOLD; // 正=晚睡, 负=早睡
+                if (diff < 0) earlySleepMin += Math.abs(diff);
+                else lateSleepMin += diff;
+            }
+        });
+
+        const formatMin = (m: number) => {
+            const h = Math.floor(m / 60);
+            const mm = m % 60;
+            if (h > 0 && mm > 0) return `${h}h${mm}m`;
+            if (h > 0) return `${h}h`;
+            return `${mm}m`;
+        };
+
+        return {
+            earlyWake: formatMin(earlyWakeMin),
+            lateWake: formatMin(lateWakeMin),
+            earlySleep: formatMin(earlySleepMin),
+            lateSleep: formatMin(lateSleepMin),
+        };
+    }, [past7DaysKeys, routineLogs]);
+
     return (
         <div className="w-[260px] bg-white/95 backdrop-blur-xl rounded-r-2xl border border-l-0 border-slate-200/80 flex flex-col overflow-hidden">
             {/* 标题栏 */}
@@ -191,6 +248,52 @@ export default function DashboardPanel({ calendarData, deadlineTimepoints, deadl
                         </div>
                         <div className="text-xs font-mono text-slate-400 tracking-wider">
                             <span className="text-emerald-500 font-bold">{goodDaysCount}</span> GOOD DAYS
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2.5 休息时间统计 — 规律作息 */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        <Sunrise size={12} className="text-emerald-500" />
+                        Rest Discipline (7d)
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                        <div className="flex flex-col items-center gap-1 flex-1">
+                            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">早起 &lt;07:30</span>
+                            <span className="font-black text-xl text-emerald-600 tracking-tight leading-none">
+                                {sleepStats.earlyWake}
+                            </span>
+                        </div>
+                        <div className="w-px h-10 bg-slate-200" />
+                        <div className="flex flex-col items-center gap-1 flex-1">
+                            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">早睡 &lt;24:00</span>
+                            <span className="font-black text-xl text-emerald-600 tracking-tight leading-none">
+                                {sleepStats.earlySleep}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2.6 休息时间统计 — 不规律作息 */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        <Sunset size={12} className="text-amber-500" />
+                        Rest Debt (7d)
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                        <div className="flex flex-col items-center gap-1 flex-1">
+                            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">晚起 &gt;07:30</span>
+                            <span className="font-black text-xl text-slate-500 tracking-tight leading-none">
+                                {sleepStats.lateWake}
+                            </span>
+                        </div>
+                        <div className="w-px h-10 bg-slate-200" />
+                        <div className="flex flex-col items-center gap-1 flex-1">
+                            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">晚睡 &gt;24:00</span>
+                            <span className="font-black text-xl text-slate-500 tracking-tight leading-none">
+                                {sleepStats.lateSleep}
+                            </span>
                         </div>
                     </div>
                 </div>
