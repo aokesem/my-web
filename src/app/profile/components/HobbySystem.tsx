@@ -538,11 +538,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                             e.stopPropagation();
                                                             setOpenFilterCategory(isOpen ? null : cat);
                                                         }}
-                                                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-mono font-bold uppercase tracking-wider transition-all ${
-                                                            isActiveFilter || isOpen
+                                                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-mono font-bold uppercase tracking-wider transition-all ${isActiveFilter || isOpen
                                                                 ? `${cfg.bg} ${cfg.color} border-current/25 shadow-sm`
                                                                 : `border-slate-200 bg-slate-50/80 text-slate-400 hover:${cfg.color} hover:border-current/20 hover:${cfg.bg}`
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <div className={`w-2.5 h-2.5 rounded-full ${cfg.activeColor}`} />
                                                         {cfg.label}
@@ -574,9 +573,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                                 setSelectedHobby(hobby.name);
                                                                                 setOpenFilterCategory(null);
                                                                             }}
-                                                                            className={`w-full px-4 py-2 text-left text-xs font-medium transition-colors hover:bg-slate-100 flex items-center justify-between gap-3 ${
-                                                                                selectedHobby === hobby.name ? `${cfg.color} font-bold bg-slate-50` : 'text-slate-600'
-                                                                            }`}
+                                                                            className={`w-full px-4 py-2 text-left text-xs font-medium transition-colors hover:bg-slate-100 flex items-center justify-between gap-3 ${selectedHobby === hobby.name ? `${cfg.color} font-bold bg-slate-50` : 'text-slate-600'
+                                                                                }`}
                                                                         >
                                                                             <span>{hobby.name}</span>
                                                                             <span className="text-[10px] font-mono text-slate-400 tabular-nums">{count}</span>
@@ -694,9 +692,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                                 ? startEditContactDate(friend, event)
                                                                                 : event.stopPropagation()
                                                                         }
-                                                                        className={`inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-base font-mono text-slate-600 shadow-sm ${
-                                                                            isLoggedIn ? 'transition-colors hover:text-slate-900' : ''
-                                                                        }`}
+                                                                        className={`inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-base font-mono text-slate-600 shadow-sm ${isLoggedIn ? 'transition-colors hover:text-slate-900' : ''
+                                                                            }`}
                                                                     >
                                                                         <CalendarDays size={15} className="text-slate-400" />
                                                                         <span>{formatContactDate(friend.last_contact_date)}</span>
@@ -740,9 +737,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                                                     ? startEditScheduledDate(friend, event)
                                                                                     : event.stopPropagation()
                                                                             }
-                                                                            className={`inline-flex items-center gap-2 rounded-full border border-white/65 bg-white/55 px-3 py-1.5 text-xs font-mono text-slate-500 shadow-sm ${
-                                                                                isLoggedIn ? 'transition-colors hover:text-slate-800' : ''
-                                                                            }`}
+                                                                            className={`inline-flex items-center gap-2 rounded-full border border-white/65 bg-white/55 px-3 py-1.5 text-xs font-mono text-slate-500 shadow-sm ${isLoggedIn ? 'transition-colors hover:text-slate-800' : ''
+                                                                                }`}
                                                                         >
                                                                             <CalendarDays size={13} className="text-blue-400" />
                                                                             <span>预定 {formatScheduledContactDate(friend.scheduled_contact_date)}</span>
@@ -785,14 +781,14 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
 
                                                                             {hobbies.length > 0 ? (
                                                                                 <div className="flex w-full flex-col items-center space-y-2.5">
-                                                                        {hobbies.map((hobby) => (
-                                                                            <div
-                                                                                key={hobby}
-                                                                                className={`inline-flex min-w-[104px] justify-center rounded-xl border-[0.5px] px-3 py-2.5 text-center text-[15px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${style.shell} ${style.title}`}
-                                                                            >
-                                                                                {hobby}
-                                                                            </div>
-                                                                        ))}
+                                                                                    {hobbies.map((hobby) => (
+                                                                                        <div
+                                                                                            key={hobby}
+                                                                                            className={`inline-flex min-w-[104px] justify-center rounded-xl border-[0.5px] px-3 py-2.5 text-center text-[15px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${style.shell} ${style.title}`}
+                                                                                        >
+                                                                                            {hobby}
+                                                                                        </div>
+                                                                                    ))}
                                                                                 </div>
                                                                             ) : (
                                                                                 <div className="pt-3 text-xs text-slate-300">-</div>
@@ -831,11 +827,10 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                             {groups.map((group, index) => (
                                 <div
                                     key={group.id}
-                                    className={`relative overflow-hidden rounded-[26px] border border-white/75 bg-gradient-to-br ${
-                                        index % 2 === 0
+                                    className={`relative overflow-hidden rounded-[26px] border border-white/75 bg-linear-to-br ${index % 2 === 0
                                             ? 'from-amber-100/80 via-orange-50/70 to-white/80'
                                             : 'from-violet-100/80 via-indigo-50/70 to-white/80'
-                                    } p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.22)]`}
+                                        } p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.22)]`}
                                 >
                                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.18),transparent_40%)]" />
 

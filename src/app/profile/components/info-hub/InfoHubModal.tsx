@@ -9,19 +9,16 @@ import {
     Loader2,
     Archive,
     Trash2,
-    ExternalLink,
     BookmarkMinus,
-    AlertCircle,
-    Info,
     Pencil,
     Check,
+    Bell,
+    ClipboardList,
+    Milestone,
     Clock,
-    FolderOpen,
-    BellOff,
-    ChevronDown,
-    BookOpen,
     Activity,
     Palette,
+    ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -38,8 +35,12 @@ import type {
 } from "./types";
 import { formatDeadlineCountdown, formatHubRowTime } from "./formatTime";
 import { getHubDayKey } from "./hubDay";
-import { formatFolderReminderInterval } from "@/lib/infoItemReminder";
-import { CATEGORY_CONFIG, type Category } from "../daily-protocol/types";
+
+// 导入提取出的子组件
+import { SectionBlock, TaskGroupBlock, CategoryTag, taskCategoryConfig } from "./components/BaseBlocks";
+import { CollapsibleReminderGroup } from "./components/CollapsibleReminderGroup";
+import { FolderReminderGroup } from "./components/FolderReminderRow";
+import { ReminderRow } from "./components/ReminderRow";
 
 interface InfoHubModalProps {
     isOpen: boolean;
@@ -53,615 +54,6 @@ type CollapseKey = "reminders" | "tasks" | "longTerm";
 type TaskGroupKey = "captures" | "folderReminders" | "queuedBookmarks";
 
 type RhythmDraft = { eventName: string; eventDate: string };
-
-function SectionBlock({
-    title,
-    count,
-    isOpen,
-    onToggle,
-    children,
-}: {
-    title: string;
-    count?: number;
-    isOpen: boolean;
-    onToggle: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <section>
-            <button
-                type="button"
-                onClick={onToggle}
-                className="group mb-4 flex w-full items-center gap-3 rounded-lg -mx-2 px-2 py-1.5 text-left transition-colors hover:bg-white/45"
-            >
-                <ChevronDown
-                    size={15}
-                    className={`shrink-0 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
-                />
-                <h2 className="text-sm font-bold text-slate-700 tracking-wide shrink-0">
-                    {title}
-                </h2>
-                {typeof count === "number" && (
-                    <span className="rounded-full border border-stone-200/80 bg-white/70 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-400">
-                        {count}
-                    </span>
-                )}
-                <div className="flex-1 h-px bg-linear-to-r from-stone-300 via-stone-200 to-transparent transition-opacity group-hover:opacity-80" />
-            </button>
-            <AnimatePresence initial={false}>
-                {isOpen && (
-                    <motion.div
-                        key="section-content"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                    >
-                        {children}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </section>
-    );
-}
-
-function categoryTagStyles(type: HubCategoryType) {
-    if (type === "study") {
-        return "bg-blue-500/10 text-blue-600 border-blue-500/20";
-    }
-    return "bg-amber-500/10 text-amber-700 border-amber-500/20";
-}
-
-function folderReminderRowStyles(type: HubCategoryType) {
-    if (type === "study") {
-        return {
-            row: "border-blue-200/70 bg-gradient-to-r from-blue-50/90 via-white/90 to-blue-50/30 shadow-[inset_3px_0_0_0_rgba(59,130,246,0.45)]",
-            icon: "border-blue-200/60 bg-blue-100/70 text-blue-600",
-            meta: "text-blue-700/80",
-            action: "hover:text-blue-800 hover:bg-blue-50",
-        };
-    }
-    return {
-        row: "border-amber-200/70 bg-gradient-to-r from-amber-50/90 via-white/90 to-amber-50/30 shadow-[inset_3px_0_0_0_rgba(245,158,11,0.45)]",
-        icon: "border-amber-200/60 bg-amber-100/70 text-amber-700",
-        meta: "text-amber-800/80",
-        action: "hover:text-amber-900 hover:bg-amber-50",
-    };
-}
-
-function TaskGroupBlock({
-    title,
-    count,
-    isOpen,
-    onToggle,
-    children,
-}: {
-    title: string;
-    count: number;
-    isOpen: boolean;
-    onToggle: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="mt-4 first:mt-0">
-            <button
-                type="button"
-                onClick={onToggle}
-                className="group mb-2 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-white/55"
-            >
-                <ChevronDown
-                    size={13}
-                    className={`shrink-0 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
-                />
-                <h3 className="text-[11px] font-bold text-slate-500 tracking-wide">
-                    {title}
-                </h3>
-                <span className="rounded-full bg-stone-100/80 px-1.5 py-0.5 text-[9px] font-mono font-bold text-slate-400">
-                    {count}
-                </span>
-                <div className="h-px flex-1 bg-stone-200/70 opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
-            <AnimatePresence initial={false}>
-                {isOpen && (
-                    <motion.div
-                        key="task-group-content"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                    >
-                        {children}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
-
-function extractDomain(url: string): string | null {
-    try {
-        const domain = new URL(url).hostname;
-        return domain.replace("www.", "");
-    } catch {
-        return null;
-    }
-}
-
-function formatRange(start?: string | null, end?: string | null, legacy?: string | null): string {
-    const s = start?.slice(0, 10) || legacy?.slice(0, 10) || null;
-    const e = end?.slice(0, 10) || null;
-    if (!s && !e) return "";
-    const formatKey = (k: string) => k.replace(/-/g, ".");
-    if (s && e) {
-        if (s === e) return formatKey(s);
-        return `${formatKey(s)} — ${formatKey(e)}`;
-    }
-    if (s) return formatKey(s);
-    return `至 ${formatKey(e!)}`;
-}
-
-function FolderReminderRow({
-    folder,
-    onClose,
-    onClear,
-    bookmarks,
-    isLoading,
-    onLoad,
-}: {
-    folder: HubFolderReminder;
-    onClose: () => void;
-    onClear: (folder: HubFolderReminder) => void;
-    bookmarks?: InfoBookmark[];
-    isLoading?: boolean;
-    onLoad: (folderId: number) => void;
-}) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    const handleToggle = () => {
-        const nextState = !isExpanded;
-        setIsExpanded(nextState);
-        if (nextState) {
-            onLoad(folder.id);
-        }
-    };
-
-    const styles = folderReminderRowStyles(folder.category_type);
-
-    return (
-        <li className="rounded-lg border border-stone-200/90 bg-white shadow-sm overflow-hidden flex flex-col">
-            <div
-                onClick={handleToggle}
-                className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors ${styles.row}`}
-            >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${styles.icon}`}>
-                    <FolderOpen size={15} />
-                </div>
-                <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-slate-800 truncate">
-                        {folder.name}
-                    </span>
-                    <span className={`text-[10px] font-mono mt-0.5 block ${styles.meta}`}>
-                        {formatFolderReminderInterval(folder.reminder_interval_days)} · 回顾
-                    </span>
-                </span>
-                <CategoryTag type={folder.category_type} />
-                <Link
-                    href={`/library/info-source/${folder.category_type}`}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onClose();
-                    }}
-                    className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
-                    title="打开信息溯源"
-                >
-                    <ExternalLink size={14} />
-                </Link>
-                <button
-                    type="button"
-                    title="清除提醒"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onClear(folder);
-                    }}
-                    className={`p-1.5 rounded-md text-slate-500 transition-colors ${styles.action}`}
-                >
-                    <BellOff size={14} />
-                </button>
-            </div>
-
-            <AnimatePresence initial={false}>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="overflow-hidden border-t border-stone-200/50 bg-stone-50/80 shadow-[inset_0_2px_5px_rgba(0,0,0,0.03)]"
-                    >
-                        <div className="p-3.5">
-                            {isLoading ? (
-                                <div className="flex items-center justify-center py-3">
-                                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                                </div>
-                            ) : !bookmarks || bookmarks.length === 0 ? (
-                                <div className="text-sm text-stone-400 italic py-1 pl-2">
-                                    暂无条目
-                                </div>
-                            ) : (
-                                <div className="max-h-48 overflow-y-auto pr-1">
-                                    <ul className="space-y-2 border-l border-dashed border-stone-300 pl-3.5 py-0.5 ml-2.5">
-                                        {bookmarks.map((bookmark) => {
-                                            const formattedDate = formatRange(
-                                                bookmark.effective_date_start,
-                                                bookmark.effective_date_end,
-                                                bookmark.info_date || bookmark.created_at
-                                            );
-                                            const domain = bookmark.url ? extractDomain(bookmark.url) : null;
-
-                                            return (
-                                                <li
-                                                    key={`b-${bookmark.id}`}
-                                                    className="flex items-center justify-between gap-4 py-1.5 border-b border-stone-200/40 last:border-b-0"
-                                                >
-                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                        {/* 项目装饰圆点 */}
-                                                        <span className="w-1 h-1 rounded-full bg-stone-300 shrink-0" />
-                                                        
-                                                        <span className="flex-1 min-w-0 truncate">
-                                                            {bookmark.url ? (
-                                                                <a
-                                                                    href={bookmark.url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="inline-flex items-baseline flex-wrap gap-1.5 font-medium text-slate-700 hover:text-amber-600 hover:underline text-sm truncate"
-                                                                    title={bookmark.title}
-                                                                >
-                                                                    <span className="truncate">{bookmark.title}</span>
-                                                                    {domain && (
-                                                                        <span className="text-[10px] font-normal text-slate-400 font-mono tracking-tight shrink-0 select-none">
-                                                                            ({domain})
-                                                                        </span>
-                                                                    )}
-                                                                    <ExternalLink size={11} className="shrink-0 text-slate-400/80 align-baseline" />
-                                                                </a>
-                                                            ) : (
-                                                                <span className="text-slate-600 text-sm" title={bookmark.title}>
-                                                                    {bookmark.title}
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    {formattedDate && (
-                                                        <span className="text-[11px] font-mono text-slate-400 shrink-0 select-none">
-                                                            {formattedDate}
-                                                        </span>
-                                                    )}
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </li>
-    );
-}
-
-function FolderReminderGroup({
-    folders,
-    isOpen,
-    onToggle,
-    onClose,
-    onClear,
-    folderBookmarks,
-    loadingFolders,
-    onLoadFolderBookmarks,
-}: {
-    folders: HubFolderReminder[];
-    isOpen: boolean;
-    onToggle: () => void;
-    onClose: () => void;
-    onClear: (folder: HubFolderReminder) => void;
-    folderBookmarks: Record<number, InfoBookmark[]>;
-    loadingFolders: Record<number, boolean>;
-    onLoadFolderBookmarks: (folderId: number) => void;
-}) {
-    if (folders.length === 0) return null;
-
-    return (
-        <TaskGroupBlock title="收藏夹提醒" count={folders.length} isOpen={isOpen} onToggle={onToggle}>
-            <ul className="space-y-2">
-                {folders.map((folder) => (
-                    <FolderReminderRow
-                        key={`f-${folder.id}`}
-                        folder={folder}
-                        onClose={onClose}
-                        onClear={onClear}
-                        bookmarks={folderBookmarks[folder.id]}
-                        isLoading={loadingFolders[folder.id]}
-                        onLoad={onLoadFolderBookmarks}
-                    />
-                ))}
-            </ul>
-        </TaskGroupBlock>
-    );
-}
-
-function CategoryTag({ type }: { type: HubCategoryType }) {
-    return (
-        <span
-            className={`text-[10px] font-mono uppercase shrink-0 px-1.5 py-0.5 rounded border ${categoryTagStyles(type)}`}
-        >
-            {type}
-        </span>
-    );
-}
-
-function taskCategoryConfig(category: string) {
-    if (category in CATEGORY_CONFIG) {
-        return CATEGORY_CONFIG[category as Category];
-    }
-    return null;
-}
-
-function reminderStyles(tone: HubReminder["tone"]) {
-    if (tone === "warn") {
-        return "text-amber-900/90 bg-amber-50/90 border-amber-200/70";
-    }
-    return "text-slate-700 bg-slate-50/90 border-slate-200/70";
-}
-
-function deadlineReminderStyles(tone: HubReminder["tone"]) {
-    if (tone === "warn") {
-        return "border-rose-300/80 bg-gradient-to-r from-rose-50/95 via-white/90 to-rose-50/40 shadow-[inset_3px_0_0_0_rgba(244,63,94,0.55)]";
-    }
-    return "border-violet-200/70 bg-gradient-to-r from-violet-50/80 via-white/90 to-violet-50/30 shadow-[inset_3px_0_0_0_rgba(139,92,246,0.45)]";
-}
-
-function rhythmReminderTheme(category?: HubRhythmCategory) {
-    switch (category) {
-        case "study":
-            return {
-                Icon: BookOpen,
-                row: "border-blue-200/80 bg-blue-50/90 text-blue-950 shadow-[inset_3px_0_0_0_rgba(59,130,246,0.45)]",
-                icon: "border-blue-200/80 bg-blue-100/80 text-blue-600",
-                input: "border-blue-200/70 bg-white/75 text-blue-950 placeholder:text-blue-700/35 focus:border-blue-300 focus:bg-white",
-                button: "border-blue-200/70 text-blue-700/85 hover:bg-blue-100/60 hover:text-blue-800",
-            };
-        case "exercise":
-            return {
-                Icon: Activity,
-                row: "border-rose-200/80 bg-rose-50/90 text-rose-950 shadow-[inset_3px_0_0_0_rgba(244,63,94,0.45)]",
-                icon: "border-rose-200/80 bg-rose-100/80 text-rose-600",
-                input: "border-rose-200/70 bg-white/75 text-rose-950 placeholder:text-rose-700/35 focus:border-rose-300 focus:bg-white",
-                button: "border-rose-200/70 text-rose-700/85 hover:bg-rose-100/60 hover:text-rose-800",
-            };
-        case "arts":
-            return {
-                Icon: Palette,
-                row: "border-emerald-200/80 bg-emerald-50/90 text-emerald-950 shadow-[inset_3px_0_0_0_rgba(16,185,129,0.45)]",
-                icon: "border-emerald-200/80 bg-emerald-100/80 text-emerald-600",
-                input: "border-emerald-200/70 bg-white/75 text-emerald-950 placeholder:text-emerald-700/35 focus:border-emerald-300 focus:bg-white",
-                button: "border-emerald-200/70 text-emerald-700/85 hover:bg-emerald-100/60 hover:text-emerald-800",
-            };
-        default:
-            return null;
-    }
-}
-
-function ReminderRow({
-    reminder,
-    onOpenCalendar,
-    onOpenProtocol,
-    onClose,
-    onIgnoreFriendReminder,
-    friendSnoozeDays,
-    onFriendSnoozeDaysChange,
-    onUpdateFriendLastContact,
-    friendLastContactDate,
-    onFriendLastContactDateChange,
-    isUpdatingLastContact,
-    onUpdateRhythmReminder,
-    rhythmEventName,
-    onRhythmEventNameChange,
-    rhythmEventDate,
-    onRhythmEventDateChange,
-    isUpdatingRhythm,
-}: {
-    reminder: HubReminder;
-    onOpenCalendar?: () => void;
-    onOpenProtocol?: () => void;
-    onClose: () => void;
-    onIgnoreFriendReminder?: (friendId: number) => void;
-    friendSnoozeDays?: string;
-    onFriendSnoozeDaysChange?: (value: string) => void;
-    onUpdateFriendLastContact?: (friendId: number) => void;
-    friendLastContactDate?: string;
-    onFriendLastContactDateChange?: (value: string) => void;
-    isUpdatingLastContact?: boolean;
-    onUpdateRhythmReminder?: (category: HubRhythmCategory) => void;
-    rhythmEventName?: string;
-    onRhythmEventNameChange?: (value: string) => void;
-    rhythmEventDate?: string;
-    onRhythmEventDateChange?: (value: string) => void;
-    isUpdatingRhythm?: boolean;
-}) {
-    const handleCalendar = () => {
-        onClose();
-        onOpenCalendar?.();
-    };
-
-    const handleProtocol = () => {
-        onClose();
-        onOpenProtocol?.();
-    };
-
-    if (reminder.kind === "deadline" && reminder.deadlineTitle) {
-        const dateLabel = reminder.deadlineDate?.replace(/-/g, ".") ?? "";
-        const isUrgent = reminder.tone === "warn";
-
-        return (
-            <li
-                className={`flex items-stretch gap-3 rounded-lg border px-3 py-3 text-sm ${deadlineReminderStyles(reminder.tone)}`}
-            >
-                <div
-                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${isUrgent
-                        ? "border-rose-200/80 bg-rose-100/80 text-rose-600"
-                        : "border-violet-200/70 bg-violet-100/70 text-violet-600"
-                        }`}
-                    aria-hidden
-                >
-                    <Clock size={15} strokeWidth={2.25} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 leading-snug truncate">
-                        {reminder.deadlineTitle}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                        <span
-                            className={`text-[11px] font-mono font-bold tracking-wide px-2 py-0.5 rounded-md border ${isUrgent
-                                ? "text-rose-700 bg-rose-100/60 border-rose-200/60"
-                                : "text-violet-700 bg-violet-100/50 border-violet-200/50"
-                                }`}
-                        >
-                            {reminder.deadlineWhen}
-                        </span>
-                        <span className="text-[11px] font-mono text-slate-500 tracking-tight">
-                            {dateLabel}
-                        </span>
-                    </div>
-                </div>
-                {onOpenCalendar && (
-                    <button
-                        type="button"
-                        onClick={handleCalendar}
-                        className={`self-center text-[11px] font-mono shrink-0 px-2 py-1 rounded-md border transition-colors ${isUrgent
-                            ? "text-rose-600/80 border-rose-200/50 hover:bg-rose-100/60 hover:text-rose-700"
-                            : "text-violet-600/80 border-violet-200/50 hover:bg-violet-100/50 hover:text-violet-700"
-                            }`}
-                    >
-                        日历
-                    </button>
-                )}
-            </li>
-        );
-    }
-
-    const rhythmTheme = reminder.kind === "rhythm" ? rhythmReminderTheme(reminder.rhythmCategory) : null;
-    const Icon = rhythmTheme?.Icon ?? (reminder.tone === "warn" ? AlertCircle : Info);
-
-    return (
-        <li
-            className={`flex items-start gap-2 text-sm border rounded-lg px-3 py-2.5 ${rhythmTheme?.row ?? reminderStyles(reminder.tone)}`}
-        >
-            {rhythmTheme ? (
-                <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${rhythmTheme.icon}`}>
-                    <Icon size={15} strokeWidth={2.25} />
-                </div>
-            ) : (
-                <Icon size={16} className="shrink-0 mt-0.5 opacity-80" />
-            )}
-            <span className="flex-1 leading-snug">
-                {reminder.message}
-                {reminder.kind === "friend_contact" && reminder.friendScheduledDate && (
-                    <span className="text-[10px] font-mono text-slate-400 ml-1.5">
-                        预定 {reminder.friendScheduledDate.replace(/-/g, '.')}
-                    </span>
-                )}
-            </span>
-            {reminder.kind === "friend_contact" && reminder.friendId && onIgnoreFriendReminder && (
-                <div className="flex shrink-0 items-center gap-2">
-                    {/* 更新最后联系日期 */}
-                    {onUpdateFriendLastContact && (
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-mono text-slate-400">联系日</span>
-                            <input
-                                type="date"
-                                aria-label="更新最后联系日期"
-                                value={friendLastContactDate ?? ''}
-                                onChange={(event) => onFriendLastContactDateChange?.(event.target.value)}
-                                className="h-7 w-[120px] rounded-md border border-slate-200/70 bg-white/70 px-2 text-[11px] font-mono text-slate-700 outline-none transition-colors focus:border-slate-300 focus:bg-white"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => onUpdateFriendLastContact(reminder.friendId!)}
-                                disabled={isUpdatingLastContact || !friendLastContactDate}
-                                className="rounded-md border border-slate-200/70 px-2 py-1 text-[11px] font-mono text-emerald-600/80 transition-colors hover:bg-emerald-50/80 hover:text-emerald-700 disabled:opacity-30"
-                                title="确认更新联系日期"
-                            >
-                                <Check size={13} />
-                            </button>
-                        </div>
-                    )}
-                    {/* 分隔 */}
-                    <div className="h-5 w-px bg-amber-200/60" />
-                    {/* 推迟提醒 */}
-                    <div className="flex items-center gap-1.5">
-                        <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            inputMode="numeric"
-                            aria-label="推迟提醒天数"
-                            value={friendSnoozeDays ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`}
-                            onChange={(event) => onFriendSnoozeDaysChange?.(event.target.value)}
-                            className="h-7 w-14 rounded-md border border-amber-200/70 bg-white/70 px-2 text-right text-[11px] font-mono text-amber-800 outline-none transition-colors focus:border-amber-300 focus:bg-white"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => onIgnoreFriendReminder(reminder.friendId!)}
-                            className="rounded-md border border-amber-200/70 px-2 py-1 text-[11px] font-mono text-amber-700/80 transition-colors hover:bg-amber-100/60 hover:text-amber-800"
-                        >
-                            天后提醒
-                        </button>
-                    </div>
-                </div>
-            )}
-            {reminder.kind === "rhythm" && reminder.rhythmCategory && onUpdateRhythmReminder && (
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                    <input
-                        type="text"
-                        aria-label="节奏事件名称"
-                        placeholder="事件"
-                        value={rhythmEventName ?? ""}
-                        onChange={(event) => onRhythmEventNameChange?.(event.target.value)}
-                        className={`h-7 w-[120px] rounded-md border px-2 text-[11px] outline-none transition-colors ${rhythmTheme?.input ?? "border-amber-200/70 bg-white/70 text-amber-900 placeholder:text-amber-700/35 focus:border-amber-300 focus:bg-white"}`}
-                    />
-                    <input
-                        type="date"
-                        aria-label="节奏事件日期"
-                        value={rhythmEventDate ?? ""}
-                        onChange={(event) => onRhythmEventDateChange?.(event.target.value)}
-                        className={`h-7 w-[120px] rounded-md border px-2 text-[11px] font-mono outline-none transition-colors ${rhythmTheme?.input ?? "border-amber-200/70 bg-white/70 text-amber-900 focus:border-amber-300 focus:bg-white"}`}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => onUpdateRhythmReminder(reminder.rhythmCategory!)}
-                        disabled={isUpdatingRhythm || !rhythmEventName?.trim() || !rhythmEventDate}
-                        className={`rounded-md border px-2 py-1 text-[11px] font-mono transition-colors disabled:opacity-30 ${rhythmTheme?.button ?? "border-amber-200/70 text-amber-700/80 hover:bg-amber-100/60 hover:text-amber-800"}`}
-                        title="记录新事件"
-                    >
-                        {isUpdatingRhythm ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                    </button>
-                </div>
-            )}
-            {reminder.action && (reminder.action === "calendar" ? onOpenCalendar : onOpenProtocol) && (
-                <button
-                    type="button"
-                    onClick={reminder.action === "calendar" ? handleCalendar : handleProtocol}
-                    className="text-[11px] font-mono opacity-70 hover:opacity-100 hover:underline shrink-0"
-                >
-                    {reminder.action === "calendar" ? "日历" : "Protocol"}
-                </button>
-            )}
-        </li>
-    );
-}
 
 export default function InfoHubModal({
     isOpen,
@@ -724,6 +116,13 @@ export default function InfoHubModal({
             return false;
         }
         return true;
+    };
+
+    const scrollToId = (id: string) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
     };
 
     useEffect(() => setMounted(true), []);
@@ -952,6 +351,11 @@ export default function InfoHubModal({
         setExpandedTaskGroups((prev) => ({ ...prev, [group]: !prev[group] }));
     };
 
+    const deadlineReminders = hub.reminders.filter((r) => r.kind === "deadline");
+    const friendReminders = hub.reminders.filter((r) => r.kind === "friend_contact");
+    const rhythmReminders = hub.reminders.filter((r) => r.kind === "rhythm");
+    const defaultReminders = hub.reminders.filter((r) => r.kind === "default" || !r.kind);
+
     const reminderTotalCount = hub.reminders.length + hub.folderReminders.length;
     const taskTotalCount = hub.captures.length + hub.queuedBookmarks.length;
 
@@ -973,7 +377,7 @@ export default function InfoHubModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.98, y: 8 }}
                         transition={{ type: "spring", damping: 28, stiffness: 360 }}
-                        className="relative w-full max-w-[880px] h-[min(760px,88vh)] bg-[#fdfbf7] rounded-xl shadow-2xl border border-stone-200/90 flex flex-col overflow-hidden ring-1 ring-white/60"
+                        className="relative w-full max-w-[1080px] h-[min(760px,88vh)] bg-[#fdfbf7] rounded-xl shadow-2xl border border-stone-200/90 flex flex-col overflow-hidden ring-1 ring-white/60"
                         style={{
                             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
                         }}
@@ -997,169 +401,590 @@ export default function InfoHubModal({
                             </button>
                         </header>
 
-                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-10 subtle-scrollbar">
+                        <div className="flex-1 flex overflow-hidden">
+                            <nav className="w-56 border-r border-stone-200/80 bg-stone-50/40 p-4 flex flex-col justify-between overflow-y-auto subtle-scrollbar shrink-0 select-none">
+                                <div className="space-y-6 text-slate-800">
+                                    {/* 提醒大项 */}
+                                    <div className="space-y-1.5">
+                                        <div 
+                                            onClick={() => scrollToId("sec-reminders")}
+                                            className="flex items-center gap-2 font-serif font-bold text-sm text-stone-700 hover:text-stone-900 cursor-pointer p-1.5 rounded-lg hover:bg-stone-200/30 transition-colors"
+                                        >
+                                            <Bell size={14} className="text-stone-500 shrink-0" />
+                                            <span>提醒</span>
+                                        </div>
+                                        <ul className="pl-6 space-y-1 text-xs text-stone-500 border-l border-stone-200/80 ml-3">
+                                            <li 
+                                                onClick={() => scrollToId("sub-folders")}
+                                                className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
+                                            >
+                                                <span>收藏夹提醒</span>
+                                                {hub.folderReminders.length > 0 && (
+                                                    <span className="text-[10px] font-mono font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded-full border border-amber-200/60">
+                                                        {hub.folderReminders.length}
+                                                    </span>
+                                                )}
+                                            </li>
+                                            <li 
+                                                onClick={() => scrollToId("sub-deadline-reminders")}
+                                                className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
+                                            >
+                                                <span>截止事项提醒</span>
+                                                {deadlineReminders.length > 0 && (
+                                                    <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded-full border border-amber-200/50">
+                                                        {deadlineReminders.length}
+                                                    </span>
+                                                )}
+                                            </li>
+                                            <li 
+                                                onClick={() => scrollToId("sub-friend-reminders")}
+                                                className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
+                                            >
+                                                <span>朋友联系提醒</span>
+                                                {friendReminders.length > 0 && (
+                                                    <span className="text-[10px] font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded-full border border-rose-200/50">
+                                                        {friendReminders.length}
+                                                    </span>
+                                                )}
+                                            </li>
+                                            <li 
+                                                onClick={() => scrollToId("sub-activity-reminders")}
+                                                className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
+                                            >
+                                                <span>活动提醒</span>
+                                                {rhythmReminders.length > 0 && (
+                                                    <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/50">
+                                                        {rhythmReminders.length}
+                                                    </span>
+                                                )}
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    {/* 任务清单大项 */}
+                                    <div className="space-y-1.5">
+                                        <div 
+                                            onClick={() => scrollToId("sec-tasks")}
+                                            className="flex items-center gap-2 font-serif font-bold text-sm text-stone-700 hover:text-stone-900 cursor-pointer p-1.5 rounded-lg hover:bg-stone-200/30 transition-colors"
+                                        >
+                                            <ClipboardList size={14} className="text-stone-500 shrink-0" />
+                                            <span>任务清单</span>
+                                        </div>
+                                        <ul className="pl-6 space-y-1 text-xs text-stone-500 border-l border-stone-200/80 ml-3">
+                                            <li 
+                                                onClick={() => scrollToId("sub-captures")}
+                                                className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
+                                            >
+                                                <span>收集箱</span>
+                                                {hub.captures.length > 0 && (
+                                                    <span className="text-[10px] font-mono font-bold text-stone-500 bg-stone-100/80 px-1.5 py-0.2 rounded-full border border-stone-200/40">
+                                                        {hub.captures.length}
+                                                    </span>
+                                                )}
+                                            </li>
+                                            <li 
+                                                onClick={() => scrollToId("sub-queued")}
+                                                className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
+                                            >
+                                                <span>待看条目</span>
+                                                {hub.queuedBookmarks.length > 0 && (
+                                                    <span className="text-[10px] font-mono font-bold text-stone-500 bg-stone-100/80 px-1.5 py-0.2 rounded-full border border-stone-200/40">
+                                                        {hub.queuedBookmarks.length}
+                                                    </span>
+                                                )}
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    {/* 长期计划大项 */}
+                                    <div className="space-y-1.5">
+                                        <div 
+                                            onClick={() => scrollToId("sec-longterm")}
+                                            className="flex items-center gap-2 font-serif font-bold text-sm text-stone-700 hover:text-stone-900 cursor-pointer p-1.5 rounded-lg hover:bg-stone-200/30 transition-colors"
+                                        >
+                                            <Milestone size={14} className="text-stone-500 shrink-0" />
+                                            <span>长期计划</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="text-[9px] font-mono text-stone-400/80 uppercase tracking-widest pt-4 border-t border-stone-200/40 shrink-0">
+                                    SYSTEM MODULE v2.0
+                                </div>
+                            </nav>
+
+                            <div id="hub-scroll-container" className="flex-1 overflow-y-auto px-8 py-6 space-y-10 subtle-scrollbar scroll-smooth">
                             {hub.isLoading ? (
                                 <div className="flex justify-center py-20 text-slate-400">
                                     <Loader2 className="animate-spin" size={28} />
                                 </div>
                             ) : (
                                 <>
-                                    <SectionBlock title="提醒" count={reminderTotalCount} isOpen={expandedSections.reminders} onToggle={() => toggleSection("reminders")}>
-                                        {hub.reminders.length === 0 && hub.folderReminders.length === 0 ? (
-                                            <p className="text-sm text-slate-400 italic pl-0.5">
-                                                暂无提醒
-                                            </p>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {hub.reminders.length > 0 && (
-                                                    <ul className="space-y-2">
-                                                        {hub.reminders.map((r) => (
-                                                            <ReminderRow
-                                                                key={r.id}
-                                                                reminder={r}
-                                                                onClose={onClose}
-                                                                onOpenCalendar={onOpenCalendar}
-                                                                onOpenProtocol={onOpenProtocol}
-                                                                onIgnoreFriendReminder={handleIgnoreFriendReminder}
-                                                                friendSnoozeDays={
-                                                                    r.friendId
-                                                                        ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
-                                                                        : undefined
-                                                                }
-                                                                onFriendSnoozeDaysChange={
-                                                                    r.friendId
-                                                                        ? (value: string) =>
-                                                                            setSnoozeDayDrafts((prev: Record<number, string>) => ({
-                                                                                ...prev,
-                                                                                [r.friendId!]: value,
-                                                                            }))
-                                                                        : undefined
-                                                                }
-                                                                onUpdateFriendLastContact={handleUpdateFriendLastContact}
-                                                                friendLastContactDate={
-                                                                    r.friendId
-                                                                        ? lastContactDates[r.friendId] ?? ''
-                                                                        : undefined
-                                                                }
-                                                                onFriendLastContactDateChange={
-                                                                    r.friendId
-                                                                        ? (value: string) =>
-                                                                            setLastContactDates((prev: Record<number, string>) => ({
-                                                                                ...prev,
-                                                                                [r.friendId!]: value,
-                                                                            }))
-                                                                        : undefined
-                                                                }
-                                                                isUpdatingLastContact={
-                                                                    r.friendId != null && updatingLastContactId === r.friendId
-                                                                }
-                                                                onUpdateRhythmReminder={handleUpdateRhythmReminder}
-                                                                rhythmEventName={
-                                                                    r.rhythmCategory
-                                                                        ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
-                                                                        : undefined
-                                                                }
-                                                                onRhythmEventNameChange={
-                                                                    r.rhythmCategory
-                                                                        ? (value: string) =>
-                                                                            setRhythmDrafts((prev) => ({
-                                                                                ...prev,
-                                                                                [r.rhythmCategory!]: {
-                                                                                    eventName: value,
-                                                                                    eventDate:
-                                                                                        prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
-                                                                                },
-                                                                            }))
-                                                                        : undefined
-                                                                }
-                                                                rhythmEventDate={
-                                                                    r.rhythmCategory
-                                                                        ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
-                                                                        : undefined
-                                                                }
-                                                                onRhythmEventDateChange={
-                                                                    r.rhythmCategory
-                                                                        ? (value: string) =>
-                                                                            setRhythmDrafts((prev) => ({
-                                                                                ...prev,
-                                                                                [r.rhythmCategory!]: {
-                                                                                    eventName:
-                                                                                        prev[r.rhythmCategory!]?.eventName ?? "",
-                                                                                    eventDate: value,
-                                                                                },
-                                                                            }))
-                                                                        : undefined
-                                                                }
-                                                                isUpdatingRhythm={
-                                                                    r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
-                                                                }
-                                                            />
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                    <div id="sec-reminders">
+                                        <SectionBlock title="提醒" count={reminderTotalCount} isOpen={expandedSections.reminders} onToggle={() => toggleSection("reminders")}>
+                                            {hub.reminders.length === 0 && hub.folderReminders.length === 0 ? (
+                                                <p className="text-sm text-slate-400 italic pl-0.5">
+                                                    暂无提醒
+                                                </p>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {/* 1. 截止事项提醒卡片 */}
+                                                    {deadlineReminders.length > 0 && (
+                                                        <div id="sub-deadline-reminders">
+                                                            <CollapsibleReminderGroup
+                                                                title="截止事项提醒"
+                                                                count={deadlineReminders.length}
+                                                                icon={Clock}
+                                                                themeClass={{
+                                                                    row: "border-amber-200/45 bg-amber-50/15",
+                                                                    icon: "border-amber-200 bg-amber-50 text-amber-700",
+                                                                }}
+                                                            >
+                                                                <ul className="space-y-2">
+                                                                    {deadlineReminders.map((r) => (
+                                                                        <ReminderRow
+                                                                            key={r.id}
+                                                                            reminder={r}
+                                                                            onClose={onClose}
+                                                                            onOpenCalendar={onOpenCalendar}
+                                                                            onOpenProtocol={onOpenProtocol}
+                                                                            onIgnoreFriendReminder={handleIgnoreFriendReminder}
+                                                                            friendSnoozeDays={
+                                                                                r.friendId
+                                                                                    ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
+                                                                                    : undefined
+                                                                            }
+                                                                            onFriendSnoozeDaysChange={
+                                                                                r.friendId
+                                                                                    ? (value: string) =>
+                                                                                        setSnoozeDayDrafts((prev: Record<number, string>) => ({
+                                                                                            ...prev,
+                                                                                            [r.friendId!]: value,
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            onUpdateFriendLastContact={handleUpdateFriendLastContact}
+                                                                            friendLastContactDate={
+                                                                                r.friendId
+                                                                                    ? lastContactDates[r.friendId] ?? ''
+                                                                                    : undefined
+                                                                            }
+                                                                            onFriendLastContactDateChange={
+                                                                                r.friendId
+                                                                                    ? (value: string) =>
+                                                                                        setLastContactDates((prev: Record<number, string>) => ({
+                                                                                            ...prev,
+                                                                                            [r.friendId!]: value,
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            isUpdatingLastContact={
+                                                                                r.friendId != null && updatingLastContactId === r.friendId
+                                                                            }
+                                                                            onUpdateRhythmReminder={handleUpdateRhythmReminder}
+                                                                            rhythmEventName={
+                                                                                r.rhythmCategory
+                                                                                    ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
+                                                                                    : undefined
+                                                                            }
+                                                                            onRhythmEventNameChange={
+                                                                                r.rhythmCategory
+                                                                                    ? (value: string) =>
+                                                                                        setRhythmDrafts((prev) => ({
+                                                                                            ...prev,
+                                                                                            [r.rhythmCategory!]: {
+                                                                                                eventName: value,
+                                                                                                eventDate:
+                                                                                                    prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
+                                                                                            },
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            rhythmEventDate={
+                                                                                r.rhythmCategory
+                                                                                    ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
+                                                                                    : undefined
+                                                                            }
+                                                                            onRhythmEventDateChange={
+                                                                                r.rhythmCategory
+                                                                                    ? (value: string) =>
+                                                                                        setRhythmDrafts((prev) => ({
+                                                                                            ...prev,
+                                                                                            [r.rhythmCategory!]: {
+                                                                                                eventName:
+                                                                                                    prev[r.rhythmCategory!]?.eventName ?? "",
+                                                                                                eventDate: value,
+                                                                                            },
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            isUpdatingRhythm={
+                                                                                r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
+                                                                            }
+                                                                        />
+                                                                    ))}
+                                                                </ul>
+                                                            </CollapsibleReminderGroup>
+                                                        </div>
+                                                    )}
 
-                                                <FolderReminderGroup
-                                                    folders={hub.folderReminders}
-                                                    isOpen={expandedTaskGroups.folderReminders}
-                                                    onToggle={() => toggleTaskGroup("folderReminders")}
-                                                    onClose={onClose}
-                                                    onClear={handleClearFolderReminder}
-                                                    folderBookmarks={folderBookmarks}
-                                                    loadingFolders={loadingFolders}
-                                                    onLoadFolderBookmarks={fetchFolderBookmarks}
+                                                    {/* 2. 朋友联系提醒卡片 */}
+                                                    {friendReminders.length > 0 && (
+                                                        <div id="sub-friend-reminders">
+                                                            <CollapsibleReminderGroup
+                                                                title="朋友联系提醒"
+                                                                count={friendReminders.length}
+                                                                icon={Activity}
+                                                                themeClass={{
+                                                                    row: "border-rose-200/45 bg-rose-50/15",
+                                                                    icon: "border-rose-200 bg-rose-50 text-rose-700",
+                                                                }}
+                                                            >
+                                                                <ul className="space-y-3">
+                                                                    {friendReminders.map((r) => (
+                                                                        <ReminderRow
+                                                                            key={r.id}
+                                                                            reminder={r}
+                                                                            onClose={onClose}
+                                                                            onOpenCalendar={onOpenCalendar}
+                                                                            onOpenProtocol={onOpenProtocol}
+                                                                            onIgnoreFriendReminder={handleIgnoreFriendReminder}
+                                                                            friendSnoozeDays={
+                                                                                r.friendId
+                                                                                    ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
+                                                                                    : undefined
+                                                                            }
+                                                                            onFriendSnoozeDaysChange={
+                                                                                r.friendId
+                                                                                    ? (value: string) =>
+                                                                                        setSnoozeDayDrafts((prev: Record<number, string>) => ({
+                                                                                            ...prev,
+                                                                                            [r.friendId!]: value,
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            onUpdateFriendLastContact={handleUpdateFriendLastContact}
+                                                                            friendLastContactDate={
+                                                                                r.friendId
+                                                                                    ? lastContactDates[r.friendId] ?? ''
+                                                                                    : undefined
+                                                                            }
+                                                                            onFriendLastContactDateChange={
+                                                                                r.friendId
+                                                                                    ? (value: string) =>
+                                                                                        setLastContactDates((prev: Record<number, string>) => ({
+                                                                                            ...prev,
+                                                                                            [r.friendId!]: value,
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            isUpdatingLastContact={
+                                                                                r.friendId != null && updatingLastContactId === r.friendId
+                                                                            }
+                                                                            onUpdateRhythmReminder={handleUpdateRhythmReminder}
+                                                                            rhythmEventName={
+                                                                                r.rhythmCategory
+                                                                                    ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
+                                                                                    : undefined
+                                                                            }
+                                                                            onRhythmEventNameChange={
+                                                                                r.rhythmCategory
+                                                                                    ? (value: string) =>
+                                                                                        setRhythmDrafts((prev) => ({
+                                                                                            ...prev,
+                                                                                            [r.rhythmCategory!]: {
+                                                                                                eventName: value,
+                                                                                                eventDate:
+                                                                                                    prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
+                                                                                            },
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            rhythmEventDate={
+                                                                                r.rhythmCategory
+                                                                                    ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
+                                                                                    : undefined
+                                                                            }
+                                                                            onRhythmEventDateChange={
+                                                                                r.rhythmCategory
+                                                                                    ? (value: string) =>
+                                                                                        setRhythmDrafts((prev) => ({
+                                                                                            ...prev,
+                                                                                            [r.rhythmCategory!]: {
+                                                                                                eventName:
+                                                                                                    prev[r.rhythmCategory!]?.eventName ?? "",
+                                                                                                eventDate: value,
+                                                                                            },
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            isUpdatingRhythm={
+                                                                                r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
+                                                                            }
+                                                                        />
+                                                                    ))}
+                                                                </ul>
+                                                            </CollapsibleReminderGroup>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 3. 活动提醒卡片 */}
+                                                    {rhythmReminders.length > 0 && (
+                                                        <div id="sub-activity-reminders">
+                                                            <CollapsibleReminderGroup
+                                                                title="活动提醒"
+                                                                count={rhythmReminders.length}
+                                                                icon={Palette}
+                                                                themeClass={{
+                                                                    row: "border-emerald-200/45 bg-emerald-50/15",
+                                                                    icon: "border-emerald-200 bg-emerald-50 text-emerald-700",
+                                                                }}
+                                                            >
+                                                                <ul className="space-y-3">
+                                                                    {rhythmReminders.map((r) => (
+                                                                        <ReminderRow
+                                                                            key={r.id}
+                                                                            reminder={r}
+                                                                            onClose={onClose}
+                                                                            onOpenCalendar={onOpenCalendar}
+                                                                            onOpenProtocol={onOpenProtocol}
+                                                                            onIgnoreFriendReminder={handleIgnoreFriendReminder}
+                                                                            friendSnoozeDays={
+                                                                                r.friendId
+                                                                                    ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
+                                                                                    : undefined
+                                                                            }
+                                                                            onFriendSnoozeDaysChange={
+                                                                                r.friendId
+                                                                                    ? (value: string) =>
+                                                                                        setSnoozeDayDrafts((prev: Record<number, string>) => ({
+                                                                                            ...prev,
+                                                                                            [r.friendId!]: value,
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            onUpdateFriendLastContact={handleUpdateFriendLastContact}
+                                                                            friendLastContactDate={
+                                                                                r.friendId
+                                                                                    ? lastContactDates[r.friendId] ?? ''
+                                                                                    : undefined
+                                                                            }
+                                                                            onFriendLastContactDateChange={
+                                                                                r.friendId
+                                                                                    ? (value: string) =>
+                                                                                        setLastContactDates((prev: Record<number, string>) => ({
+                                                                                            ...prev,
+                                                                                            [r.friendId!]: value,
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            isUpdatingLastContact={
+                                                                                r.friendId != null && updatingLastContactId === r.friendId
+                                                                            }
+                                                                            onUpdateRhythmReminder={handleUpdateRhythmReminder}
+                                                                            rhythmEventName={
+                                                                                r.rhythmCategory
+                                                                                    ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
+                                                                                    : undefined
+                                                                            }
+                                                                            onRhythmEventNameChange={
+                                                                                r.rhythmCategory
+                                                                                    ? (value: string) =>
+                                                                                        setRhythmDrafts((prev) => ({
+                                                                                            ...prev,
+                                                                                            [r.rhythmCategory!]: {
+                                                                                                eventName: value,
+                                                                                                eventDate:
+                                                                                                    prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
+                                                                                            },
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            rhythmEventDate={
+                                                                                r.rhythmCategory
+                                                                                    ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
+                                                                                    : undefined
+                                                                            }
+                                                                            onRhythmEventDateChange={
+                                                                                r.rhythmCategory
+                                                                                    ? (value: string) =>
+                                                                                        setRhythmDrafts((prev) => ({
+                                                                                            ...prev,
+                                                                                            [r.rhythmCategory!]: {
+                                                                                                eventName:
+                                                                                                    prev[r.rhythmCategory!]?.eventName ?? "",
+                                                                                                eventDate: value,
+                                                                                            },
+                                                                                        }))
+                                                                                    : undefined
+                                                                            }
+                                                                            isUpdatingRhythm={
+                                                                                r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
+                                                                            }
+                                                                        />
+                                                                    ))}
+                                                                </ul>
+                                                            </CollapsibleReminderGroup>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 4. 其他常规默认提醒 */}
+                                                    {defaultReminders.length > 0 && (
+                                                        <div id="sub-general-reminders">
+                                                            <ul className="space-y-2">
+                                                                {defaultReminders.map((r) => (
+                                                                    <ReminderRow
+                                                                        key={r.id}
+                                                                        reminder={r}
+                                                                        onClose={onClose}
+                                                                        onOpenCalendar={onOpenCalendar}
+                                                                        onOpenProtocol={onOpenProtocol}
+                                                                        onIgnoreFriendReminder={handleIgnoreFriendReminder}
+                                                                        friendSnoozeDays={
+                                                                            r.friendId
+                                                                                ? snoozeDayDrafts[r.friendId] ?? `${DEFAULT_FRIEND_CONTACT_SNOOZE_DAYS}`
+                                                                                : undefined
+                                                                        }
+                                                                        onFriendSnoozeDaysChange={
+                                                                            r.friendId
+                                                                                ? (value: string) =>
+                                                                                    setSnoozeDayDrafts((prev: Record<number, string>) => ({
+                                                                                        ...prev,
+                                                                                        [r.friendId!]: value,
+                                                                                    }))
+                                                                                : undefined
+                                                                        }
+                                                                        onUpdateFriendLastContact={handleUpdateFriendLastContact}
+                                                                        friendLastContactDate={
+                                                                            r.friendId
+                                                                                ? lastContactDates[r.friendId] ?? ''
+                                                                                : undefined
+                                                                        }
+                                                                        onFriendLastContactDateChange={
+                                                                            r.friendId
+                                                                                ? (value: string) =>
+                                                                                    setLastContactDates((prev: Record<number, string>) => ({
+                                                                                        ...prev,
+                                                                                        [r.friendId!]: value,
+                                                                                    }))
+                                                                                : undefined
+                                                                        }
+                                                                        isUpdatingLastContact={
+                                                                            r.friendId != null && updatingLastContactId === r.friendId
+                                                                        }
+                                                                        onUpdateRhythmReminder={handleUpdateRhythmReminder}
+                                                                        rhythmEventName={
+                                                                            r.rhythmCategory
+                                                                                ? rhythmDrafts[r.rhythmCategory]?.eventName ?? ""
+                                                                                : undefined
+                                                                        }
+                                                                        onRhythmEventNameChange={
+                                                                            r.rhythmCategory
+                                                                                ? (value: string) =>
+                                                                                    setRhythmDrafts((prev) => ({
+                                                                                        ...prev,
+                                                                                        [r.rhythmCategory!]: {
+                                                                                            eventName: value,
+                                                                                            eventDate:
+                                                                                                prev[r.rhythmCategory!]?.eventDate ?? getHubDayKey(),
+                                                                                        },
+                                                                                    }))
+                                                                                : undefined
+                                                                        }
+                                                                        rhythmEventDate={
+                                                                            r.rhythmCategory
+                                                                                ? rhythmDrafts[r.rhythmCategory]?.eventDate ?? getHubDayKey()
+                                                                                : undefined
+                                                                        }
+                                                                        onRhythmEventDateChange={
+                                                                            r.rhythmCategory
+                                                                                ? (value: string) =>
+                                                                                    setRhythmDrafts((prev) => ({
+                                                                                        ...prev,
+                                                                                        [r.rhythmCategory!]: {
+                                                                                            eventName:
+                                                                                                prev[r.rhythmCategory!]?.eventName ?? "",
+                                                                                            eventDate: value,
+                                                                                        },
+                                                                                    }))
+                                                                                : undefined
+                                                                        }
+                                                                        isUpdatingRhythm={
+                                                                            r.rhythmCategory != null && updatingRhythmCategory === r.rhythmCategory
+                                                                        }
+                                                                    />
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    <div id="sub-folders">
+                                                        <FolderReminderGroup
+                                                            folders={hub.folderReminders}
+                                                            isOpen={expandedTaskGroups.folderReminders}
+                                                            onToggle={() => toggleTaskGroup("folderReminders")}
+                                                            onClose={onClose}
+                                                            onClear={handleClearFolderReminder}
+                                                            folderBookmarks={folderBookmarks}
+                                                            loadingFolders={loadingFolders}
+                                                            onLoadFolderBookmarks={fetchFolderBookmarks}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </SectionBlock>
+                                    </div>
+
+                                    <div id="sec-tasks">
+                                        <SectionBlock title="任务清单" count={taskTotalCount} isOpen={expandedSections.tasks} onToggle={() => toggleSection("tasks")}>
+                                            <div className="flex gap-2 mb-4">
+                                                <input
+                                                    type="text"
+                                                    value={draftTitle}
+                                                    onChange={(e) => setDraftTitle(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") handleAdd();
+                                                    }}
+                                                    placeholder="快速记录…"
+                                                    className="flex-1 px-3 py-2.5 rounded-lg border border-stone-200/90 bg-white text-slate-800 placeholder:text-slate-400 text-sm outline-none focus:ring-2 focus:ring-slate-300/50 shadow-sm"
+                                                    disabled={isSubmitting}
+                                                    autoFocus
                                                 />
+                                                <select
+                                                    value={draftType}
+                                                    onChange={(e) =>
+                                                        setDraftType(e.target.value as HubCategoryType)
+                                                    }
+                                                    className="w-18 px-2 py-2.5 rounded-lg border border-stone-200/90 bg-white text-[11px] font-mono text-slate-700 outline-none"
+                                                    title="归档目标 Nexus"
+                                                >
+                                                    <option value="study">study</option>
+                                                    <option value="life">life</option>
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAdd}
+                                                    disabled={isSubmitting || !draftTitle.trim()}
+                                                    className="px-3.5 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-bold hover:bg-slate-700 disabled:opacity-40 shadow-sm transition-colors"
+                                                >
+                                                    {isSubmitting ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <Plus size={16} />
+                                                    )}
+                                                </button>
                                             </div>
-                                        )}
-                                    </SectionBlock>
 
-                                    <SectionBlock title="任务清单" count={taskTotalCount} isOpen={expandedSections.tasks} onToggle={() => toggleSection("tasks")}>
-                                        <div className="flex gap-2 mb-4">
-                                            <input
-                                                type="text"
-                                                value={draftTitle}
-                                                onChange={(e) => setDraftTitle(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") handleAdd();
-                                                }}
-                                                placeholder="快速记录…"
-                                                className="flex-1 px-3 py-2.5 rounded-lg border border-stone-200/90 bg-white text-slate-800 placeholder:text-slate-400 text-sm outline-none focus:ring-2 focus:ring-slate-300/50 shadow-sm"
-                                                disabled={isSubmitting}
-                                                autoFocus
-                                            />
-                                            <select
-                                                value={draftType}
-                                                onChange={(e) =>
-                                                    setDraftType(e.target.value as HubCategoryType)
-                                                }
-                                                className="w-18 px-2 py-2.5 rounded-lg border border-stone-200/90 bg-white text-[11px] font-mono text-slate-700 outline-none"
-                                                title="归档目标 Nexus"
-                                            >
-                                                <option value="study">study</option>
-                                                <option value="life">life</option>
-                                            </select>
-                                            <button
-                                                type="button"
-                                                onClick={handleAdd}
-                                                disabled={isSubmitting || !draftTitle.trim()}
-                                                className="px-3.5 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-bold hover:bg-slate-700 disabled:opacity-40 shadow-sm transition-colors"
-                                            >
-                                                {isSubmitting ? (
-                                                    <Loader2 size={16} className="animate-spin" />
-                                                ) : (
-                                                    <Plus size={16} />
-                                                )}
-                                            </button>
-                                        </div>
-
-                                        {hub.captures.length === 0 &&
-                                            hub.queuedBookmarks.length === 0 ? (
-                                            <p className="text-sm text-slate-400 italic pl-0.5">
-                                                暂无待处理项
-                                            </p>
-                                        ) : (
-                                            <div>
-                                                {hub.captures.length > 0 && (
-                                                    <TaskGroupBlock title="未归档" count={hub.captures.length} isOpen={expandedTaskGroups.captures} onToggle={() => toggleTaskGroup("captures")}>
+                                            {hub.captures.length === 0 &&
+                                                hub.queuedBookmarks.length === 0 ? (
+                                                <p className="text-sm text-slate-400 italic pl-0.5">
+                                                    暂无待处理项
+                                                </p>
+                                            ) : (
+                                                <div>
+                                                    {hub.captures.length > 0 && (
+                                                        <div id="sub-captures">
+                                                            <TaskGroupBlock title="想法汇总" count={hub.captures.length} isOpen={expandedTaskGroups.captures} onToggle={() => toggleTaskGroup("captures")}>
                                                         <ul className="space-y-2">
                                                             {hub.captures.map((capture) => {
                                                                 const isEditing =
@@ -1353,118 +1178,125 @@ export default function InfoHubModal({
                                                             })}
                                                         </ul>
                                                     </TaskGroupBlock>
+                                                </div>
                                                 )}
 
                                                 {hub.queuedBookmarks.length > 0 && (
-                                                    <TaskGroupBlock title="待看条目" count={hub.queuedBookmarks.length} isOpen={expandedTaskGroups.queuedBookmarks} onToggle={() => toggleTaskGroup("queuedBookmarks")}>
-                                                        <ul className="space-y-2">
-                                                            {hub.queuedBookmarks.map((bookmark) => (
-                                                                <li
-                                                                    key={`b-${bookmark.id}`}
-                                                                    className="group flex items-center gap-2 rounded-lg bg-white/80 px-3 py-2.5"
-                                                                >
-                                                                    <span className="flex-1 min-w-0">
-                                                                        <span className="block text-sm text-slate-800 truncate">
-                                                                            {bookmark.title}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                                                                            来自 · {bookmark.hub_name ?? "未归入收藏夹"}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-slate-400/80 font-mono">
-                                                                            {formatHubRowTime(
-                                                                                bookmark.created_at
-                                                                            )}
-                                                                        </span>
-                                                                    </span>
-                                                                    <CategoryTag
-                                                                        type={bookmark.category_type}
-                                                                    />
-                                                                    <Link
-                                                                        href={`/library/info-source/${bookmark.category_type}`}
-                                                                        onClick={onClose}
-                                                                        className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-white/80 transition-colors"
-                                                                        title="打开信息溯源"
+                                                    <div id="sub-queued">
+                                                        <TaskGroupBlock title="待看条目" count={hub.queuedBookmarks.length} isOpen={expandedTaskGroups.queuedBookmarks} onToggle={() => toggleTaskGroup("queuedBookmarks")}>
+                                                            <ul className="space-y-2">
+                                                                {hub.queuedBookmarks.map((bookmark) => (
+                                                                    <li
+                                                                        key={`b-${bookmark.id}`}
+                                                                        className="group flex items-center gap-2 rounded-lg bg-white/80 px-3 py-2.5"
                                                                     >
-                                                                        <ExternalLink size={14} />
-                                                                    </Link>
-                                                                    <button
-                                                                        type="button"
-                                                                        title="移出待看"
-                                                                        onClick={() =>
-                                                                            handleUnqueue(bookmark)
-                                                                        }
-                                                                        className="p-1.5 rounded-md text-slate-500 hover:text-slate-700 hover:bg-white/80 transition-colors"
-                                                                    >
-                                                                        <BookmarkMinus size={14} />
-                                                                    </button>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </TaskGroupBlock>
+                                                                        <span className="flex-1 min-w-0">
+                                                                            <span className="block text-sm text-slate-800 truncate">
+                                                                                {bookmark.title}
+                                                                            </span>
+                                                                            <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                                                                来自 · {bookmark.hub_name ?? "未归入收藏夹"}
+                                                                            </span>
+                                                                            <span className="text-[10px] text-slate-400/80 font-mono">
+                                                                                {formatHubRowTime(
+                                                                                    bookmark.created_at
+                                                                                )}
+                                                                            </span>
+                                                                        </span>
+                                                                        <CategoryTag
+                                                                            type={bookmark.category_type}
+                                                                        />
+                                                                        <Link
+                                                                            href={`/library/info-source/${bookmark.category_type}`}
+                                                                            onClick={onClose}
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-white/80 transition-colors"
+                                                                            title="打开信息溯源"
+                                                                        >
+                                                                            <ExternalLink size={14} />
+                                                                        </Link>
+                                                                        <button
+                                                                            type="button"
+                                                                            title="移出待看"
+                                                                            onClick={() =>
+                                                                                handleUnqueue(bookmark)
+                                                                            }
+                                                                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-700 hover:bg-white/80 transition-colors"
+                                                                        >
+                                                                            <BookmarkMinus size={14} />
+                                                                        </button>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </TaskGroupBlock>
+                                                    </div>
                                                 )}
                                             </div>
                                         )}
                                     </SectionBlock>
+                                    </div>
 
-                                    <SectionBlock title="长期计划" count={hub.longTermTasks.length} isOpen={expandedSections.longTerm} onToggle={() => toggleSection("longTerm")}>
-                                        {hub.longTermTasks.length === 0 ? (
-                                            <p className="text-sm text-slate-400 italic pl-0.5">
-                                                暂无进行中的长期任务（需带 deadline）
-                                            </p>
-                                        ) : (
-                                            <ul className="space-y-2">
-                                                {hub.longTermTasks.map((t) => {
-                                                    const catConfig = taskCategoryConfig(t.category);
-                                                    return (
-                                                        <li
-                                                            key={t.id}
-                                                            className={`flex items-center gap-3 rounded-lg border border-stone-200/60 px-3 py-2.5 text-sm shadow-sm ${catConfig?.bgLight ?? "bg-white/60"
-                                                                }`}
-                                                        >
-                                                            <div
-                                                                className={`w-1 self-stretch min-h-9 rounded-full shrink-0 ${catConfig?.indicator ?? "bg-slate-300"
+                                    <div id="sec-longterm">
+                                        <SectionBlock title="长期计划" count={hub.longTermTasks.length} isOpen={expandedSections.longTerm} onToggle={() => toggleSection("longTerm")}>
+                                            {hub.longTermTasks.length === 0 ? (
+                                                <p className="text-sm text-slate-400 italic pl-0.5">
+                                                    暂无进行中的长期任务（需带 deadline）
+                                                </p>
+                                            ) : (
+                                                <ul className="space-y-2">
+                                                    {hub.longTermTasks.map((t) => {
+                                                        const catConfig = taskCategoryConfig(t.category);
+                                                        return (
+                                                            <li
+                                                                key={t.id}
+                                                                className={`flex items-center gap-3 rounded-lg border border-stone-200/60 px-3 py-2.5 text-sm shadow-sm ${catConfig?.bgLight ?? "bg-white/60"
                                                                     }`}
-                                                                aria-hidden
-                                                            />
-                                                            <span className="flex-1 min-w-0">
-                                                                <span className="block text-slate-800 truncate">
-                                                                    {t.title}
-                                                                </span>
-                                                                <span
-                                                                    className={`inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide mt-0.5 ${catConfig?.color ?? "text-slate-400"
+                                                            >
+                                                                <div
+                                                                    className={`w-1 self-stretch min-h-9 rounded-full shrink-0 ${catConfig?.indicator ?? "bg-slate-300"
                                                                         }`}
-                                                                >
-                                                                    {catConfig?.label ?? t.category}
+                                                                    aria-hidden
+                                                                />
+                                                                <span className="flex-1 min-w-0">
+                                                                    <span className="block text-slate-800 truncate">
+                                                                        {t.title}
+                                                                    </span>
+                                                                    <span
+                                                                        className={`inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide mt-0.5 ${catConfig?.color ?? "text-slate-400"
+                                                                            }`}
+                                                                    >
+                                                                        {catConfig?.label ?? t.category}
+                                                                    </span>
                                                                 </span>
-                                                            </span>
-                                                            <span className="text-[11px] font-mono text-slate-500 shrink-0 text-right">
-                                                                <span className="block">
-                                                                    {t.deadline.replace(/-/g, ".")}
+                                                                <span className="text-[11px] font-mono text-slate-500 shrink-0 text-right">
+                                                                    <span className="block">
+                                                                        {t.deadline.replace(/-/g, ".")}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-amber-700/80">
+                                                                        {formatDeadlineCountdown(t.deadline)}
+                                                                    </span>
                                                                 </span>
-                                                                <span className="text-[10px] text-amber-700/80">
-                                                                    {formatDeadlineCountdown(t.deadline)}
-                                                                </span>
-                                                            </span>
-                                                            {onOpenProtocol && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        onClose();
-                                                                        onOpenProtocol();
-                                                                    }}
-                                                                    className="text-[11px] font-mono text-slate-500 hover:text-slate-800 shrink-0"
-                                                                >
-                                                                    →
-                                                                </button>
-                                                            )}
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                    </SectionBlock>
+                                                                {onOpenProtocol && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            onClose();
+                                                                            onOpenProtocol();
+                                                                        }}
+                                                                        className="text-[11px] font-mono text-slate-500 hover:text-slate-800 shrink-0"
+                                                                    >
+                                                                        →
+                                                                    </button>
+                                                                )}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            )}
+                                        </SectionBlock>
+                                    </div>
                                 </>
                             )}
+                            </div>
                         </div>
                     </motion.div>
                 </div>
