@@ -63,7 +63,7 @@ export function FolderReminderRow({
     isLoading?: boolean;
     onLoad: (folderId: number) => void;
 }) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const handleToggle = () => {
         const nextState = !isExpanded;
