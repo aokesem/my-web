@@ -197,6 +197,8 @@ export default function LibraryPapersPage() {
     const [sortDesc, setSortDesc] = useState(true);
     /** 全部论文列表：按所属项目筛选（多项目论文满足任一选中项目即显示） */
     const [projectFilterId, setProjectFilterId] = useState<'all' | string>('all');
+    /** 精读/粗读筛选 */
+    const [readDepthFilter, setReadDepthFilter] = useState<'all' | '精读' | '粗读'>('all');
     const [paperSearch, setPaperSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -212,6 +214,10 @@ export default function LibraryPapersPage() {
             if (proj) {
                 papers = papers.filter((p) => p.projects?.includes(proj.name));
             }
+        }
+
+        if (readDepthFilter !== 'all') {
+            papers = papers.filter((p) => p.read_depth === readDepthFilter);
         }
 
         const q = paperSearch.trim().toLowerCase();
@@ -242,7 +248,7 @@ export default function LibraryPapersPage() {
         });
 
         return papers;
-    }, [allPapers, allProjects, projectFilterId, paperSearch, sortBy, sortDesc]);
+    }, [allPapers, allProjects, projectFilterId, readDepthFilter, paperSearch, sortBy, sortDesc]);
 
     // Pagination
     const totalPages = Math.ceil(sortedPapers.length / ITEMS_PER_PAGE);
@@ -263,6 +269,11 @@ export default function LibraryPapersPage() {
 
     const handleProjectFilterChange = (val: 'all' | string) => {
         setProjectFilterId(val);
+        setCurrentPage(1);
+    };
+
+    const handleReadDepthFilterChange = (val: 'all' | '精读' | '粗读') => {
+        setReadDepthFilter(val);
         setCurrentPage(1);
     };
 
@@ -417,6 +428,28 @@ export default function LibraryPapersPage() {
                                             </button>
                                         ))}
                                     </div>
+
+                                    {/* Read Depth Filter */}
+                                    <div className="flex items-center gap-1 bg-stone-100 p-1 py-0.5 rounded-lg border border-stone-200/60">
+                                        {(['all', '精读', '粗读'] as const).map((depth) => (
+                                            <button
+                                                key={depth}
+                                                type="button"
+                                                onClick={() => handleReadDepthFilterChange(depth)}
+                                                className={`
+                                            px-3 py-1 rounded text-[11px] font-mono transition-all duration-200 flex items-center gap-1
+                                            ${readDepthFilter === depth
+                                                        ? 'bg-white text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] font-bold'
+                                                        : 'text-stone-400 hover:text-stone-600'
+                                                    }
+                                        `}
+                                            >
+                                                {depth === '精读' && <BookOpen size={10} />}
+                                                {depth === '粗读' && <Eye size={10} />}
+                                                {depth === 'all' ? '全部深度' : depth}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Sort */}
@@ -449,7 +482,7 @@ export default function LibraryPapersPage() {
                             <div className="max-w-7xl mx-auto">
                                 <AnimatePresence mode="wait">
                                     <motion.div
-                                        key={`${sortBy}-${sortDesc}-${currentPage}-${projectFilterId}-${paperSearch}`}
+                                        key={`${sortBy}-${sortDesc}-${currentPage}-${projectFilterId}-${readDepthFilter}-${paperSearch}`}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}
