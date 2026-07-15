@@ -47,7 +47,7 @@ const RHYTHM_LABELS: Record<HubRhythmCategory, string> = {
     arts: '文艺',
 };
 
-function buildRhythmReminder(row: RhythmReminderRow, today: string): HubReminder | null {
+function buildRhythmReminder(row: RhythmReminderRow, today: string): HubReminder {
     const label = RHYTHM_LABELS[row.category] || row.category;
     const interval = row.remind_after_days ?? 3;
 
@@ -58,19 +58,34 @@ function buildRhythmReminder(row: RhythmReminderRow, today: string): HubReminder
             rhythmCategory: row.category,
             message: `${label}尚未记录事件`,
             tone: 'warn',
+            isOverdue: true,
         };
     }
 
     const days = getDaysSinceDate(row.event_date, today);
-    if (days < interval) return null;
-
+    const isOverdue = days >= interval;
     const eventName = row.event_name?.trim() || '未命名事件';
+
+    if (isOverdue) {
+        return {
+            id: `rhythm-${row.category}`,
+            kind: 'rhythm',
+            rhythmCategory: row.category,
+            message: `${label}已经 ${days} 天未记录，上次是 ${row.event_date}：${eventName}`,
+            tone: 'warn',
+            isOverdue: true,
+        };
+    }
+
+    const daysUntilNext = interval - days;
     return {
         id: `rhythm-${row.category}`,
         kind: 'rhythm',
         rhythmCategory: row.category,
-        message: `${label}已经 ${days} 天未记录，上次是 ${row.event_date}：${eventName}`,
-        tone: 'warn',
+        message: `${label}上次：${row.event_date} ${eventName}`,
+        tone: 'info',
+        isOverdue: false,
+        rhythmDaysUntilNext: daysUntilNext,
     };
 }
 
@@ -286,7 +301,7 @@ export function useInfoHubData(isOpen: boolean) {
                 const today = getHubDayKey();
                 const rhythmReminders = (rhythmRes.data as RhythmReminderRow[])
                     .map((row) => buildRhythmReminder(row, today))
-                    .filter((item): item is HubReminder => item !== null);
+                    .sort((a, b) => (a.isOverdue === b.isOverdue ? 0 : a.isOverdue ? -1 : 1));
                 nextReminders.push(...rhythmReminders);
             }
 

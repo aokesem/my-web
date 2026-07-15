@@ -150,10 +150,11 @@ export function ReminderRow({
 
     const rhythmTheme = reminder.kind === "rhythm" ? rhythmReminderTheme(reminder.rhythmCategory) : null;
     const Icon = rhythmTheme?.Icon ?? (reminder.tone === "warn" ? AlertCircle : Info);
+    const isRhythmNotDue = reminder.kind === "rhythm" && reminder.isOverdue === false;
 
     return (
         <li
-            className={`flex items-start gap-2 text-sm border rounded-lg px-3 py-2.5 ${rhythmTheme?.row ?? reminderStyles(reminder.tone)}`}
+            className={`flex items-start gap-2 text-sm border rounded-lg px-3 py-2.5 transition-opacity ${isRhythmNotDue ? "opacity-45 border-stone-200/50 bg-stone-50/60" : (rhythmTheme?.row ?? reminderStyles(reminder.tone))}`}
         >
             {rhythmTheme ? (
                 <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${rhythmTheme.icon}`}>
@@ -162,11 +163,16 @@ export function ReminderRow({
             ) : (
                 <Icon size={16} className="shrink-0 mt-0.5 opacity-80" />
             )}
-            <span className="flex-1 leading-snug">
+            <span className="flex-1 leading-snug min-w-0">
                 {reminder.message}
                 {reminder.kind === "friend_contact" && reminder.friendScheduledDate && (
                     <span className="text-[10px] font-mono text-slate-400 ml-1.5">
                         预定 {reminder.friendScheduledDate.replace(/-/g, '.')}
+                    </span>
+                )}
+                {isRhythmNotDue && reminder.rhythmDaysUntilNext != null && (
+                    <span className="block text-[10px] font-mono text-slate-400 mt-0.5">
+                        距下次提醒还有 {reminder.rhythmDaysUntilNext} 天
                     </span>
                 )}
             </span>

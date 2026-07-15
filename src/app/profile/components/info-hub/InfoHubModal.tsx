@@ -452,9 +452,9 @@ export default function InfoHubModal({
                                                 className="hover:text-stone-850 cursor-pointer py-1 px-1.5 rounded-md hover:bg-stone-200/20 transition-colors flex items-center justify-between"
                                             >
                                                 <span>活动提醒</span>
-                                                {rhythmReminders.length > 0 && (
+                                                {rhythmReminders.filter(r => r.isOverdue).length > 0 && (
                                                     <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/50">
-                                                        {rhythmReminders.length}
+                                                        {rhythmReminders.filter(r => r.isOverdue).length}
                                                     </span>
                                                 )}
                                             </li>
@@ -747,7 +747,7 @@ export default function InfoHubModal({
                                                             <div id="sub-activity-reminders">
                                                                 <CollapsibleReminderGroup
                                                                     title="活动提醒"
-                                                                    count={rhythmReminders.length}
+                                                                    count={rhythmReminders.filter(r => r.isOverdue).length}
                                                                     icon={Palette}
                                                                     themeClass={{
                                                                         row: "border-emerald-200/45 bg-emerald-50/15",

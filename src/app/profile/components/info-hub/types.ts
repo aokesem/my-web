@@ -48,6 +48,10 @@ export interface HubReminder {
     deadlineDate?: string;
     deadlineWhen?: string;
     rhythmCategory?: HubRhythmCategory;
+    /** 仅 rhythm 类型：是否已到提醒期限 */
+    isOverdue?: boolean;
+    /** 仅 rhythm 类型（未到期）：距下次提醒的剩余天数 */
+    rhythmDaysUntilNext?: number;
 }
 
 export interface HubLongTermTask {
