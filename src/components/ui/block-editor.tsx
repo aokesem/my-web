@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
 import { useEditor, EditorContent, Editor, ReactNodeViewRenderer } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
@@ -76,6 +76,11 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
     imageBucket = 'course_images',
     imageFolder = 'notes',
 }, ref) => {
+
+    // Guard: prevent onUpdate from propagating incomplete JSON during initialization.
+    // ReactNodeViewRenderer mounts code-block views asynchronously; if onUpdate fires
+    // before those views are mounted, editor.getJSON() may omit their content.
+    const isInitializingRef = useRef(true);
 
     // Helper: upload image to Supabase storage
     const uploadImage = async (file: File): Promise<string | null> => {
@@ -252,9 +257,17 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                 return false;
             },
         },
+        onCreate: () => {
+            // Defer unlocking until after the current render cycle completes,
+            // ensuring all ReactNodeViewRenderer-based nodes (e.g. CodeBlockView)
+            // have fully mounted and their content is present in getJSON().
+            requestAnimationFrame(() => {
+                isInitializingRef.current = false;
+            });
+        },
         onUpdate: ({ editor }) => {
-            if (onChange) {
-                // Return JSON back to parent
+            if (onChange && !isInitializingRef.current) {
+                // Return JSON back to parent only after initialization is complete
                 onChange(editor.getJSON());
             }
         },
