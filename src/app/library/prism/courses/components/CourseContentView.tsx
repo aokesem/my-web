@@ -172,7 +172,6 @@ interface CourseContentViewProps {
     onDeleteFormula: (formulaId: string) => Promise<void>;
     onUpdateFormula: (formulaId: string, updates: Partial<CourseFormula>) => Promise<void>;
     onCreateFirstChapter: () => void;
-    editorRef: React.RefObject<BlockEditorRef | null>;
     hasChapters: boolean;
     courseSearchQuery?: string;
 }
@@ -194,7 +193,6 @@ export function CourseContentView({
     onDeleteFormula,
     onUpdateFormula,
     onCreateFirstChapter,
-    editorRef,
     hasChapters,
     courseSearchQuery = '',
 }: CourseContentViewProps) {
@@ -294,20 +292,9 @@ export function CourseContentView({
 
     const handleSaveNotes = async () => {
         if (!chapter) return;
-
-        // Read content directly from the editor instance at save time.
-        // This avoids relying on tempNotes, which is updated via onUpdate and
-        // can be corrupted if ReactNodeViewRenderer-based nodes (e.g. CodeBlockView)
-        // haven't fully mounted when onUpdate fires during initialization.
-        // At save time, the editor is guaranteed to be fully initialized.
-        const editorInstance = editorRef.current?.editor;
-        const notes = editorInstance
-            ? JSON.stringify(editorInstance.getJSON())
-            : tempNotes;
-
         setIsSaving(true);
         try {
-            await onSaveNotes(chapter.id, notes);
+            await onSaveNotes(chapter.id, tempNotes);
             setEditingNotes(false);
         } finally {
             setIsSaving(false);
@@ -637,7 +624,6 @@ export function CourseContentView({
                                 <div className="space-y-4">
                                     <div className="bg-white border border-stone-200 rounded-2xl p-8 min-h-[500px] shadow-sm">
                                         <BlockEditor
-                                            ref={editorRef}
                                             key={`edit-${chapter!.id}`}
                                             value={tempNotes}
                                             onChange={(json) => setTempNotes(JSON.stringify(json))}
@@ -665,7 +651,6 @@ export function CourseContentView({
                                         className="bg-white/50 border border-transparent rounded-2xl p-6 min-h-[200px] cursor-text"
                                     >
                                         <BlockEditor
-                                            ref={editorRef}
                                             key={`view-${chapter!.id}-${chapter!.notes?.length}`}
                                             value={chapter!.notes!}
                                             editable={false}

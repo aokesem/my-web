@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { useCourses, useCourseChapters, useChapterContent, useCourseFormulas, useCourseSearchChapters } from '../hooks/usePrismData';
 import type { CourseFormula } from '../types';
-import type { BlockEditorRef } from '@/components/ui/block-editor';
 import { indexHeadingsFromNotes } from '@/lib/headingIndex';
 
 import { CourseSidebar } from './components/CourseSidebar';
@@ -23,7 +22,6 @@ export default function CoursesPage() {
     const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
     const [courseSearchDraft, setCourseSearchDraft] = useState('');
     const [courseSearchQuery, setCourseSearchQuery] = useState('');
-    const editorRef = useRef<BlockEditorRef>(null);
 
     // ============================================================
     // DATA HOOKS
@@ -305,7 +303,6 @@ export default function CoursesPage() {
                         onDeleteFormula={handleDeleteFormula}
                         onUpdateFormula={handleUpdateFormula}
                         onCreateFirstChapter={handleCreateChapter}
-                        editorRef={editorRef}
                         hasChapters={chapters.length > 0}
                         courseSearchQuery={courseSearchQuery}
                     />
