@@ -5,7 +5,6 @@ import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
 import Placeholder from '@tiptap/extension-placeholder';
 import Image from '@tiptap/extension-image';
-import { Markdown } from 'tiptap-markdown';
 import { SlashCommand, suggestionOptions } from './slash-command';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { supabase } from '@/lib/supabaseClient';
@@ -140,7 +139,6 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                     class: 'rounded-lg max-w-full mx-auto my-4 shadow-sm',
                 },
             }),
-            Markdown,
             Placeholder.configure({
                 placeholder: placeholder,
                 emptyEditorClass: 'is-editor-empty',
