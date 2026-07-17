@@ -258,11 +258,14 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
             },
         },
         onCreate: () => {
-            // Defer unlocking until after the current render cycle completes,
-            // ensuring all ReactNodeViewRenderer-based nodes (e.g. CodeBlockView)
-            // have fully mounted and their content is present in getJSON().
+            // Double-rAF: wait for TWO paint cycles to ensure all
+            // ReactNodeViewRenderer-based nodes have fully mounted.
+            // Production React (concurrent mode / batched rendering) may
+            // schedule NodeView mounts across multiple frames.
             requestAnimationFrame(() => {
-                isInitializingRef.current = false;
+                requestAnimationFrame(() => {
+                    isInitializingRef.current = false;
+                });
             });
         },
         onUpdate: ({ editor }) => {

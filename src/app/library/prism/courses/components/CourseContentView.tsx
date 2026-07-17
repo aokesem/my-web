@@ -294,9 +294,20 @@ export function CourseContentView({
 
     const handleSaveNotes = async () => {
         if (!chapter) return;
+
+        // Read content directly from the editor instance at save time.
+        // This avoids relying on tempNotes, which is updated via onUpdate and
+        // can be corrupted if ReactNodeViewRenderer-based nodes (e.g. CodeBlockView)
+        // haven't fully mounted when onUpdate fires during initialization.
+        // At save time, the editor is guaranteed to be fully initialized.
+        const editorInstance = editorRef.current?.editor;
+        const notes = editorInstance
+            ? JSON.stringify(editorInstance.getJSON())
+            : tempNotes;
+
         setIsSaving(true);
         try {
-            await onSaveNotes(chapter.id, tempNotes);
+            await onSaveNotes(chapter.id, notes);
             setEditingNotes(false);
         } finally {
             setIsSaving(false);
