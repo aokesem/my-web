@@ -93,10 +93,19 @@ export default function CoursesPage() {
         if (!title?.trim()) return;
 
         try {
+            const { data: lastChapter, error: orderError } = await supabase
+                .from('prism_course_chapters')
+                .select('sort_order')
+                .eq('course_id', selectedCourseId)
+                .order('sort_order', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (orderError) throw orderError;
+
             const { error } = await supabase.from('prism_course_chapters').insert({
                 course_id: selectedCourseId,
                 title: title.trim(),
-                sort_order: chapters.length,
+                sort_order: (lastChapter?.sort_order ?? -1) + 1,
             });
             if (error) throw error;
             toast.success('章节创建成功');
@@ -105,7 +114,7 @@ export default function CoursesPage() {
             toast.error('创建失败');
             console.error(e);
         }
-    }, [selectedCourseId, chapters.length, mutateChapters]);
+    }, [selectedCourseId, mutateChapters]);
 
     const handleSaveNotes = useCallback(async (chapterId: string, notes: string) => {
         try {
@@ -287,6 +296,7 @@ export default function CoursesPage() {
                 {/* Main Content */}
                 <main className="flex-1 flex overflow-hidden">
                     <CourseContentView
+                        key={selectedChapterId ?? selectedCourseId ?? 'no-selection'}
                         chapter={chapter}
                         formulas={formulas}
                         chapters={chapters}

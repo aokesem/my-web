@@ -178,6 +178,28 @@
 }
 
 /* === Code Highlight (TipTap + lowlight) === */
+.block-editor-wrapper pre.native-code-block {
+  margin: 1rem 0;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  background: #282c34 !important;
+  padding: 1rem;
+  color: #d4d4d4 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  white-space: pre;
+}
+
+.block-editor-wrapper pre.native-code-block code {
+  display: block;
+  min-width: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  white-space: inherit;
+}
+
 .hljs {
   color: #d4d4d4;
   background: transparent;

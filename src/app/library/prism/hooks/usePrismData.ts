@@ -196,7 +196,8 @@ const fetchCourseChapters = async (courseId: string): Promise<CourseChapter[]> =
         .from('prism_course_chapters')
         .select('id, course_id, title, sort_order, created_at')
         .eq('course_id', courseId)
-        .order('sort_order');
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
     if (error) throw error;
     return data as CourseChapter[];
 };
@@ -206,7 +207,8 @@ const fetchCourseSearchChapters = async (courseId: string): Promise<CourseChapte
         .from('prism_course_chapters')
         .select('id, course_id, title, notes, sort_order, created_at')
         .eq('course_id', courseId)
-        .order('sort_order');
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
     if (error) throw error;
     return data as CourseChapter[];
 };

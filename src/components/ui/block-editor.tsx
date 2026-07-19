@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
-import { useEditor, EditorContent, Editor, ReactNodeViewRenderer } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -12,7 +12,6 @@ import { compressImage } from '@/lib/imageUtils';
 import { syncHeadingIdsInElement } from '@/lib/headingIndex';
 import { common, createLowlight } from 'lowlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { CodeBlockView } from './code-block-view';
 import 'tippy.js/dist/tippy.css';
 import 'katex/dist/katex.min.css';
 
@@ -121,13 +120,12 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                 heading: false, // Disabled: using HeadingWithId instead
                 codeBlock: false, // Disabled: using CodeBlockLowlight instead
             }),
-            CodeBlockLowlight.extend({
-                addNodeView() {
-                    return ReactNodeViewRenderer(CodeBlockView);
-                },
-            }).configure({
+            CodeBlockLowlight.configure({
                 lowlight,
                 defaultLanguage: 'python',
+                HTMLAttributes: {
+                    class: 'native-code-block',
+                },
             }),
             HeadingWithId.configure({
                 levels: [1, 2, 3, 4, 5, 6],
