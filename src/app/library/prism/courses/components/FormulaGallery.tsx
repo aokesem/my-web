@@ -187,7 +187,8 @@ export function FormulaGallery({
 
         // 1. Global group (chapter_id is null)
         const globalFormulas = formulas.filter(f => !f.chapter_id);
-        if (globalFormulas.length > 0) {
+        // Keep the global formula section visible so empty courses can add one.
+        if (globalFormulas.length >= 0) {
             groups.push({ title: '全课通用公式', formulas: globalFormulas });
         }
 
