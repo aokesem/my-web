@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Pencil, Save, X, Loader2, Plus, ChevronDown, ChevronUp, Sigma, Hash } from 'lucide-react';
+import { Pencil, Save, Loader2, Plus, ChevronDown, ChevronUp, Sigma, Hash, ArrowUp, ArrowDown } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { CourseFormula, CourseChapter } from '../../types';
@@ -25,15 +25,20 @@ interface FormulaGalleryProps {
     onSaveFormula: (formula: Partial<CourseFormula>) => Promise<void>;
     onDeleteFormula: (formulaId: string) => Promise<void>;
     onUpdateFormula: (formulaId: string, updates: Partial<CourseFormula>) => Promise<void>;
+    onReorderFormulas: (updates: Array<{ id: string; sort_order: number }>) => Promise<void>;
 }
 
 interface FormulaCardProps {
     formula: CourseFormula;
     onDelete: () => void;
     onUpdate: (updates: Partial<CourseFormula>) => Promise<void>;
+    onMoveUp: () => void;
+    onMoveDown: () => void;
+    canMoveUp: boolean;
+    canMoveDown: boolean;
 }
 
-function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
+function FormulaCard({ formula, onDelete, onUpdate, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: FormulaCardProps) {
     const [editing, setEditing] = useState(false);
     const [tempName, setTempName] = useState(formula.name);
     const [tempLatex, setTempLatex] = useState(formula.latex);
@@ -106,18 +111,43 @@ function FormulaCard({ formula, onDelete, onUpdate }: FormulaCardProps) {
 
     return (
         <div id={`formula-${formula.id}`} className={`group bg-white/80 rounded-xl border border-stone-200/60 p-4 hover:border-stone-300 hover:shadow-sm transition-all cursor-default relative ${isLongFormula ? 'md:col-span-2' : ''}`}>
-            <button
-                onClick={() => {
-                    setTempName(formula.name);
-                    setTempLatex(formula.latex);
-                    setTempDesc(formula.description || '');
-                    setEditing(true);
-                }}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-stone-300 hover:text-stone-600 hover:bg-stone-100 transition-all"
-            >
-                <Pencil size={12} />
-            </button>
-            <div className="text-[14px] font-mono font-bold uppercase tracking-wider text-stone-800 mb-2">
+            <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
+                <button
+                    type="button"
+                    onClick={onMoveUp}
+                    disabled={!canMoveUp}
+                    title="上移公式"
+                    aria-label="上移公式"
+                    className="p-1.5 rounded-md text-stone-300 hover:text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:hover:text-stone-300 disabled:hover:bg-transparent transition-colors"
+                >
+                    <ArrowUp size={12} />
+                </button>
+                <button
+                    type="button"
+                    onClick={onMoveDown}
+                    disabled={!canMoveDown}
+                    title="下移公式"
+                    aria-label="下移公式"
+                    className="p-1.5 rounded-md text-stone-300 hover:text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:hover:text-stone-300 disabled:hover:bg-transparent transition-colors"
+                >
+                    <ArrowDown size={12} />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setTempName(formula.name);
+                        setTempLatex(formula.latex);
+                        setTempDesc(formula.description || '');
+                        setEditing(true);
+                    }}
+                    title="编辑公式"
+                    aria-label="编辑公式"
+                    className="p-1.5 rounded-md text-stone-300 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+                >
+                    <Pencil size={12} />
+                </button>
+            </div>
+            <div className="pr-20 text-[14px] font-mono font-bold uppercase tracking-wider text-stone-800 mb-2">
                 {formula.name}
             </div>
             <div
@@ -141,10 +171,12 @@ export function FormulaGallery({
     overviewMode = false,
     onSaveFormula,
     onDeleteFormula,
-    onUpdateFormula
+    onUpdateFormula,
+    onReorderFormulas
 }: FormulaGalleryProps) {
     const [addingToChapter, setAddingToChapter] = useState<string | null>(null);
     const [collapsed, setCollapsed] = useState(false);
+    const [reordering, setReordering] = useState(false);
 
     // Add form state
     const [newName, setNewName] = useState('');
@@ -162,7 +194,6 @@ export function FormulaGallery({
                 name: newName,
                 latex: newLatex,
                 description: newDesc || undefined,
-                sort_order: formulas.length,
             });
             setNewName('');
             setNewLatex('');
@@ -188,9 +219,7 @@ export function FormulaGallery({
         // 1. Global group (chapter_id is null)
         const globalFormulas = formulas.filter(f => !f.chapter_id);
         // Keep the global formula section visible so empty courses can add one.
-        if (globalFormulas.length >= 0) {
-            groups.push({ title: '全课通用公式', formulas: globalFormulas });
-        }
+        groups.push({ title: '全课通用公式', formulas: globalFormulas });
 
         // 2. Per chapter groups
         chapters.forEach(ch => {
@@ -202,6 +231,23 @@ export function FormulaGallery({
 
         return groups;
     }, [overviewMode, formulas, chapters, addingToChapter]);
+
+    const handleMove = async (groupFormulas: CourseFormula[], index: number, direction: -1 | 1) => {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= groupFormulas.length) return;
+
+        const reordered = [...groupFormulas];
+        [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+        setReordering(true);
+        try {
+            await onReorderFormulas(reordered.map((formula, sortOrder) => ({
+                id: formula.id,
+                sort_order: sortOrder,
+            })));
+        } finally {
+            setReordering(false);
+        }
+    };
 
     const renderAddForm = (chapterId?: string) => (
         <div className="bg-stone-50 rounded-xl border border-stone-200/60 p-4 space-y-3 mt-3">
@@ -260,12 +306,16 @@ export function FormulaGallery({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {group.formulas.map(f => (
+                            {group.formulas.map((f, index) => (
                                 <FormulaCard
                                     key={f.id}
                                     formula={f}
                                     onDelete={() => onDeleteFormula(f.id)}
                                     onUpdate={(updates) => onUpdateFormula(f.id, updates)}
+                                    onMoveUp={() => handleMove(group.formulas, index, -1)}
+                                    onMoveDown={() => handleMove(group.formulas, index, 1)}
+                                    canMoveUp={!reordering && index > 0}
+                                    canMoveDown={!reordering && index < group.formulas.length - 1}
                                 />
                             ))}
                         </div>
@@ -302,12 +352,16 @@ export function FormulaGallery({
                 <div className="space-y-4">
                     {displayFormulas.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {displayFormulas.map(f => (
+                            {displayFormulas.map((f, index) => (
                                 <FormulaCard
                                     key={f.id}
                                     formula={f}
                                     onDelete={() => onDeleteFormula(f.id)}
                                     onUpdate={(updates) => onUpdateFormula(f.id, updates)}
+                                    onMoveUp={() => handleMove(displayFormulas, index, -1)}
+                                    onMoveDown={() => handleMove(displayFormulas, index, 1)}
+                                    canMoveUp={!reordering && index > 0}
+                                    canMoveDown={!reordering && index < displayFormulas.length - 1}
                                 />
                             ))}
                         </div>

@@ -189,7 +189,28 @@ export default function CoursesPage() {
     // Formula handlers
     const handleSaveFormula = useCallback(async (formula: Partial<CourseFormula>) => {
         try {
-            const { error } = await supabase.from('prism_course_formulas').insert(formula);
+            if (!formula.course_id) throw new Error('A course is required to create a formula.');
+
+            const chapterId = formula.chapter_id || null;
+            let orderQuery = supabase
+                .from('prism_course_formulas')
+                .select('sort_order')
+                .eq('course_id', formula.course_id)
+                .order('sort_order', { ascending: false })
+                .limit(1);
+
+            orderQuery = chapterId
+                ? orderQuery.eq('chapter_id', chapterId)
+                : orderQuery.is('chapter_id', null);
+
+            const { data: lastFormula, error: orderError } = await orderQuery.maybeSingle();
+            if (orderError) throw orderError;
+
+            const { error } = await supabase.from('prism_course_formulas').insert({
+                ...formula,
+                chapter_id: chapterId,
+                sort_order: (lastFormula?.sort_order ?? -1) + 1,
+            });
             if (error) throw error;
             toast.success('公式已添加');
             mutateFormulas();
@@ -220,6 +241,27 @@ export default function CoursesPage() {
             mutateFormulas();
         } catch (e) {
             toast.error('更新失败');
+            console.error(e);
+        }
+    }, [mutateFormulas]);
+
+    const handleReorderFormulas = useCallback(async (updates: Array<{ id: string; sort_order: number }>) => {
+        try {
+            const results = await Promise.all(
+                updates.map(update =>
+                    supabase
+                        .from('prism_course_formulas')
+                        .update({ sort_order: update.sort_order })
+                        .eq('id', update.id)
+                )
+            );
+            const failedUpdate = results.find(result => result.error);
+            if (failedUpdate?.error) throw failedUpdate.error;
+
+            toast.success('公式顺序已更新');
+            mutateFormulas();
+        } catch (e) {
+            toast.error('排序失败');
             console.error(e);
         }
     }, [mutateFormulas]);
@@ -312,6 +354,7 @@ export default function CoursesPage() {
                         onSaveFormula={handleSaveFormula}
                         onDeleteFormula={handleDeleteFormula}
                         onUpdateFormula={handleUpdateFormula}
+                        onReorderFormulas={handleReorderFormulas}
                         onCreateFirstChapter={handleCreateChapter}
                         hasChapters={chapters.length > 0}
                         courseSearchQuery={courseSearchQuery}

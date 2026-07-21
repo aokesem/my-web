@@ -171,6 +171,7 @@ interface CourseContentViewProps {
     onSaveFormula: (formula: Partial<CourseFormula>) => Promise<void>;
     onDeleteFormula: (formulaId: string) => Promise<void>;
     onUpdateFormula: (formulaId: string, updates: Partial<CourseFormula>) => Promise<void>;
+    onReorderFormulas: (updates: Array<{ id: string; sort_order: number }>) => Promise<void>;
     onCreateFirstChapter: () => void;
     hasChapters: boolean;
     courseSearchQuery?: string;
@@ -192,6 +193,7 @@ export function CourseContentView({
     onSaveFormula,
     onDeleteFormula,
     onUpdateFormula,
+    onReorderFormulas,
     onCreateFirstChapter,
     hasChapters,
     courseSearchQuery = '',
@@ -594,6 +596,7 @@ export function CourseContentView({
                     onSaveFormula={onSaveFormula}
                     onDeleteFormula={onDeleteFormula}
                     onUpdateFormula={onUpdateFormula}
+                    onReorderFormulas={onReorderFormulas}
                 />
 
                 {/* Notes Section - only for regular chapters */}
