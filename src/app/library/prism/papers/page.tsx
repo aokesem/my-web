@@ -364,15 +364,15 @@ export default function LibraryPapersPage() {
                 </div>
 
                 {/* ===== LOADING STATE ===== */}
-            {isLoading && (
-                <div className="w-full flex-1 flex flex-col items-center justify-center -mt-20">
-                    <div className="w-8 h-8 rounded-full border-2 border-stone-200 border-t-violet-500 animate-spin mb-4" />
-                    <span className="text-stone-400 font-mono text-sm tracking-wider uppercase">Loading Data...</span>
-                </div>
-            )}
+                {isLoading && (
+                    <div className="w-full flex-1 flex flex-col items-center justify-center -mt-20">
+                        <div className="w-8 h-8 rounded-full border-2 border-stone-200 border-t-violet-500 animate-spin mb-4" />
+                        <span className="text-stone-400 font-mono text-sm tracking-wider uppercase">Loading Data...</span>
+                    </div>
+                )}
 
-            {/* 当处于不同TAB时的内容切换渲染 */}
-            {!isLoading && activeTab === 'all' && (
+                {/* 当处于不同TAB时的内容切换渲染 */}
+                {!isLoading && activeTab === 'all' && (
                     <>
                         {/* ===== TOOLBAR ===== */}
                         <div className="w-full px-10 pb-6 shrink-0">
@@ -389,7 +389,7 @@ export default function LibraryPapersPage() {
                                             value={paperSearch}
                                             onChange={(e) => handlePaperSearchChange(e.target.value)}
                                             placeholder="搜索标题或简称…"
-                                            className="pl-9 pr-3 py-1.5 w-[220px] rounded-lg border border-stone-200/80 bg-white text-sm text-stone-800 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-200"
+                                            className="pl-9 pr-3 py-1.5 w-55 rounded-lg border border-stone-200/80 bg-white text-sm text-stone-800 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-200"
                                         />
                                     </div>
 
@@ -403,9 +403,9 @@ export default function LibraryPapersPage() {
                                             className={`
                                         px-3 py-1 rounded text-[11px] font-mono transition-all duration-200
                                         ${projectFilterId === 'all'
-                                                        ? 'bg-white text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] font-bold'
-                                                        : 'text-stone-400 hover:text-stone-600'
-                                                    }
+                                                    ? 'bg-white text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] font-bold'
+                                                    : 'text-stone-400 hover:text-stone-600'
+                                                }
                                     `}
                                         >
                                             全部项目
@@ -416,7 +416,7 @@ export default function LibraryPapersPage() {
                                                 type="button"
                                                 onClick={() => handleProjectFilterChange(proj.id)}
                                                 className={`
-                                        px-3 py-1 rounded text-[11px] font-mono transition-all duration-200 max-w-[140px] truncate
+                                        px-3 py-1 rounded text-[11px] font-mono transition-all duration-200 max-w-35 truncate
                                         ${projectFilterId === proj.id
                                                         ? 'bg-white text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] font-bold'
                                                         : 'text-stone-400 hover:text-stone-600'
@@ -544,24 +544,24 @@ export default function LibraryPapersPage() {
                 )}
 
                 {!isLoading && activeTab === 'projects' && (
-                <ProjectView
-                    projects={allProjects}
-                    allPapers={allPapers}
-                    onOpenPaper={(id) => setSelectedPaperId(id)}
-                    onUpdateProjects={async () => { await mutateProjects(); }}
-                    isAdmin={isAdmin}
-                />
-            )}
+                    <ProjectView
+                        projects={allProjects}
+                        allPapers={allPapers}
+                        onOpenPaper={(id) => setSelectedPaperId(id)}
+                        onUpdateProjects={async () => { await mutateProjects(); }}
+                        isAdmin={isAdmin}
+                    />
+                )}
 
                 {!isLoading && activeTab === 'directions' && (
-                <DirectionView
-                    projects={allProjects}
-                />
-            )}
+                    <DirectionView
+                        projects={allProjects}
+                    />
+                )}
 
                 {!isLoading && activeTab === 'data' && (
-                <DataView papers={allPapers} isAdmin={isAdmin} />
-            )}
+                    <DataView papers={allPapers} isAdmin={isAdmin} />
+                )}
 
             </div>
 

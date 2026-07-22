@@ -84,7 +84,7 @@ export function GardenTOC({ notes }: GardenTOCProps) {
             {/* Header */}
             <div className="flex items-center gap-1.5 mb-4 px-1 mt-4">
                 <Hash size={12} className="text-[#8aaa9a]" />
-                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.15em] text-[#8aaa9a]">
+                <span className="text-[14px] font-mono font-bold uppercase tracking-[0.15em] text-[#8aaa9a]">
                     大纲
                 </span>
             </div>
@@ -95,14 +95,14 @@ export function GardenTOC({ notes }: GardenTOCProps) {
                     <button
                         key={idx}
                         onClick={() => scrollToElement(h.id)}
-                        className="w-full text-left rounded-md text-[12px] text-[#6b8a7a] hover:bg-[#dae6df] hover:text-[#3a5a4a] transition-colors py-1.5 pr-2 leading-snug truncate"
+                        className="w-full text-left rounded-md text-[15px] text-[#6b8a7a] hover:bg-[#dae6df] hover:text-[#3a5a4a] transition-colors py-1.5 pr-2 leading-snug truncate"
                         style={{ paddingLeft: `${(h.level - 1) * 12 + 8}px` }}
                         title={h.text}
                     >
                         <span className={
                             h.level === 1 ? 'font-bold text-[#4a6b5a]' :
-                            h.level === 2 ? 'font-medium text-[#5a7a6a]' :
-                            'text-[#7a9a8a]'
+                                h.level === 2 ? 'font-medium text-[#5a7a6a]' :
+                                    'text-[#7a9a8a]'
                         }>
                             {h.text}
                         </span>

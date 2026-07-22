@@ -68,6 +68,21 @@ export function GardenSidebar({
 
     // 记录哪些笔记的章节列表被展开
     const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+    // 记录哪些分类被展开，默认全展开
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
+        return new Set(categories.map(c => c.id));
+    });
+
+    // 当 categories 更新时，确保新分类也是展开状态
+    React.useEffect(() => {
+        if (categories.length > 0) {
+            setExpandedCategories(prev => {
+                const next = new Set(prev);
+                categories.forEach(c => next.add(c.id));
+                return next;
+            });
+        }
+    }, [categories]);
 
     // 按分类分组笔记
     const postsByCategory = useMemo(() => {
@@ -87,7 +102,7 @@ export function GardenSidebar({
         return map;
     }, [categories, posts]);
 
-    // 当选中的笔记变化时，自动展开它
+    // 当选中的笔记变化时，自动展开它及其所属分类
     React.useEffect(() => {
         if (selectedPostId) {
             setExpandedPosts(prev => {
@@ -95,11 +110,44 @@ export function GardenSidebar({
                 next.add(selectedPostId);
                 return next;
             });
+
+            const targetPost = posts.find(p => p.id === selectedPostId);
+            if (targetPost) {
+                setExpandedCategories(prev => {
+                    const next = new Set(prev);
+                    next.add(targetPost.category);
+                    return next;
+                });
+            }
         }
-    }, [selectedPostId]);
+    }, [selectedPostId, posts]);
+
+    const handlePostClick = (postId: string) => {
+        if (selectedPostId !== postId) {
+            onSelectPost(postId);
+            setExpandedPosts(prev => {
+                const next = new Set(prev);
+                next.add(postId);
+                return next;
+            });
+        } else {
+            setExpandedPosts(prev => {
+                const next = new Set(prev);
+                if (next.has(postId)) {
+                    next.delete(postId);
+                } else {
+                    next.add(postId);
+                }
+                return next;
+            });
+        }
+    };
 
     const toggleExpand = (postId: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        if (selectedPostId !== postId) {
+            onSelectPost(postId);
+        }
         setExpandedPosts(prev => {
             const next = new Set(prev);
             if (next.has(postId)) {
@@ -111,8 +159,20 @@ export function GardenSidebar({
         });
     };
 
+    const toggleCategoryExpand = (categoryId: string) => {
+        setExpandedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(categoryId)) {
+                next.delete(categoryId);
+            } else {
+                next.add(categoryId);
+            }
+            return next;
+        });
+    };
+
     return (
-        <aside className="flex-none w-56 bg-[#e4ece7] border-r border-[#ccd8d0] flex flex-col overflow-hidden select-none">
+        <aside className="flex-none w-72 bg-[#e4ece7] border-r border-[#ccd8d0] flex flex-col overflow-hidden select-none">
             {/* Header */}
             <div className="px-4 py-3 border-b border-[#ccd8d0] flex items-center justify-between">
                 <span className="text-[12px] font-mono font-bold uppercase tracking-[0.2em] text-[#6b8a7a]">
@@ -128,21 +188,32 @@ export function GardenSidebar({
                 {categories.map(category => {
                     const categoryPosts = postsByCategory[category.id] || [];
                     const Icon = getIconComponent(category.icon);
+                    const isCategoryExpanded = expandedCategories.has(category.id);
 
                     return (
                         <div key={category.id} className="mb-1">
                             {/* Category Header */}
-                            <div className="px-4 py-2 mt-2 flex items-center justify-between group/cat">
-                                <div className="flex items-center gap-2">
-                                    <Icon size={14} className="text-[#6b8a7a]" />
-                                    <span className="text-[13px] font-extrabold text-[#4a6b5a] uppercase tracking-wider">
+                            <div
+                                onClick={() => toggleCategoryExpand(category.id)}
+                                className="px-3 py-1.5 mt-2 flex items-center justify-between group/cat cursor-pointer hover:bg-[#d0ddd5]/60 transition-colors rounded-md mx-1"
+                            >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <ChevronRight
+                                        size={14}
+                                        className={`text-[#8aaa9a] shrink-0 transition-transform duration-200 ${isCategoryExpanded ? 'rotate-90' : ''}`}
+                                    />
+                                    <Icon size={14} className="text-[#6b8a7a] shrink-0" />
+                                    <span className="text-[20px] font-extrabold text-[#4a6b5a] uppercase tracking-wider truncate">
                                         {category.title}
                                     </span>
                                 </div>
                                 {isAdmin && (
                                     <button
-                                        onClick={() => onCreatePost(category.id)}
-                                        className="opacity-0 group-hover/cat:opacity-100 p-0.5 text-[#8aaa9a] hover:text-teal-600 transition-all"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onCreatePost(category.id);
+                                        }}
+                                        className="opacity-0 group-hover/cat:opacity-100 p-0.5 text-[#8aaa9a] hover:text-teal-600 transition-all shrink-0 ml-1"
                                         title="新建笔记"
                                     >
                                         <Plus size={13} />
@@ -151,12 +222,13 @@ export function GardenSidebar({
                             </div>
 
                             {/* Posts List */}
-                            {categoryPosts.length === 0 ? (
-                                <div className="px-4 py-1 text-[10px] text-stone-400 italic pl-8">
-                                    暂无笔记
-                                </div>
-                            ) : (
-                                categoryPosts.map(post => {
+                            {isCategoryExpanded && (
+                                categoryPosts.length === 0 ? (
+                                    <div className="px-4 py-1 text-[10px] text-stone-400 italic pl-8">
+                                        暂无笔记
+                                    </div>
+                                ) : (
+                                    categoryPosts.map(post => {
                                     const isSelected = post.id === selectedPostId;
                                     const isExpanded = expandedPosts.has(post.id);
                                     const showChapters = isSelected && isExpanded;
@@ -180,13 +252,13 @@ export function GardenSidebar({
                                                 >
                                                     <ChevronRight
                                                         size={12}
-                                                        className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                                                        className={`transition-transform duration-200 ${showChapters ? 'rotate-90' : ''}`}
                                                     />
                                                 </button>
 
                                                 {/* Post Title */}
                                                 <button
-                                                    onClick={() => onSelectPost(post.id)}
+                                                    onClick={() => handlePostClick(post.id)}
                                                     className="flex-1 text-left py-2 pr-2 text-[14px] leading-snug truncate"
                                                 >
                                                     <span className={isSelected ? 'font-semibold' : ''}>
@@ -248,7 +320,7 @@ export function GardenSidebar({
                                                                 >
                                                                     <button
                                                                         onClick={() => onSelectChapter(ch.id)}
-                                                                        className="flex-1 text-left px-3 py-1.5 text-[13px] leading-snug truncate flex items-center gap-2"
+                                                                        className="flex-1 text-left px-3 py-1.5 text-[12px] leading-snug truncate flex items-center gap-2"
                                                                     >
                                                                         <span className="text-[10px] font-mono text-[#8aaa9a] shrink-0">
                                                                             {String(idx + 1).padStart(2, '0')}
@@ -297,7 +369,7 @@ export function GardenSidebar({
                                         </div>
                                     );
                                 })
-                            )}
+                            ))}
                         </div>
                     );
                 })}

@@ -378,8 +378,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                 ]
                 transition-all duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]
                 ${isActive
-                    ? 'z-50 top-[9vh] left-[5vw] h-[82vh] w-[90vw] md:left-[calc(50%-440px)] md:w-[880px]'
-                    : 'z-30 top-[calc(100%-520px)] left-[3%] h-[500px] w-80 md:w-96 hover:-translate-y-1 hover:shadow-[0_30px_60px_-15px_rgba(59,130,246,0.2),inset_0_0_0_1px_rgba(255,255,255,0.8)]'
+                    ? 'z-50 top-[9vh] left-[5vw] h-[82vh] w-[90vw] md:left-[calc(50%-440px)] md:w-220'
+                    : 'z-30 top-[calc(100%-520px)] left-[3%] h-125 w-80 md:w-96 hover:-translate-y-1 hover:shadow-[0_30px_60px_-15px_rgba(59,130,246,0.2),inset_0_0_0_1px_rgba(255,255,255,0.8)]'
                 }
             `}
         >
@@ -539,8 +539,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                             setOpenFilterCategory(isOpen ? null : cat);
                                                         }}
                                                         className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-mono font-bold uppercase tracking-wider transition-all ${isActiveFilter || isOpen
-                                                                ? `${cfg.bg} ${cfg.color} border-current/25 shadow-sm`
-                                                                : `border-slate-200 bg-slate-50/80 text-slate-400 hover:${cfg.color} hover:border-current/20 hover:${cfg.bg}`
+                                                            ? `${cfg.bg} ${cfg.color} border-current/25 shadow-sm`
+                                                            : `border-slate-200 bg-slate-50/80 text-slate-400 hover:${cfg.color} hover:border-current/20 hover:${cfg.bg}`
                                                             }`}
                                                     >
                                                         <div className={`w-2.5 h-2.5 rounded-full ${cfg.activeColor}`} />
@@ -550,7 +550,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                     {isOpen && (
                                                         <>
                                                             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenFilterCategory(null); }} />
-                                                            <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[140px] rounded-xl border border-white/80 bg-white/95 backdrop-blur-xl shadow-lg py-1.5">
+                                                            <div className="absolute right-0 top-full z-50 mt-1.5 min-w-35 rounded-xl border border-white/80 bg-white/95 backdrop-blur-xl shadow-lg py-1.5">
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => {
@@ -624,7 +624,7 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                                 <div className="relative flex gap-6">
                                                     <div className="flex w-56 shrink-0 flex-col">
                                                         {friend.image_url ? (
-                                                            <div className="h-full min-h-[250px] overflow-hidden rounded-[24px] border border-white/70 bg-white/70 shadow-sm">
+                                                            <div className="h-full min-h-62.5 overflow-hidden rounded-[24px] border border-white/70 bg-white/70 shadow-sm">
                                                                 <img
                                                                     src={friend.image_url}
                                                                     alt={friend.name}
@@ -828,8 +828,8 @@ export default function HobbySystem({ isActive, onToggle }: HobbySystemProps) {
                                 <div
                                     key={group.id}
                                     className={`relative overflow-hidden rounded-[26px] border border-white/75 bg-linear-to-br ${index % 2 === 0
-                                            ? 'from-amber-100/80 via-orange-50/70 to-white/80'
-                                            : 'from-violet-100/80 via-indigo-50/70 to-white/80'
+                                        ? 'from-amber-100/80 via-orange-50/70 to-white/80'
+                                        : 'from-violet-100/80 via-indigo-50/70 to-white/80'
                                         } p-4 shadow-[0_10px_30px_-16px_rgba(15,23,42,0.22)]`}
                                 >
                                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.18),transparent_40%)]" />

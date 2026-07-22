@@ -143,7 +143,7 @@ export function GardenContentView({
 
     return (
         <div className="flex-1 bg-[#eef3f0] overflow-y-auto custom-scrollbar" id="garden-content-scroll">
-            <div className="max-w-3xl mx-auto px-10 md:px-14 py-10 pb-24">
+            <div className="max-w-4xl mx-auto px-10 md:px-14 py-10 pb-24">
 
                 {/* Chapter Title */}
                 <div className="mb-8">

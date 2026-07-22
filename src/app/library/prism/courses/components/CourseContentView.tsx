@@ -625,7 +625,7 @@ export function CourseContentView({
 
                             {editingNotes ? (
                                 <div className="space-y-4">
-                                    <div className="bg-white border border-stone-200 rounded-2xl p-8 min-h-[500px] shadow-sm">
+                                    <div className="bg-white border border-stone-200 rounded-2xl p-8 min-h-125 shadow-sm">
                                         <BlockEditor
                                             key={`edit-${chapter!.id}`}
                                             value={tempNotes}
@@ -651,7 +651,7 @@ export function CourseContentView({
                                 chapter!.notes ? (
                                     <div
                                         onDoubleClick={() => { setTempNotes(chapter!.notes || ''); setEditingNotes(true); }}
-                                        className="bg-white/50 border border-transparent rounded-2xl p-6 min-h-[200px] cursor-text"
+                                        className="bg-white/50 border border-transparent rounded-2xl p-6 min-h-50 cursor-text"
                                     >
                                         <BlockEditor
                                             key={`view-${chapter!.id}-${chapter!.notes?.length}`}
