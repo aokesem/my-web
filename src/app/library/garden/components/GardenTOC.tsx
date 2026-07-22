@@ -80,7 +80,7 @@ export function GardenTOC({ notes }: GardenTOCProps) {
     };
 
     return (
-        <aside className="w-48 shrink-0 hidden lg:flex flex-col py-6 px-4 overflow-y-auto custom-scrollbar border-r border-[#ccd8d0] bg-[#e8f0eb]/50">
+        <aside className="w-52 shrink-0 hidden lg:flex flex-col py-6 px-4 overflow-y-auto custom-scrollbar border-r border-[#ccd8d0] bg-[#e8f0eb]/50">
             {/* Header */}
             <div className="flex items-center gap-1.5 mb-4 px-1 mt-4">
                 <Hash size={12} className="text-[#8aaa9a]" />

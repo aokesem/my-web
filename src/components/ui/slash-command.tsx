@@ -3,7 +3,7 @@ import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Minus, ImageIcon } from 'lucide-react';
+import { Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Minus, ImageIcon, Table } from 'lucide-react';
 
 export interface CommandItemProps {
     title: string;
@@ -82,6 +82,14 @@ const getSuggestionItems = ({ query, imageBucket, imageFolder }: SuggestionProps
             icon: <Minus size={18} />,
             command: ({ editor, range }: { editor: any, range: any }) => {
                 editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+            },
+        },
+        {
+            title: '插入表格',
+            description: '插入 3x3 标准表格',
+            icon: <Table size={18} />,
+            command: ({ editor, range }: { editor: any, range: any }) => {
+                editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
             },
         },
         {

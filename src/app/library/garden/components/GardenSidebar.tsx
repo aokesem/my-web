@@ -238,21 +238,21 @@ export function GardenSidebar({
                                             {/* Post Item */}
                                             <div
                                                 className={`
-                                                    w-full flex items-center group/post transition-colors relative
+                                                    w-full flex items-center group/post transition-all relative border-l-3
                                                     ${isSelected
-                                                        ? 'bg-[#d0ddd5] text-[#2d4a3a]'
-                                                        : 'text-[#5a7a6a] hover:bg-[#dae6df] hover:text-[#3a5a4a]'
+                                                        ? 'border-teal-600 bg-[#c6dad0] text-[#123022]'
+                                                        : 'border-transparent text-[#5a7a6a] hover:bg-[#dae6df] hover:text-[#3a5a4a]'
                                                     }
                                                 `}
                                             >
                                                 {/* Expand/Collapse Arrow */}
                                                 <button
                                                     onClick={(e) => toggleExpand(post.id, e)}
-                                                    className="pl-4 pr-1 py-2 text-[#8aaa9a] hover:text-[#4a6b5a] transition-colors shrink-0"
+                                                    className="pl-3 pr-1 py-2 text-[#8aaa9a] hover:text-[#4a6b5a] transition-colors shrink-0"
                                                 >
                                                     <ChevronRight
                                                         size={12}
-                                                        className={`transition-transform duration-200 ${showChapters ? 'rotate-90' : ''}`}
+                                                        className={`transition-transform duration-200 ${showChapters ? 'rotate-90 text-teal-700 font-bold' : ''}`}
                                                     />
                                                 </button>
 
@@ -261,7 +261,7 @@ export function GardenSidebar({
                                                     onClick={() => handlePostClick(post.id)}
                                                     className="flex-1 text-left py-2 pr-2 text-[14px] leading-snug truncate"
                                                 >
-                                                    <span className={isSelected ? 'font-semibold' : ''}>
+                                                    <span className={isSelected ? 'font-bold text-[#123022]' : ''}>
                                                         {post.title}
                                                     </span>
                                                 </button>
@@ -294,7 +294,7 @@ export function GardenSidebar({
 
                                             {/* Chapters List (Collapsible) */}
                                             {showChapters && (
-                                                <div className="ml-5 border-l border-[#b8c9bf] pl-2">
+                                                <div className="ml-4 border-l border-[#b8c9bf] pl-1.5 space-y-0.5 my-1">
                                                     {isLoadingChapters ? (
                                                         <div className="flex items-center gap-2 px-3 py-2">
                                                             <Loader2 size={10} className="animate-spin text-[#8aaa9a]" />
@@ -311,21 +311,21 @@ export function GardenSidebar({
                                                                 <div
                                                                     key={ch.id}
                                                                     className={`
-                                                                        w-full flex items-center group/ch transition-colors rounded-md
+                                                                        w-full flex items-center group/ch transition-all rounded-r-md border-l-2.5
                                                                         ${isChapterActive
-                                                                            ? 'bg-[#c5d6cc] text-[#2d4a3a]'
-                                                                            : 'text-[#6b8a7a] hover:bg-[#d5e2da] hover:text-[#3a5a4a]'
+                                                                            ? 'border-teal-600 bg-[#b7d2c3] text-[#0f291c]'
+                                                                            : 'border-transparent text-[#6b8a7a] hover:bg-[#d5e2da] hover:text-[#3a5a4a]'
                                                                         }
                                                                     `}
                                                                 >
                                                                     <button
                                                                         onClick={() => onSelectChapter(ch.id)}
-                                                                        className="flex-1 text-left px-3 py-1.5 text-[12px] leading-snug truncate flex items-center gap-2"
+                                                                        className="flex-1 text-left px-2.5 py-1.5 text-[12px] leading-snug truncate flex items-center gap-2"
                                                                     >
-                                                                        <span className="text-[10px] font-mono text-[#8aaa9a] shrink-0">
+                                                                        <span className={`text-[10px] font-mono shrink-0 ${isChapterActive ? 'text-teal-800 font-bold' : 'text-[#8aaa9a]'}`}>
                                                                             {String(idx + 1).padStart(2, '0')}
                                                                         </span>
-                                                                        <span className={isChapterActive ? 'font-semibold' : ''}>
+                                                                        <span className={isChapterActive ? 'font-bold text-[#0f291c]' : ''}>
                                                                             {ch.title}
                                                                         </span>
                                                                     </button>

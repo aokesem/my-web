@@ -5,6 +5,10 @@ import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
 import Placeholder from '@tiptap/extension-placeholder';
 import Image from '@tiptap/extension-image';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import { SlashCommand, suggestionOptions } from './slash-command';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,6 +16,7 @@ import { compressImage } from '@/lib/imageUtils';
 import { syncHeadingIdsInElement } from '@/lib/headingIndex';
 import { common, createLowlight } from 'lowlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { TableBubbleMenu } from './table-bubble-menu';
 import 'tippy.js/dist/tippy.css';
 import 'katex/dist/katex.min.css';
 
@@ -130,6 +135,15 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
             HeadingWithId.configure({
                 levels: [1, 2, 3, 4, 5, 6],
             }),
+            Table.configure({
+                resizable: true,
+                HTMLAttributes: {
+                    class: 'border-collapse table-auto w-full my-4 text-sm',
+                },
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
             Image.configure({
                 inline: false,
                 allowBase64: false,
@@ -290,13 +304,8 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
     // Handle external value changes (only if editor content is deeply different)
     useEffect(() => {
         if (!editor || value === undefined) return;
-
-        // This is a naive way to prevent infinite loops when onChange -> parent updates value -> child updates editor
-        // In a real robust system, we compare JSON deeper or rely on Tiptap's internal transaction ID
-        // For now, if value is a string and it's not JSON, we set it.
         if (typeof value === 'string' && !value.trim().startsWith('{')) {
             // Only update if it's external Markdown loading
-            // Actually, we shouldn't rely on this after initialization if working primarily in JSON.
         }
     }, [value, editor]);
 
@@ -316,7 +325,50 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                     height: 0;
                     pointer-events: none;
                 }
+
+                /* Table styles */
+                .prose table {
+                    border-collapse: collapse;
+                    margin: 1.5rem 0;
+                    width: 100%;
+                    table-layout: auto;
+                    overflow: hidden;
+                    border-radius: 0.5rem;
+                }
+                .prose table td,
+                .prose table th {
+                    min-width: 1em;
+                    border: 1px solid #d6d3d1;
+                    padding: 0.6rem 0.8rem;
+                    vertical-align: top;
+                    box-sizing: border-box;
+                    position: relative;
+                }
+                .prose table th {
+                    font-weight: 600;
+                    text-align: left;
+                    background-color: #f5f5f4;
+                    color: #44403c;
+                }
+                .prose table .selectedCell:after {
+                    z-index: 2;
+                    position: absolute;
+                    content: "";
+                    left: 0; right: 0; top: 0; bottom: 0;
+                    background: rgba(45, 212, 191, 0.15);
+                    pointer-events: none;
+                }
+                .prose table .column-resize-handle {
+                    position: absolute;
+                    right: -2px;
+                    top: 0;
+                    bottom: -0.5px;
+                    width: 4px;
+                    background-color: #2dd4bf;
+                    pointer-events: none;
+                }
             `}} />
+            <TableBubbleMenu editor={editor} />
             <EditorContent editor={editor} />
         </div>
     );
