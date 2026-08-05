@@ -3,14 +3,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Calendar, MoreHorizontal, CheckCircle2 } from 'lucide-react';
+import { Layout, Calendar, MoreHorizontal, CheckCircle2, Play } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 import { Task, Category, TaskType, TaskStatus, CATEGORY_CONFIG } from './types';
 import BoardView from './BoardView';
-import HorizonView from './HorizonView';
+import TaskDetailPanel from './TaskDetailPanel';
 
 interface DailyProtocolProps {
     isActive: boolean;
@@ -49,7 +49,8 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
     };
 
     // === 状态管理 ===
-    const [viewMode, setViewMode] = useState<'board' | 'horizon'>('board');
+    const [activeCategory, setActiveCategory] = useState<Category>('knowledge');
+    const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
     // 添加任务
     const [addingCategory, setAddingCategory] = useState<Category | null>(null);
@@ -59,12 +60,9 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
     const [newTaskDeadline, setNewTaskDeadline] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // 编辑任务
+    // 行内重命名编辑任务
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<{ title: string; date: string; deadline: string; type: TaskType }>({ title: '', date: '', deadline: '', type: 'plan' });
-
-    // 里程碑
-    const [msInput, setMsInput] = useState({ title: '', date: new Date().toISOString().split('T')[0] });
 
     // 自动聚焦
     useEffect(() => {
@@ -78,14 +76,33 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
         ? CATEGORY_CONFIG[featuredTask.category].indicator
         : 'bg-slate-300';
 
-    // === 状态切换 ===
+    // === 更新任务 ===
+    const updateTask = async (id: number, updates: Partial<Task>) => {
+        if (!isAdmin) return toast.warning("只有本人才能操作");
+
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+
+        const dbUpdates: any = {};
+        if (updates.title !== undefined) dbUpdates.title = updates.title;
+        if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
+        if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline || null;
+        if (updates.task_type !== undefined) dbUpdates.task_type = updates.task_type;
+        if (updates.status !== undefined) dbUpdates.status = updates.status;
+
+        const { error } = await supabase.from('profile_tasks').update(dbUpdates).eq('id', id);
+        if (error) {
+            console.error("Update task failed:", error);
+            mutate();
+            toast.error("更新失败");
+        }
+    };
+
+    // 状态切换 (独立函数，与 updateTask 类似，兼容现有 BoardView 接口)
     const toggleStatus = async (id: number, currentStatus: TaskStatus) => {
         if (!isAdmin) return toast.warning("只有本人才能修改状态");
         if (editingTaskId === id) return;
         const newStatus = currentStatus === 'todo' ? 'in_progress' : 'todo';
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
-        const { error } = await supabase.from('profile_tasks').update({ status: newStatus }).eq('id', id);
-        if (error) console.error("Update failed:", error);
+        await updateTask(id, { status: newStatus });
     };
 
     const archiveTask = async (id: number, e: React.MouseEvent) => {
@@ -95,6 +112,7 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
 
         setTasks(prev => prev.filter(t => t.id !== id));
         if (editingTaskId === id) setEditingTaskId(null);
+        if (selectedTaskId === id) setSelectedTaskId(null);
 
         const { error: msError } = await supabase.from('profile_task_milestones').delete().eq('task_id', id);
         if (msError) {
@@ -152,7 +170,7 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
         }
     };
 
-    // === 编辑任务 ===
+    // === 内联编辑(重命名)任务 ===
     const startEditing = (task: Task, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!isAdmin) return toast.warning("只有本人才能操作");
@@ -164,24 +182,23 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
 
     const saveEdit = async (id: number) => {
         if (!editForm.title.trim()) return;
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, title: editForm.title, startDate: editForm.date, deadline: editForm.deadline, task_type: editForm.type } : t));
+        await updateTask(id, {
+            title: editForm.title,
+            startDate: editForm.date,
+            deadline: editForm.deadline || undefined,
+            task_type: editForm.type
+        });
         setEditingTaskId(null);
-        const { error } = await supabase.from('profile_tasks')
-            .update({ title: editForm.title, start_date: editForm.date, deadline: editForm.deadline || null, task_type: editForm.type })
-            .eq('id', id);
-        if (error) { console.error("Update failed:", error); toast.error("更新失败"); }
     };
 
     // === 里程碑 ===
-    const addMilestone = async (taskId: number) => {
+    const addMilestone = async (taskId: number, title: string, date: string, endDate: string) => {
         if (!isAdmin) return toast.warning("只有本人才能操作");
-        if (!msInput.title.trim()) return;
         const { error } = await supabase.from('profile_task_milestones')
-            .insert({ task_id: taskId, title: msInput.title.trim(), date: msInput.date })
+            .insert({ task_id: taskId, title: title, date: date, end_date: endDate })
             .select().single();
         if (!error) {
             mutate();
-            setMsInput({ title: '', date: new Date().toISOString().split('T')[0] });
             toast.success("里程碑已添加");
         } else {
             console.error("Add milestone failed:", error);
@@ -195,6 +212,20 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
         if (!error) { mutate(); toast.success("里程碑已删除"); }
     };
 
+    const updateMilestone = async (msId: number, title: string, date: string, endDate: string) => {
+        if (!isAdmin) return toast.warning("只有本人才能操作");
+        const { error } = await supabase.from('profile_task_milestones')
+            .update({ title, date, end_date: endDate })
+            .eq('id', msId);
+        if (!error) {
+            mutate();
+            toast.success("里程碑已更新");
+        } else {
+            console.error("Update milestone failed:", error);
+            toast.error(`更新失败: ${error.message}`);
+        }
+    };
+
     // === 键盘事件 ===
     const handleKeyDownAdd = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') confirmAddTask();
@@ -206,6 +237,8 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
     };
 
     // === 渲染 ===
+    const selectedTask = tasks.find(t => t.id === selectedTaskId);
+
     return (
         <motion.div
             layout
@@ -217,81 +250,76 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                 hover:bg-white/95 transition-[shadow,background-color] duration-300
                 ${isActive
                     ? 'z-50 inset-10 md:inset-20'
-                    : 'z-30 top-[340px] right-[2.5%] w-[360px] h-[180px] cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
+                    : 'z-30 top-85 right-[2.5%] w-90 h-45 cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
                 }
             `}
         >
-            {/* 背景网格 */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[20px_20px] opacity-30 pointer-events-none" />
+            {/* 绝对定位背景网格 */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[20px_20px] opacity-25 pointer-events-none" />
 
-            {/* 顶部栏 */}
-            <motion.div layout="position" className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-[60px]">
-                <div className="flex items-center gap-3">
-                    <Layout size={20} className="text-slate-400" />
-                    <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">计划列表//TaskBoard</span>
-                </div>
-                {isActive && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="hidden md:flex items-center gap-4 text-base font-mono text-slate-400">
-                        {/* 视图切换 */}
-                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mr-2">
-                            <button onClick={() => setViewMode('board')} className={cn("px-3 py-1 rounded-md text-[11px] font-bold tracking-widest transition-all", viewMode === 'board' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}>BOARD</button>
-                            <button onClick={() => setViewMode('horizon')} className={cn("px-3 py-1 rounded-md text-[11px] font-bold tracking-widest transition-all", viewMode === 'horizon' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}>HORIZON</button>
+            {/* 主容器布局: 展开态为 flex-row, 收起态为 flex-col */}
+            <div className={`flex flex-1 relative z-10 overflow-hidden ${isActive ? 'flex-row' : 'flex-col'}`}>
+
+                {/* 左侧区域（收起时占满，展开时宽 380px） */}
+                <div className={`flex flex-col h-full relative transition-colors duration-300 ${isActive ? 'w-95 border-r border-slate-200/60 shrink-0' : 'w-full'}`}>
+                    {/* 顶部栏 */}
+                    <motion.div layout="position" className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-15">
+                        <div className="flex items-center gap-3">
+                            <Layout size={20} className="text-slate-400" />
+                            <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">计划列表//TaskBoard</span>
                         </div>
-                        <span className="flex items-center gap-2"><Calendar size={14} /> {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</span>
-                        <span className="w-px h-3 bg-slate-300" />
-                        <span className={inProgressCount > 0 ? "text-blue-500 font-bold" : ""}>{inProgressCount} IN PROGRESS</span>
-                    </motion.div>
-                )}
-                <div className="flex items-center gap-2">
-                    {!isActive && tasks.length > 0 && (
-                        <motion.div layoutId="task-count-badge" className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tasks.length} LEFT</motion.div>
-                    )}
-                    <button onClick={(e) => { e.stopPropagation(); onToggle(); }} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 transition-colors">
-                        {isActive ? <div className="w-4 h-1 bg-slate-400 rounded-full" /> : <MoreHorizontal size={16} />}
-                    </button>
-                </div>
-            </motion.div>
-
-            {/* 内容区域 */}
-            <div className="flex-1 relative bg-slate-50/30 overflow-hidden">
-                <AnimatePresence mode="wait">
-                    {!isActive ? (
-                        /* 收起态 */
-                        <motion.div key="idle-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }} className="absolute inset-0 p-5 flex flex-col justify-center">
-                            {tasks.length > 0 && featuredTask ? (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
-                                        <span>CURRENT FOCUS</span>
-                                        <span>{featuredTask.status === 'in_progress' ? 'RUNNING' : 'QUEUED'}</span>
-                                    </div>
-                                    <div className="p-3 bg-white border border-slate-100 rounded-lg flex items-center gap-3 shadow-sm group-hover:border-blue-200 transition-colors">
-                                        <div className={`w-2.5 h-2.5 rounded-full ${indicatorColor} animate-pulse shadow-[0_0_8px_currentColor] opacity-80`} />
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-sm text-slate-700 truncate font-bold leading-tight">{featuredTask.title}</span>
-                                            <span className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">{CATEGORY_CONFIG[featuredTask.category]?.label || 'General'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-1 h-1 w-full">
-                                        {tasks.filter(t => t.status === 'in_progress').slice(0, 10).map((task) => (
-                                            <div key={task.id} className={`flex-1 rounded-full ${CATEGORY_CONFIG[task.category]?.indicator || 'bg-slate-200'}`} />
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-                                    <CheckCircle2 size={24} className="text-emerald-400" />
-                                    <span className="text-xs font-mono uppercase tracking-widest">{tasks.length === 0 ? "Loading / No Tasks" : "All Tasks Done"}</span>
-                                </div>
+                        <div className="flex items-center gap-2 relative z-50">
+                            {!isActive && tasks.length > 0 && (
+                                <motion.div layoutId="task-count-badge" className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tasks.length} LEFT</motion.div>
                             )}
-                        </motion.div>
-                    ) : (
-                        /* 展开态 */
-                        <motion.div key="active-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.25 } }} exit={{ opacity: 0, transition: { duration: 0.05 } }} className="h-full">
-                            <AnimatePresence mode="wait">
-                                {viewMode === 'board' ? (
+                            <button onClick={(e) => { e.stopPropagation(); onToggle(); }} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 transition-colors">
+                                {isActive ? <div className="w-4 h-1 bg-slate-400 rounded-full" /> : <MoreHorizontal size={16} />}
+                            </button>
+                        </div>
+                    </motion.div>
+
+                    {/* 内容区域 */}
+                    <div className="flex-1 relative overflow-hidden">
+                        <AnimatePresence mode="wait">
+                            {!isActive ? (
+                                /* 收起态 */
+                                <motion.div key="idle-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }} className="absolute inset-0 p-5 flex flex-col justify-center">
+                                    {tasks.length > 0 && featuredTask ? (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
+                                                <span>CURRENT FOCUS</span>
+                                                <span>{featuredTask.status === 'in_progress' ? 'RUNNING' : 'QUEUED'}</span>
+                                            </div>
+                                            <div className="p-3 bg-white border border-slate-100 rounded-lg flex items-center gap-3 shadow-sm group-hover:border-blue-200 transition-colors">
+                                                <div className={`w-2.5 h-2.5 rounded-full ${indicatorColor} animate-pulse shadow-[0_0_8px_currentColor] opacity-80`} />
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-sm text-slate-700 truncate font-bold leading-tight">{featuredTask.title}</span>
+                                                    <span className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">{CATEGORY_CONFIG[featuredTask.category]?.label || 'General'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-1 h-1 w-full">
+                                                {tasks.filter(t => t.status === 'in_progress').slice(0, 10).map((task) => (
+                                                    <div key={task.id} className={`flex-1 rounded-full ${CATEGORY_CONFIG[task.category]?.indicator || 'bg-slate-200'}`} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                                            <CheckCircle2 size={24} className="text-emerald-400" />
+                                            <span className="text-xs font-mono uppercase tracking-widest">{tasks.length === 0 ? "Loading / No Tasks" : "All Tasks Done"}</span>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            ) : (
+                                /* 展开态左侧列表 */
+                                <motion.div key="active-view-left" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.25 } }} exit={{ opacity: 0, transition: { duration: 0.05 } }} className="h-full">
                                     <BoardView
                                         tasks={tasks}
                                         isAdmin={isAdmin}
+                                        activeCategory={activeCategory}
+                                        onSelectCategory={setActiveCategory}
+                                        selectedTaskId={selectedTaskId}
+                                        onSelectTask={setSelectedTaskId}
                                         addingCategory={addingCategory}
                                         newTaskTitle={newTaskTitle}
                                         newTaskType={newTaskType}
@@ -313,20 +341,61 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                         onSaveEdit={saveEdit}
                                         onEditFormChange={setEditForm}
                                         onKeyDownEdit={handleKeyDownEdit}
-                                        msInput={msInput}
-                                        onMsInputChange={setMsInput}
-                                        onAddMilestone={addMilestone}
-                                        onDeleteMilestone={deleteMilestone}
+                                        onUpdateTask={updateTask}
                                         onToggleStatus={toggleStatus}
                                         onArchiveTask={archiveTask}
+                                        onAddMilestone={addMilestone}
+                                        onDeleteMilestone={deleteMilestone}
+                                        onUpdateMilestone={updateMilestone}
                                     />
-                                ) : (
-                                    <HorizonView tasks={tasks} />
-                                )}
-                            </AnimatePresence>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* 暗纹化日期 (仅展开时显示在左下角) */}
+                    {isActive && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.15 }} transition={{ delay: 0.2 }} className="absolute bottom-4 left-5 text-sm font-mono font-black tracking-widest pointer-events-none text-slate-800 leading-tight">
+                            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}<br />
+                            {inProgressCount} IN PROGRESS
                         </motion.div>
                     )}
-                </AnimatePresence>
+                </div>
+
+                {/* 右侧面板区域 (仅展开时存在) */}
+                {isActive && (
+                    <div className="flex-1 h-full relative overflow-hidden">
+                        <AnimatePresence mode="wait">
+                            {selectedTaskId ? (
+                                <TaskDetailPanel
+                                    key={selectedTaskId}
+                                    task={selectedTask || null}
+                                    isAdmin={isAdmin}
+                                    onUpdateTask={updateTask}
+                                    onToggleStatus={toggleStatus}
+                                    onAddMilestone={addMilestone}
+                                    onDeleteMilestone={deleteMilestone}
+                                    onUpdateMilestone={updateMilestone}
+                                    onClose={() => setSelectedTaskId(null)}
+                                />
+                            ) : (
+                                <motion.div
+                                    key="empty-state"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="flex flex-col items-center justify-center h-full text-slate-300 bg-slate-50/30"
+                                >
+                                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                                        <Play size={24} className="text-slate-300 opacity-50" />
+                                    </div>
+                                    <p className="text-sm font-mono tracking-widest uppercase">Select a Task</p>
+                                    <p className="text-xs text-slate-400 mt-2">Click on a task card to view details</p>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                )}
             </div>
         </motion.div>
     );

@@ -8,6 +8,7 @@ export interface Milestone {
     task_id: number;
     title: string;
     date: string;
+    end_date?: string;
     is_completed: boolean;
 }
 

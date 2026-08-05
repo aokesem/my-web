@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, Eye, Star, FileDown, Printer, ListChecks, Pencil, Loader2, Save, X, ExternalLink } from 'lucide-react';
+import { BookOpen, Eye, Star, FileDown, Printer, ListChecks, Pencil, Loader2, Save, X, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import type { PaperDetail } from '../../types';
 import type { BlockEditorRef } from '@/components/ui/block-editor';
@@ -26,6 +26,7 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange, 
         if (onEditingChange) onEditingChange(editingKeyContributions);
     }, [editingKeyContributions]);
     const [tempKeyContributions, setTempKeyContributions] = useState<string[]>(paper.key_contributions || []);
+    const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     React.useEffect(() => {
@@ -311,12 +312,39 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange, 
                                     rows={1}
                                     className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-700 focus:outline-hidden focus:ring-1 focus:ring-stone-300 resize-none overflow-hidden"
                                 />
-                                <button
-                                    onClick={() => setTempKeyContributions(tempKeyContributions.filter((_, i) => i !== idx))}
-                                    className="text-stone-300 hover:text-red-400 p-1 mt-0.5"
-                                >
-                                    <X size={14} />
-                                </button>
+                                {deleteConfirmIndex === idx ? (
+                                    <div className="flex items-center gap-1 shrink-0 bg-red-50 border border-red-200/80 rounded-lg px-2 py-1 mt-0.5 animate-in fade-in zoom-in-95 duration-150">
+                                        <span className="text-[10px] font-mono text-red-600 font-bold mr-0.5">删除?</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setTempKeyContributions(tempKeyContributions.filter((_, i) => i !== idx));
+                                                setDeleteConfirmIndex(null);
+                                            }}
+                                            className="p-1 text-red-600 hover:bg-red-100 rounded-md transition-colors"
+                                            title="确认删除"
+                                        >
+                                            <Check size={13} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDeleteConfirmIndex(null)}
+                                            className="p-1 text-stone-400 hover:text-stone-600 rounded-md transition-colors"
+                                            title="取消"
+                                        >
+                                            <X size={13} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeleteConfirmIndex(idx)}
+                                        className="text-stone-300 hover:text-red-400 p-1 mt-0.5 shrink-0 transition-colors"
+                                        title="删除此项"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                             </div>
                         ))}
                         <button
