@@ -7,8 +7,12 @@ import {
     X, Plus, Save, Clock, Trash2, Pencil, Milestone as MilestoneIcon 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Task, TaskType, TYPE_OPTIONS, CATEGORY_CONFIG, Milestone } from './types';
-import HorizonView from './HorizonView'; 
+import { Task, TaskType, TYPE_OPTIONS, CATEGORY_CONFIG, Milestone, TaskWeeklyReport } from './types';
+import HorizonView from './HorizonView';
+import TaskProgressPanel from './TaskProgressPanel';
+import useSWR from 'swr';
+import { supabase } from '@/lib/supabaseClient';
+import { Activity } from '../calendar/types';
 
 interface TaskDetailPanelProps {
     task: Task | null;
@@ -111,10 +115,31 @@ export default function TaskDetailPanel({
     const [deadline, setDeadline] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     
+    // View Mode
+    const [viewMode, setViewMode] = useState<'overview' | 'progress'>('overview');
+    
     // Milestone input (adding new)
     const [msTitle, setMsTitle] = useState('');
     const [msDate, setMsDate] = useState(new Date().toISOString().split('T')[0]);
     const [msEndDate, setMsEndDate] = useState('');
+
+    // Fetch Linked Activities
+    const { data: linkedActivities = [], mutate: mutateLinkedActivities } = useSWR(
+        task ? `task_activities_${task.id}` : null,
+        async () => {
+            const { data, error } = await supabase
+                .from('calendar_activities')
+                .select('*')
+                .eq('task_id', task!.id);
+            if (error) {
+                console.error("Failed to fetch linked activities:", error);
+                return [];
+            }
+            return data as Activity[];
+        }
+    );
+
+    const totalHours = linkedActivities.reduce((sum, act) => sum + (act.duration || 0), 0);
 
     useEffect(() => {
         if (task) {
@@ -182,9 +207,10 @@ export default function TaskDetailPanel({
                     <div className={cn("p-1.5 rounded-lg text-white", config.indicator)}>
                         <config.icon size={18} />
                     </div>
-                    <span className="font-mono font-bold tracking-widest uppercase text-sm text-slate-700">
-                        {config.label} / Detail
-                    </span>
+                    <div className="flex bg-white/50 p-1 rounded-lg border border-white/60 shadow-sm ml-2">
+                        <button onClick={() => setViewMode('overview')} className={cn("px-3 py-1 rounded-md text-xs font-bold tracking-widest uppercase transition-all", viewMode === 'overview' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50')}>概览</button>
+                        <button onClick={() => setViewMode('progress')} className={cn("px-3 py-1 rounded-md text-xs font-bold tracking-widest uppercase transition-all", viewMode === 'progress' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50')}>进程</button>
+                    </div>
                 </div>
                 <button 
                     onClick={onClose}
@@ -194,19 +220,36 @@ export default function TaskDetailPanel({
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto subtle-scrollbar p-6 space-y-2 pb-24">
-                
-                {/* 1. Basic Info Edit (Title & Date) */}
-                <section className="space-y-5">
-                    <div>
-                        <SectionLabel>Title</SectionLabel>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            disabled={!isAdmin}
-                            className="w-full text-xl font-black text-slate-800 bg-transparent border-b-2 border-slate-100 hover:border-slate-200 focus:border-blue-500 pb-1.5 outline-none transition-colors disabled:opacity-70"
-                        />
+            <div className="flex-1 overflow-y-auto subtle-scrollbar p-6 pb-24 h-full">
+                <AnimatePresence mode="wait">
+                    {viewMode === 'overview' ? (
+                        <motion.div
+                            key="overview"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-6"
+                        >
+                            {/* 1. Basic Info Edit (Title & Date) */}
+                            <section className="space-y-5">
+                    <div className="flex flex-col gap-2.5">
+                        <SectionLabel className="mb-0!">Title</SectionLabel>
+                        <div className="flex items-center gap-4">
+                            <input 
+                                value={title} 
+                                onChange={e => setTitle(e.target.value)} 
+                                placeholder="Task title..."
+                                className="text-xl font-black text-slate-800 bg-transparent border-b-2 border-transparent outline-none focus:border-blue-400 transition-colors flex-1 pb-1 min-w-0"
+                            />
+                            <div className="shrink-0 flex flex-col items-end px-3 py-1.5 bg-slate-50 border border-slate-200/60 rounded-xl">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Time</span>
+                                <div className="flex items-baseline gap-0.5">
+                                    <span className="text-lg font-black text-slate-700 font-mono">{totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}</span>
+                                    <span className="text-xs font-bold text-slate-400">h</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-6">
@@ -413,7 +456,25 @@ export default function TaskDetailPanel({
                         )}
                     </div>
                 </section>
-                
+            </motion.div>
+                    ) : (
+                        <motion.div
+                            key="progress"
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 10 }}
+                            transition={{ duration: 0.2 }}
+                            className="h-full"
+                        >
+                            <TaskProgressPanel 
+                                task={task!} 
+                                linkedActivities={linkedActivities} 
+                                mutateLinkedActivities={mutateLinkedActivities}
+                                isAdmin={isAdmin}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </motion.div>
     );

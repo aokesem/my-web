@@ -117,7 +117,7 @@ export default function BoardView({
                                     onClick={() => !isEditing && onSelectTask(task.id)}
                                     className={`group/card relative rounded-xl border p-3 transition-all duration-200 cursor-pointer overflow-hidden ${
                                         isSelected 
-                                            ? `bg-white shadow-md border-${config.color.split('-')[1]}-300 ring-2 ring-${config.color.split('-')[1]}-100` 
+                                            ? `bg-white shadow-md ring-2 ${config.borderActive}` 
                                             : `bg-white/80 border-slate-200/60 hover:bg-white hover:shadow-sm hover:border-slate-300`
                                     }`}
                                 >

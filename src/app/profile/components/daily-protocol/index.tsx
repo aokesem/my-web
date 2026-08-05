@@ -240,79 +240,48 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
     const selectedTask = tasks.find(t => t.id === selectedTaskId);
 
     return (
-        <motion.div
-            layout
-            transition={{ type: "spring", stiffness: 280, damping: 32, mass: 0.9 }}
-            onClick={!isActive ? onToggle : undefined}
-            className={`
-                fixed flex flex-col backdrop-blur-xl bg-white/80 border border-white/60 
-                rounded-2xl shadow-lg ring-1 ring-slate-900/5 overflow-hidden group 
-                hover:bg-white/95 transition-[shadow,background-color] duration-300
-                ${isActive
-                    ? 'z-50 inset-10 md:inset-20'
-                    : 'z-30 top-85 right-[2.5%] w-90 h-45 cursor-pointer hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]'
-                }
-            `}
-        >
-            {/* 绝对定位背景网格 */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[20px_20px] opacity-25 pointer-events-none" />
+        <>
+            <AnimatePresence>
+                {isActive && (
+                    <motion.div
+                        key="active-modal"
+                        initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                        transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+                    >
+                        <div className="flex items-center justify-center w-full h-full p-6 md:p-12 pointer-events-auto" onClick={onToggle}>
+                        <div 
+                            className="w-full max-w-7xl h-full flex flex-row backdrop-blur-xl bg-white/95 border border-white/60 rounded-2xl shadow-2xl overflow-hidden relative"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* 绝对定位背景网格 */}
+                            <div 
+                                className="absolute inset-0 opacity-25 pointer-events-none" 
+                                style={{
+                                    backgroundImage: 'linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)',
+                                    backgroundSize: '20px 20px'
+                                }}
+                            />
 
-            {/* 主容器布局: 展开态为 flex-row, 收起态为 flex-col */}
-            <div className={`flex flex-1 relative z-10 overflow-hidden ${isActive ? 'flex-row' : 'flex-col'}`}>
+                            {/* 左侧区域（展开态宽度固定） */}
+                            <div className="flex flex-col h-full relative w-95 border-r border-slate-200/60 shrink-0 bg-white/60">
+                                {/* 顶部栏 */}
+                                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-15">
+                                    <div className="flex items-center gap-3">
+                                        <Layout size={20} className="text-slate-400" />
+                                        <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">计划列表//TaskBoard</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 relative z-50">
+                                        <button onClick={onToggle} className="p-1.5 rounded-md hover:bg-slate-200 text-slate-400 transition-colors">
+                                            <div className="w-4 h-1 bg-slate-400 rounded-full" />
+                                        </button>
+                                    </div>
+                                </div>
 
-                {/* 左侧区域（收起时占满，展开时宽 380px） */}
-                <div className={`flex flex-col h-full relative transition-colors duration-300 ${isActive ? 'w-95 border-r border-slate-200/60 shrink-0' : 'w-full'}`}>
-                    {/* 顶部栏 */}
-                    <motion.div layout="position" className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-15">
-                        <div className="flex items-center gap-3">
-                            <Layout size={20} className="text-slate-400" />
-                            <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">计划列表//TaskBoard</span>
-                        </div>
-                        <div className="flex items-center gap-2 relative z-50">
-                            {!isActive && tasks.length > 0 && (
-                                <motion.div layoutId="task-count-badge" className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tasks.length} LEFT</motion.div>
-                            )}
-                            <button onClick={(e) => { e.stopPropagation(); onToggle(); }} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 transition-colors">
-                                {isActive ? <div className="w-4 h-1 bg-slate-400 rounded-full" /> : <MoreHorizontal size={16} />}
-                            </button>
-                        </div>
-                    </motion.div>
-
-                    {/* 内容区域 */}
-                    <div className="flex-1 relative overflow-hidden">
-                        <AnimatePresence mode="wait">
-                            {!isActive ? (
-                                /* 收起态 */
-                                <motion.div key="idle-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }} className="absolute inset-0 p-5 flex flex-col justify-center">
-                                    {tasks.length > 0 && featuredTask ? (
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
-                                                <span>CURRENT FOCUS</span>
-                                                <span>{featuredTask.status === 'in_progress' ? 'RUNNING' : 'QUEUED'}</span>
-                                            </div>
-                                            <div className="p-3 bg-white border border-slate-100 rounded-lg flex items-center gap-3 shadow-sm group-hover:border-blue-200 transition-colors">
-                                                <div className={`w-2.5 h-2.5 rounded-full ${indicatorColor} animate-pulse shadow-[0_0_8px_currentColor] opacity-80`} />
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className="text-sm text-slate-700 truncate font-bold leading-tight">{featuredTask.title}</span>
-                                                    <span className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">{CATEGORY_CONFIG[featuredTask.category]?.label || 'General'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-1 h-1 w-full">
-                                                {tasks.filter(t => t.status === 'in_progress').slice(0, 10).map((task) => (
-                                                    <div key={task.id} className={`flex-1 rounded-full ${CATEGORY_CONFIG[task.category]?.indicator || 'bg-slate-200'}`} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-                                            <CheckCircle2 size={24} className="text-emerald-400" />
-                                            <span className="text-xs font-mono uppercase tracking-widest">{tasks.length === 0 ? "Loading / No Tasks" : "All Tasks Done"}</span>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            ) : (
-                                /* 展开态左侧列表 */
-                                <motion.div key="active-view-left" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.25 } }} exit={{ opacity: 0, transition: { duration: 0.05 } }} className="h-full">
+                                {/* 内容区域 */}
+                                <div className="flex-1 overflow-hidden relative">
                                     <BoardView
                                         tasks={tasks}
                                         isAdmin={isAdmin}
@@ -348,55 +317,120 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
                                         onDeleteMilestone={deleteMilestone}
                                         onUpdateMilestone={updateMilestone}
                                     />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                                </div>
 
-                    {/* 暗纹化日期 (仅展开时显示在左下角) */}
-                    {isActive && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.15 }} transition={{ delay: 0.2 }} className="absolute bottom-4 left-5 text-sm font-mono font-black tracking-widest pointer-events-none text-slate-800 leading-tight">
-                            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}<br />
-                            {inProgressCount} IN PROGRESS
-                        </motion.div>
-                    )}
-                </div>
+                                {/* 暗纹化日期 */}
+                                <div className="absolute bottom-4 left-5 text-sm font-mono font-black tracking-widest pointer-events-none text-slate-800 leading-tight opacity-15">
+                                    {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}<br />
+                                    {inProgressCount} IN PROGRESS
+                                </div>
+                            </div>
 
-                {/* 右侧面板区域 (仅展开时存在) */}
-                {isActive && (
-                    <div className="flex-1 h-full relative overflow-hidden">
-                        <AnimatePresence mode="wait">
-                            {selectedTaskId ? (
-                                <TaskDetailPanel
-                                    key={selectedTaskId}
-                                    task={selectedTask || null}
-                                    isAdmin={isAdmin}
-                                    onUpdateTask={updateTask}
-                                    onToggleStatus={toggleStatus}
-                                    onAddMilestone={addMilestone}
-                                    onDeleteMilestone={deleteMilestone}
-                                    onUpdateMilestone={updateMilestone}
-                                    onClose={() => setSelectedTaskId(null)}
-                                />
-                            ) : (
-                                <motion.div
-                                    key="empty-state"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="flex flex-col items-center justify-center h-full text-slate-300 bg-slate-50/30"
-                                >
-                                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                                        <Play size={24} className="text-slate-300 opacity-50" />
-                                    </div>
-                                    <p className="text-sm font-mono tracking-widest uppercase">Select a Task</p>
-                                    <p className="text-xs text-slate-400 mt-2">Click on a task card to view details</p>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                            {/* 右侧面板区域 */}
+                            <div className="flex-1 h-full relative overflow-hidden bg-white/40">
+                                <AnimatePresence mode="wait">
+                                    {selectedTaskId ? (
+                                        <TaskDetailPanel
+                                            key={selectedTaskId}
+                                            task={selectedTask || null}
+                                            isAdmin={isAdmin}
+                                            onUpdateTask={updateTask}
+                                            onToggleStatus={toggleStatus}
+                                            onAddMilestone={addMilestone}
+                                            onDeleteMilestone={deleteMilestone}
+                                            onUpdateMilestone={updateMilestone}
+                                            onClose={() => setSelectedTaskId(null)}
+                                        />
+                                    ) : (
+                                        <motion.div
+                                            key="empty-state"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="flex flex-col items-center justify-center h-full text-slate-300 bg-slate-50/30"
+                                        >
+                                            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                                                <Play size={24} className="text-slate-300 opacity-50" />
+                                            </div>
+                                            <p className="text-sm font-mono tracking-widest uppercase">Select a Task</p>
+                                            <p className="text-xs text-slate-400 mt-2">Click on a task card to view details</p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+                        </div>
+                    </motion.div>
                 )}
-            </div>
-        </motion.div>
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {!isActive && (
+                    <motion.div
+                        key="inactive-widget"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 280, damping: 32, mass: 0.9 }}
+                        onClick={onToggle}
+                        className="fixed z-30 top-85 right-[2.5%] w-90 h-45 cursor-pointer flex flex-col backdrop-blur-xl bg-white/80 border border-white/60 rounded-2xl shadow-lg ring-1 ring-slate-900/5 overflow-hidden group hover:bg-white/95 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] transition-[shadow,background-color] duration-300"
+                    >
+                        {/* 绝对定位背景网格 */}
+                        <div 
+                            className="absolute inset-0 opacity-25 pointer-events-none" 
+                            style={{
+                                backgroundImage: 'linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)',
+                                backgroundSize: '20px 20px'
+                            }}
+                        />
+
+                        {/* 顶部栏 */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100/80 shrink-0 h-15 z-10 relative">
+                            <div className="flex items-center gap-3">
+                                <Layout size={20} className="text-slate-400" />
+                                <span className="font-mono font-bold text-slate-500 tracking-[0.2em] uppercase text-sm">计划列表</span>
+                            </div>
+                            <div className="flex items-center gap-2 relative z-50">
+                                {tasks.length > 0 && (
+                                    <div className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tasks.length} LEFT</div>
+                                )}
+                                <button onClick={(e) => { e.stopPropagation(); onToggle(); }} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 transition-colors">
+                                    <MoreHorizontal size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 内容区域 */}
+                        <div className="flex-1 relative overflow-hidden p-5 flex flex-col justify-center z-10">
+                            {tasks.length > 0 && featuredTask ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between text-xs text-slate-400 font-mono tracking-wider mb-1">
+                                        <span>CURRENT FOCUS</span>
+                                        <span>{featuredTask.status === 'in_progress' ? 'RUNNING' : 'QUEUED'}</span>
+                                    </div>
+                                    <div className="p-3 bg-white border border-slate-100 rounded-lg flex items-center gap-3 shadow-sm group-hover:border-blue-200 transition-colors">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${indicatorColor} animate-pulse shadow-[0_0_8px_currentColor] opacity-80`} />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-sm text-slate-700 truncate font-bold leading-tight">{featuredTask.title}</span>
+                                            <span className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">{CATEGORY_CONFIG[featuredTask.category]?.label || 'General'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 h-1 w-full">
+                                        {tasks.filter(t => t.status === 'in_progress').slice(0, 10).map((task) => (
+                                            <div key={task.id} className={`flex-1 rounded-full ${CATEGORY_CONFIG[task.category]?.indicator || 'bg-slate-200'}`} />
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                                    <CheckCircle2 size={24} className="text-emerald-400" />
+                                    <span className="text-xs font-mono uppercase tracking-widest">{tasks.length === 0 ? "Loading / No Tasks" : "All Tasks Done"}</span>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
     );
 }

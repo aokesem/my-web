@@ -12,6 +12,7 @@ export interface Activity {
     date?: string;
     deadline_item_id?: number | null; // 关联的 deadline 条目
     place_id?: number | null; // 关联地点
+    task_id?: number | null; // 关联的项目任务
 }
 
 export interface DayData {

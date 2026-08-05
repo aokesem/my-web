@@ -23,14 +23,22 @@ export interface Task {
     milestones?: Milestone[];
 }
 
+export interface TaskWeeklyReport {
+    id: number;
+    task_id: number;
+    week_start_date: string; // YYYY-MM-DD
+    content: string;
+    updated_at?: string;
+}
+
 // === 配置表 ===
 import { BookOpen, Zap, Palette, Users } from 'lucide-react';
 
-export const CATEGORY_CONFIG: Record<Category, { label: string; color: string; bg: string; bgLight: string; indicator: string; icon: any }> = {
-    knowledge: { label: 'Knowledge', color: 'text-blue-600',    bg: 'bg-blue-100',    bgLight: 'bg-blue-50',    indicator: 'bg-blue-500',    icon: BookOpen },
-    sports:    { label: 'Sports',    color: 'text-rose-600',    bg: 'bg-rose-100',    bgLight: 'bg-rose-50',    indicator: 'bg-rose-500',    icon: Zap },
-    arts:      { label: 'Arts',      color: 'text-emerald-600', bg: 'bg-emerald-100', bgLight: 'bg-emerald-50', indicator: 'bg-emerald-500', icon: Palette },
-    social:    { label: 'Social',    color: 'text-purple-600',  bg: 'bg-purple-100',  bgLight: 'bg-purple-50',  indicator: 'bg-purple-500',  icon: Users },
+export const CATEGORY_CONFIG: Record<Category, { label: string; color: string; bg: string; bgLight: string; indicator: string; borderActive: string; icon: any }> = {
+    knowledge: { label: 'Knowledge', color: 'text-blue-600',    bg: 'bg-blue-100',    bgLight: 'bg-blue-50',    indicator: 'bg-blue-500',    borderActive: 'border-blue-400 ring-blue-200', icon: BookOpen },
+    sports:    { label: 'Sports',    color: 'text-rose-600',    bg: 'bg-rose-100',    bgLight: 'bg-rose-50',    indicator: 'bg-rose-500',    borderActive: 'border-rose-400 ring-rose-200', icon: Zap },
+    arts:      { label: 'Arts',      color: 'text-emerald-600', bg: 'bg-emerald-100', bgLight: 'bg-emerald-50', indicator: 'bg-emerald-500', borderActive: 'border-emerald-400 ring-emerald-200', icon: Palette },
+    social:    { label: 'Social',    color: 'text-purple-600',  bg: 'bg-purple-100',  bgLight: 'bg-purple-50',  indicator: 'bg-purple-500',  borderActive: 'border-purple-400 ring-purple-200', icon: Users },
 };
 
 export const TYPE_OPTIONS: { value: TaskType; label: string; opacity: string }[] = [
