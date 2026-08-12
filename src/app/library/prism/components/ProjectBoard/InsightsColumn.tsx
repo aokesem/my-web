@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Lightbulb, Plus, Pencil, Trash2, Link as LinkIcon, Save, Loader2, X, Waypoints } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ChevronDown, Filter, Lightbulb, Pencil, Plus, Trash2, Link as LinkIcon, Save, Loader2, X, Waypoints } from 'lucide-react';
 import { BoardColumn } from './BoardColumn';
 import { AccordionGroup } from './AccordionGroup';
 import { NewItemForm } from './NewItemForm';
@@ -7,7 +7,8 @@ import { renderBoldTextUtil } from './utils';
 import { PaperDetail, ProjectInsight } from '../../types';
 
 interface InsightsColumnProps {
-    filteredInsights: { category: string; items: ProjectInsight[] }[];
+    filteredInsights: { key: string; category: string; items: ProjectInsight[] }[];
+    creationCategories: string[];
     editingId: string | null;
     tempTitle: string;
     tempContent: string;
@@ -49,6 +50,7 @@ interface InsightsColumnProps {
 
 export function InsightsColumn({
     filteredInsights,
+    creationCategories,
     editingId,
     tempTitle,
     tempContent,
@@ -88,6 +90,36 @@ export function InsightsColumn({
 }: InsightsColumnProps) {
     const hasSurveyLink = surveyItemOptions.length > 0;
     const [editLinkTab, setEditLinkTab] = useState<'papers' | 'surveys'>('papers');
+    const [expandedInsightIds, setExpandedInsightIds] = useState<Set<string>>(new Set());
+    const [selectedGroupKey, setSelectedGroupKey] = useState('all');
+
+    const effectiveGroupKey = useMemo(
+        () => selectedGroupKey !== 'all' && filteredInsights.some((group) => group.key === selectedGroupKey)
+            ? selectedGroupKey
+            : 'all',
+        [filteredInsights, selectedGroupKey]
+    );
+    const visibleInsightGroups = effectiveGroupKey === 'all'
+        ? filteredInsights
+        : filteredInsights.filter((group) => group.key === effectiveGroupKey);
+
+    const toggleInsight = (id: string) => {
+        setExpandedInsightIds((previous) => {
+            const next = new Set(previous);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const setInsightExpanded = (id: string, expanded: boolean) => {
+        setExpandedInsightIds((previous) => {
+            const next = new Set(previous);
+            if (expanded) next.add(id);
+            else next.delete(id);
+            return next;
+        });
+    };
 
     return (
         <BoardColumn
@@ -98,7 +130,7 @@ export function InsightsColumn({
             action={isAdmin ? (
                 <button
                     onClick={() => {
-                        const cat = filteredInsights[0]?.category || '默认';
+                        const cat = creationCategories[0] || '默认';
                         setCreatingIn({ category: cat });
                         setNewItemTitle('');
                         setNewItemContent('');
@@ -115,7 +147,7 @@ export function InsightsColumn({
             {isAdmin && creatingIn && (
                 <NewItemForm
                     category={creatingIn.category}
-                    categories={filteredInsights.map(g => g.category)}
+                    categories={creationCategories.length > 0 ? creationCategories : ['默认']}
                     onChangeCategory={(cat) => setCreatingIn({ ...creatingIn, category: cat })}
                     title={newItemTitle}
                     onChangeTitle={setNewItemTitle}
@@ -137,11 +169,30 @@ export function InsightsColumn({
                 />
             )}
 
-            {filteredInsights.map(group => (
-                <AccordionGroup key={group.category} title={group.category} count={group.items.length} defaultOpen={true}>
+            {filteredInsights.length > 1 && (
+                <div className="flex items-center gap-2 px-1">
+                    <Filter size={13} className="shrink-0 text-stone-400" />
+                    <select
+                        value={effectiveGroupKey}
+                        onChange={(event) => setSelectedGroupKey(event.target.value)}
+                        className="min-w-0 flex-1 rounded-md border border-stone-200 bg-white px-2 py-1.5 text-xs text-stone-600 outline-none transition-colors hover:border-amber-300 focus:border-amber-400 focus:ring-1 focus:ring-amber-100"
+                        aria-label="筛选启示分组"
+                    >
+                        <option value="all">全部分组</option>
+                        {filteredInsights.map((group) => (
+                            <option key={group.key} value={group.key}>
+                                {group.category}（{group.items.length}）
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {visibleInsightGroups.map((group) => (
+                <AccordionGroup key={group.key} title={group.category} count={group.items.length} defaultOpen={true}>
                     {group.items.map(insight => (
-                        <div key={insight.id} className="p-3 rounded-xl border border-stone-200/60 bg-amber-50/30 hover:bg-white transition-colors relative group/item">
-                            {editingId === insight.id ? (
+                <div key={insight.id} className="p-3 rounded-xl border border-stone-200/60 bg-amber-50/30 hover:bg-white transition-colors relative group/item">
+                    {editingId === insight.id ? (
                                 <div className="space-y-3">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-mono font-bold text-stone-400 uppercase">标题</label>
@@ -328,6 +379,7 @@ export function InsightsColumn({
                                             type="button"
                                             onClick={() => {
                                                 setEditingId(insight.id);
+                                                setInsightExpanded(insight.id, true);
                                                 setTempTitle(insight.title);
                                                 setTempContent(insight.content);
                                                 setTempPaperIds(insight.paper_ids || []);
@@ -347,48 +399,64 @@ export function InsightsColumn({
                                             <Trash2 size={12} />
                                         </button>
                                     </div>
-                                    <div className="text-base font-bold text-stone-900 mb-1 pr-14 leading-snug" title={insight.title}>
-                                        {insight.title}
-                                    </div>
-                                    <div className="text-base text-stone-700 leading-relaxed mb-2 pr-14 whitespace-pre-wrap">
-                                        {renderBoldTextUtil(insight.content)}
-                                    </div>
-                                    {(insight.paper_ids?.length ?? 0) > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {insight.paper_ids?.map((pid: string) => {
-                                                const linkedPaper = allPapers.find(p => p.id === pid);
-                                                if (!linkedPaper) return null;
-                                                return (
-                                                    <button
-                                                        key={pid}
-                                                        type="button"
-                                                        onClick={() => onOpenPaper(pid)}
-                                                        className="flex items-center gap-1.5 px-2 py-1 bg-white border border-stone-100 rounded-lg text-[12px] font-mono text-blue-500 hover:bg-stone-50 hover:text-amber-600 transition-colors border-dashed"
-                                                    >
-                                                        <LinkIcon size={10} className="shrink-0" />
-                                                        <span className="truncate max-w-[150px]">{linkedPaper.nickname || linkedPaper.title}</span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    {(insight.survey_ids || []).length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {(insight.survey_ids || []).map((sid) => {
-                                                const opt = surveyItemOptions.find((o) => o.id === sid);
-                                                if (!opt) return null;
-                                                return (
-                                                    <span
-                                                        key={sid}
-                                                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-teal-100 rounded-lg text-[12px] font-mono text-teal-600 border-dashed max-w-full"
-                                                        title={opt.title}
-                                                    >
-                                                        <Waypoints size={10} className="shrink-0 text-teal-500" />
-                                                        <span className="truncate max-w-[150px]">{opt.title}</span>
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleInsight(insight.id)}
+                                        className="flex w-full items-start gap-2 pr-14 text-left"
+                                        title={expandedInsightIds.has(insight.id) ? '折叠正文' : '展开正文'}
+                                    >
+                                        <ChevronDown
+                                            size={15}
+                                            className={`mt-0.5 shrink-0 text-stone-400 transition-transform duration-200 ${expandedInsightIds.has(insight.id) ? '' : '-rotate-90'}`}
+                                        />
+                                        <span className="min-w-0 flex-1 text-base font-bold leading-snug text-stone-900">
+                                            {insight.title}
+                                        </span>
+                                    </button>
+
+                                    {expandedInsightIds.has(insight.id) && (
+                                        <>
+                                            <div className="mt-2 mb-2 pl-6 text-base text-stone-700 leading-relaxed whitespace-pre-wrap">
+                                                {renderBoldTextUtil(insight.content)}
+                                            </div>
+                                            {(insight.paper_ids?.length ?? 0) > 0 && (
+                                                <div className="flex flex-wrap gap-2 mt-2 pl-6">
+                                                    {insight.paper_ids?.map((pid: string) => {
+                                                        const linkedPaper = allPapers.find(p => p.id === pid);
+                                                        if (!linkedPaper) return null;
+                                                        return (
+                                                            <button
+                                                                key={pid}
+                                                                type="button"
+                                                                onClick={() => onOpenPaper(pid)}
+                                                                className="flex items-center gap-1.5 px-2 py-1 bg-white border border-stone-100 rounded-lg text-[12px] font-mono text-blue-500 hover:bg-stone-50 hover:text-amber-600 transition-colors border-dashed"
+                                                            >
+                                                                <LinkIcon size={10} className="shrink-0" />
+                                                                <span className="truncate max-w-[150px]">{linkedPaper.nickname || linkedPaper.title}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {(insight.survey_ids || []).length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mt-2 pl-6">
+                                                    {(insight.survey_ids || []).map((sid) => {
+                                                        const opt = surveyItemOptions.find((o) => o.id === sid);
+                                                        if (!opt) return null;
+                                                        return (
+                                                            <span
+                                                                key={sid}
+                                                                className="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-teal-100 rounded-lg text-[12px] font-mono text-teal-600 border-dashed max-w-full"
+                                                                title={opt.title}
+                                                            >
+                                                                <Waypoints size={10} className="shrink-0 text-teal-500" />
+                                                                <span className="truncate max-w-[150px]">{opt.title}</span>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </>
                             )}

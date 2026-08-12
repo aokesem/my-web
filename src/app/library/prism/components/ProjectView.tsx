@@ -280,17 +280,40 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
 
     const filteredInsights = useMemo(() => {
         if (!activeProject) return [];
-        if (!activeTimeRange) return activeProject.insights;
-
-        return activeProject.insights.map(group => ({
-            ...group,
-            items: group.items.filter(item => {
+        const insights = activeProject.insights
+            .flatMap((group) => group.items)
+            .filter((item) => {
+                if (!activeTimeRange) return true;
                 if (!item.created_at) return false;
-                const it = new Date(item.created_at).getTime();
-                return it >= activeTimeRange.start && it < activeTimeRange.end;
+                const time = new Date(item.created_at).getTime();
+                return time >= activeTimeRange.start && time < activeTimeRange.end;
+            });
+
+        const insightById = new Map(insights.map((item) => [item.id, item]));
+        const groupedInsightIds = new Set<string>();
+        const synthesisGroups = agendaBundle.synthesis
+            .map((synthesis) => {
+                const items = synthesis.insight_ref_ids
+                    .map((insightId) => insightById.get(insightId))
+                    .filter((item): item is ProjectInsight => Boolean(item));
+
+                items.forEach((item) => groupedInsightIds.add(item.id));
+
+                return {
+                    key: synthesis.id,
+                    category: synthesis.content.trim() || '（未命名综合问题）',
+                    items
+                };
             })
-        })).filter(g => g.items.length > 0);
-    }, [activeProject, activeTimeRange]);
+            .filter((group) => group.items.length > 0);
+
+        const ungroupedInsights = insights.filter((item) => !groupedInsightIds.has(item.id));
+        if (ungroupedInsights.length > 0) {
+            synthesisGroups.push({ key: 'ungrouped', category: '未归组', items: ungroupedInsights });
+        }
+
+        return synthesisGroups;
+    }, [activeProject, activeTimeRange, agendaBundle.synthesis]);
 
     const availableDirections = useMemo(() => {
         const dirs = new Set<string>();
@@ -389,6 +412,7 @@ export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdate
 
                     <InsightsColumn
                         filteredInsights={filteredInsights}
+                        creationCategories={activeProject.insights.map((group) => group.category)}
                         editingId={editingId}
                         tempTitle={tempTitle}
                         tempContent={tempContent}

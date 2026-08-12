@@ -53,7 +53,7 @@ const nodeTypes = { survey: SurveyNode, insight: InsightNode, synthesis: Synthes
 // FOREST LAYOUT — one tree per 调查方向 (XMind-style, no shared trunks)
 // ============================================================
 
-const COL_X: Record<string, number> = { survey: -100, insight: 320, synthesis: 740 };
+const COL_X: Record<string, number> = { survey: -100, synthesis: 320, insight: 740 };
 const TREE_GAP = 56;
 
 function estimateHeight(text: string, width = 180): number {
@@ -76,15 +76,15 @@ const amberEdge = {
     markerEnd: { type: MarkerType.ArrowClosed, color: '#fbbf24', width: 14, height: 14 },
 };
 
-function insightNodeId(surveyId: string, insightId: string) {
-    return `i-${surveyId}-${insightId}`;
+function synthesisNodeId(surveyId: string, synthesisId: string) {
+    return `y-${surveyId}-${synthesisId}`;
 }
 
-function synthesisNodeId(surveyId: string, insightId: string, synthesisId: string) {
-    return `y-${surveyId}-${insightId}-${synthesisId}`;
+function insightNodeId(surveyId: string, synthesisId: string, insightId: string) {
+    return `i-${surveyId}-${synthesisId}-${insightId}`;
 }
 
-/** 单棵调查方向子树：调查 → 启示* → 综合*（综合可重复出现在不同启示枝下） */
+/** 单棵调查方向子树：调查 → 综合* → 启示*（启示可重复出现在不同综合枝下） */
 function layoutSurveyTree(
     survey: ProjectAgendaSurveyItem,
     insights: ProjectInsight[],
@@ -103,20 +103,22 @@ function layoutSurveyTree(
     g.setNode(rootId, { width: 220, height: estimateHeight(surveyLabel) });
     meta.set(rootId, { type: 'survey', label: surveyLabel, nodeWidth: 220 });
 
-    for (const ins of insightsForSurvey) {
-        const iId = insightNodeId(survey.id, ins.id);
-        const insLabel = ins.title?.trim() || '(无标题)';
-        g.setNode(iId, { width: 200, height: estimateHeight(insLabel, 160) });
-        meta.set(iId, { type: 'insight', label: insLabel, nodeWidth: 200 });
-        g.setEdge(rootId, iId);
+    for (const syn of synthesisItems) {
+        const insightsForSynthesis = insightsForSurvey.filter((ins) => syn.insight_ref_ids.includes(ins.id));
+        if (insightsForSynthesis.length === 0) continue;
 
-        for (const syn of synthesisItems) {
-            if (!syn.insight_ref_ids.includes(ins.id)) continue;
-            const yId = synthesisNodeId(survey.id, ins.id, syn.id);
-            const synLabel = syn.content?.trim() || '(暂无正文)';
-            g.setNode(yId, { width: 200, height: estimateHeight(synLabel, 160) });
-            meta.set(yId, { type: 'synthesis', label: synLabel, nodeWidth: 200 });
-            g.setEdge(iId, yId);
+        const yId = synthesisNodeId(survey.id, syn.id);
+        const synLabel = syn.content?.trim() || '(暂无正文)';
+        g.setNode(yId, { width: 200, height: estimateHeight(synLabel, 160) });
+        meta.set(yId, { type: 'synthesis', label: synLabel, nodeWidth: 200 });
+        g.setEdge(rootId, yId);
+
+        for (const ins of insightsForSynthesis) {
+            const iId = insightNodeId(survey.id, syn.id, ins.id);
+            const insLabel = ins.title?.trim() || '(无标题)';
+            g.setNode(iId, { width: 200, height: estimateHeight(insLabel, 160) });
+            meta.set(iId, { type: 'insight', label: insLabel, nodeWidth: 200 });
+            g.setEdge(yId, iId);
         }
     }
 
@@ -143,12 +145,12 @@ function layoutSurveyTree(
 
     const edges: Edge[] = g.edges().map((e) => {
         const targetId = e.w;
-        const isSynth = targetId.startsWith('y-');
+        const isInsight = targetId.startsWith('i-');
         return {
             id: `e-${e.v}-${targetId}`,
             source: e.v,
             target: targetId,
-            ...(isSynth ? amberEdge : violetEdge),
+            ...(isInsight ? amberEdge : violetEdge),
         };
     });
 
