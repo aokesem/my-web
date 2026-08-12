@@ -31,6 +31,24 @@ export interface TaskWeeklyReport {
     updated_at?: string;
 }
 
+export interface LinkedCategory {
+    id: number;
+    task_id: number;
+    deadline_category_id: number;
+    created_at?: string;
+    // joined
+    deadline_categories?: { id: number; name: string };
+}
+
+export interface LinkedItem {
+    id: number;
+    task_id: number;
+    deadline_item_id: number;
+    created_at?: string;
+    // joined
+    deadline_items?: { id: number; title: string; category_id: number; deadline_categories?: { name: string } };
+}
+
 // === 配置表 ===
 import { BookOpen, Zap, Palette, Users } from 'lucide-react';
 

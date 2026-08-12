@@ -22,8 +22,11 @@ export default function HorizonView({ tasks }: HorizonViewProps) {
         return ((t - s) / (e - s)) * 100;
     };
 
-    // 只要有 deadline 就展示
-    const horizonTasks = useMemo(() => tasks.filter(t => t.deadline), [tasks]);
+    // 任务截止日期或 milestone 任一存在时，都可以形成有效时间轴。
+    const horizonTasks = useMemo(
+        () => tasks.filter(task => task.deadline || (task.milestones?.length || 0) > 0),
+        [tasks]
+    );
 
     const TOTAL_BLOCKS = 14;
 
@@ -49,48 +52,47 @@ export default function HorizonView({ tasks }: HorizonViewProps) {
                     <div className="flex flex-col items-center justify-center py-6 text-slate-300">
                         <Archive size={24} className="opacity-20 mb-2" />
                         <p className="text-[10px] font-mono tracking-widest uppercase text-center">
-                            No Deadline Set
+                            No Timeline Set
                         </p>
                     </div>
                 )}
 
                 {horizonTasks.map(task => {
                     // === 计算当前阶段逻辑 ===
-                    const milestones = task.milestones || [];
+                    const milestones = [...(task.milestones || [])].sort((a, b) => {
+                        const aEnd = new Date(a.end_date || a.date).getTime();
+                        const bEnd = new Date(b.end_date || b.date).getTime();
+                        return aEnd - bEnd;
+                    });
                     let activeTitle = "Overall Progress";
                     let activeStart = task.startDate;
-                    let activeEnd = task.deadline!;
+                    let activeEnd = task.deadline || task.startDate;
 
                     if (milestones.length > 0) {
                         const todayTime = new Date(todayStr).getTime();
-                        
-                        // 1. 寻找当前进行中的子任务
+
+                        // 1. 当前进行中的 milestone；重叠时优先选择截止更近的。
                         const currentMs = milestones.find(m => {
                             const s = new Date(m.date).getTime();
                             const e = new Date(m.end_date || m.date).getTime();
                             return todayTime >= s && todayTime <= e;
                         });
 
-                        if (currentMs) {
-                            activeTitle = currentMs.title;
-                            activeStart = currentMs.date;
-                            activeEnd = currentMs.end_date || currentMs.date;
-                        } else {
-                            // 2. 如果没有进行中的，寻找最近刚刚结束的一个
-                            const pastMsList = milestones.filter(m => {
-                                const e = new Date(m.end_date || m.date).getTime();
-                                return todayTime > e;
-                            }).sort((a, b) => {
-                                const ea = new Date(a.end_date || a.date).getTime();
-                                const eb = new Date(b.end_date || b.date).getTime();
-                                return eb - ea; // 降序
-                            });
+                        // 2. 没有进行中项时，选择截止日期最近的未来 milestone。
+                        const upcomingMs = milestones.find(m =>
+                            new Date(m.date).getTime() > todayTime
+                        );
 
-                            if (pastMsList.length > 0) {
-                                activeTitle = pastMsList[0].title;
-                                activeStart = pastMsList[0].date;
-                                activeEnd = pastMsList[0].end_date || pastMsList[0].date;
-                            }
+                        // 3. 全部结束后，回退到最近结束的一项。
+                        const latestPastMs = [...milestones].reverse().find(m =>
+                            new Date(m.end_date || m.date).getTime() < todayTime
+                        );
+
+                        const activeMilestone = currentMs || upcomingMs || latestPastMs;
+                        if (activeMilestone) {
+                            activeTitle = activeMilestone.title;
+                            activeStart = activeMilestone.date;
+                            activeEnd = activeMilestone.end_date || activeMilestone.date;
                         }
                     }
 

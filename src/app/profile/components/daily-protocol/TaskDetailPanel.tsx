@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Task, TaskType, TYPE_OPTIONS, CATEGORY_CONFIG, Milestone, TaskWeeklyReport } from './types';
 import HorizonView from './HorizonView';
-import TaskProgressPanel from './TaskProgressPanel';
+import TaskProgressPanel, { TaskLinkedActivity } from './TaskProgressPanel';
 import useSWR from 'swr';
 import { supabase } from '@/lib/supabaseClient';
 import { Activity } from '../calendar/types';
@@ -123,19 +123,91 @@ export default function TaskDetailPanel({
     const [msDate, setMsDate] = useState(new Date().toISOString().split('T')[0]);
     const [msEndDate, setMsEndDate] = useState('');
 
-    // Fetch Linked Activities
+    // 手动关联与分类/事项规则共同决定计划进程，按活动 ID 合并避免重复统计。
     const { data: linkedActivities = [], mutate: mutateLinkedActivities } = useSWR(
-        task ? `task_activities_${task.id}` : null,
+        task ? ['task_activities', task.id, task.startDate, task.deadline || null] : null,
         async () => {
-            const { data, error } = await supabase
-                .from('calendar_activities')
-                .select('*')
-                .eq('task_id', task!.id);
-            if (error) {
-                console.error("Failed to fetch linked activities:", error);
+            const taskId = task!.id;
+            let manualQuery = supabase.from('calendar_activities').select('*').eq('task_id', taskId);
+            if (task!.startDate) manualQuery = manualQuery.gte('date', task!.startDate);
+            if (task!.deadline) manualQuery = manualQuery.lte('date', task!.deadline);
+
+            const [manualResult, categoryLinksResult, itemLinksResult] = await Promise.all([
+                manualQuery,
+                supabase
+                    .from('profile_task_deadline_categories')
+                    .select('deadline_category_id')
+                    .eq('task_id', taskId),
+                supabase
+                    .from('profile_task_deadline_items')
+                    .select('deadline_item_id')
+                    .eq('task_id', taskId),
+            ]);
+
+            const linkError = manualResult.error || categoryLinksResult.error || itemLinksResult.error;
+            if (linkError) {
+                console.error("Failed to fetch task activity links:", linkError);
                 return [];
             }
-            return data as Activity[];
+
+            const linkedItemIds = new Set<number>(
+                (itemLinksResult.data || []).map(link => Number(link.deadline_item_id))
+            );
+            const linkedCategoryIds = (categoryLinksResult.data || []).map(
+                link => Number(link.deadline_category_id)
+            );
+
+            if (linkedCategoryIds.length > 0) {
+                const { data: categoryItems, error: categoryItemsError } = await supabase
+                    .from('deadline_items')
+                    .select('id')
+                    .in('category_id', linkedCategoryIds);
+
+                if (categoryItemsError) {
+                    console.error("Failed to resolve linked calendar categories:", categoryItemsError);
+                    return [];
+                }
+                categoryItems?.forEach(item => linkedItemIds.add(Number(item.id)));
+            }
+
+            let automaticActivities: Activity[] = [];
+            if (linkedItemIds.size > 0) {
+                let automaticQuery = supabase
+                    .from('calendar_activities')
+                    .select('*')
+                    .in('deadline_item_id', Array.from(linkedItemIds));
+                if (task!.startDate) automaticQuery = automaticQuery.gte('date', task!.startDate);
+                if (task!.deadline) automaticQuery = automaticQuery.lte('date', task!.deadline);
+                const { data, error } = await automaticQuery;
+
+                if (error) {
+                    console.error("Failed to fetch automatically linked activities:", error);
+                    return [];
+                }
+                automaticActivities = (data || []) as Activity[];
+            }
+
+            const mergedActivities = new Map<number, TaskLinkedActivity>();
+            ((manualResult.data || []) as Activity[]).forEach(activity => {
+                mergedActivities.set(activity.id, {
+                    ...activity,
+                    linkSource: { manual: true, automatic: false },
+                });
+            });
+            automaticActivities.forEach(activity => {
+                const existing = mergedActivities.get(activity.id);
+                mergedActivities.set(activity.id, {
+                    ...activity,
+                    linkSource: {
+                        manual: existing?.linkSource.manual || false,
+                        automatic: true,
+                    },
+                });
+            });
+
+            return Array.from(mergedActivities.values()).sort((a, b) =>
+                (a.date || '').localeCompare(b.date || '') || a.id - b.id
+            );
         }
     );
 
@@ -282,7 +354,7 @@ export default function TaskDetailPanel({
                     </div>
                 </section>
 
-                {task.deadline && (
+                {(task.deadline || (task.milestones?.length || 0) > 0) && (
                     <>
                         <Divider />
                         {/* 2. Timeline Horizon (Pure 14 blocks) */}

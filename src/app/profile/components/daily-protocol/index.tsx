@@ -130,6 +130,8 @@ export default function DailyProtocol({ isActive, onToggle, isAdmin }: DailyProt
             return;
         }
 
+        // 以数据库最终结果校准乐观更新，避免 SWR 重验证期间旧记录短暂回弹。
+        await mutate();
         toast.success('已删除');
     };
 
