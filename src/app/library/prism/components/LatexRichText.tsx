@@ -6,7 +6,7 @@ import 'katex/dist/katex.min.css';
 
 type Segment = { type: 'text' | 'inline' | 'block'; content: string };
 
-/** 将文本拆成普通文本与 $...$ / $$...$$ 公式段 */
+/** 将文本拆成普通文本与公式段（支持 $...$, $$...$$, \(...\), \[...\]） */
 export function parseLatexSegments(text: string): Segment[] {
     if (!text) return [];
     const segments: Segment[] = [];
@@ -20,6 +20,22 @@ export function parseLatexSegments(text: string): Segment[] {
                 continue;
             }
         }
+        if (text.startsWith('\\[', i)) {
+            const end = text.indexOf('\\]', i + 2);
+            if (end !== -1) {
+                segments.push({ type: 'block', content: text.slice(i + 2, end) });
+                i = end + 2;
+                continue;
+            }
+        }
+        if (text.startsWith('\\(', i)) {
+            const end = text.indexOf('\\)', i + 2);
+            if (end !== -1) {
+                segments.push({ type: 'inline', content: text.slice(i + 2, end) });
+                i = end + 2;
+                continue;
+            }
+        }
         if (text[i] === '$' && text[i + 1] !== '$') {
             const end = text.indexOf('$', i + 1);
             if (end !== -1) {
@@ -29,9 +45,13 @@ export function parseLatexSegments(text: string): Segment[] {
             }
         }
         const nextBlock = text.indexOf('$$', i);
+        const nextBracketBlock = text.indexOf('\\[', i);
+        const nextBracketInline = text.indexOf('\\(', i);
         const nextInline = text.indexOf('$', i);
         let next = text.length;
         if (nextBlock !== -1) next = Math.min(next, nextBlock);
+        if (nextBracketBlock !== -1) next = Math.min(next, nextBracketBlock);
+        if (nextBracketInline !== -1) next = Math.min(next, nextBracketInline);
         if (nextInline !== -1) next = Math.min(next, nextInline);
         if (next > i) {
             segments.push({ type: 'text', content: text.slice(i, next) });

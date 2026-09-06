@@ -347,21 +347,27 @@ export default function TaskProgressPanel({ task, linkedActivities, mutateLinked
     const handleSaveReport = async () => {
         if (!isAdmin) return toast.warning("只有本人能操作");
         setIsSavingReport(true);
-        if (weeklyReport?.id) {
-            // Update
-            const { error } = await supabase.from('profile_task_weekly_reports')
-                .update({ content: reportContent, updated_at: new Date().toISOString() })
-                .eq('id', weeklyReport.id);
-            if (!error) { toast.success("周报已更新"); mutateReport(); }
-            else toast.error("更新失败");
-        } else {
-            // Insert
-            const { error } = await supabase.from('profile_task_weekly_reports')
-                .insert({ task_id: task.id, week_start_date: mondayStr, content: reportContent });
-            if (!error) { toast.success("周报已保存"); mutateReport(); }
-            else toast.error("保存失败");
+        try {
+            if (weeklyReport?.id) {
+                const { error } = await supabase.from('profile_task_weekly_reports')
+                    .update({ content: reportContent, updated_at: new Date().toISOString() })
+                    .eq('id', weeklyReport.id);
+                if (error) throw error;
+                toast.success("周报已更新");
+            } else {
+                const { error } = await supabase.from('profile_task_weekly_reports')
+                    .insert({ task_id: task.id, week_start_date: mondayStr, content: reportContent });
+                if (error) throw error;
+                toast.success("周报已保存");
+            }
+            await mutateReport();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error("Error saving weekly report:", error);
+            toast.error(`周报保存失败：${message}`);
+        } finally {
+            setIsSavingReport(false);
         }
-        setIsSavingReport(false);
     };
 
     // 绑定弹窗状态

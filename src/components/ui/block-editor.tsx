@@ -1,5 +1,6 @@
 import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { Extension, InputRule, PasteRule } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -19,6 +20,85 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { TableBubbleMenu } from './table-bubble-menu';
 import 'tippy.js/dist/tippy.css';
 import 'katex/dist/katex.min.css';
+
+// Native extension to support LaTeX bracket delimiters \[ ... \] (block) and \( ... \) (inline)
+const LatexBracketExtension = Extension.create({
+    name: 'latexBracket',
+
+    addInputRules() {
+        return [
+            // Display math: \[ ... \]
+            new InputRule({
+                find: /\\\[([\s\S]+?)\\\]$/,
+                handler: (props) => {
+                    const latex = props.match[1]?.trim();
+                    if (!latex) return;
+                    props
+                        .chain()
+                        .insertContentAt(
+                            { from: props.range.from, to: props.range.to },
+                            [{ type: 'inlineMath', attrs: { latex, evaluate: 'no', display: 'yes' } }],
+                            { updateSelection: true }
+                        )
+                        .run();
+                },
+            }),
+            // Inline math: \( ... \)
+            new InputRule({
+                find: /\\\((.+?)\\\)$/,
+                handler: (props) => {
+                    const latex = props.match[1]?.trim();
+                    if (!latex) return;
+                    props
+                        .chain()
+                        .insertContentAt(
+                            { from: props.range.from, to: props.range.to },
+                            [{ type: 'inlineMath', attrs: { latex, evaluate: 'no', display: 'no' } }],
+                            { updateSelection: true }
+                        )
+                        .run();
+                },
+            }),
+        ];
+    },
+
+    addPasteRules() {
+        return [
+            // Display math: \[ ... \]
+            new PasteRule({
+                find: /\\\[([\s\S]+?)\\\]/g,
+                handler: (props) => {
+                    const latex = props.match[1]?.trim();
+                    if (!latex) return;
+                    props
+                        .chain()
+                        .insertContentAt(
+                            { from: props.range.from, to: props.range.to },
+                            [{ type: 'inlineMath', attrs: { latex, evaluate: 'no', display: 'yes' } }],
+                            { updateSelection: true }
+                        )
+                        .run();
+                },
+            }),
+            // Inline math: \( ... \)
+            new PasteRule({
+                find: /\\\((.+?)\\\)/g,
+                handler: (props) => {
+                    const latex = props.match[1]?.trim();
+                    if (!latex) return;
+                    props
+                        .chain()
+                        .insertContentAt(
+                            { from: props.range.from, to: props.range.to },
+                            [{ type: 'inlineMath', attrs: { latex, evaluate: 'no', display: 'no' } }],
+                            { updateSelection: true }
+                        )
+                        .run();
+                },
+            }),
+        ];
+    },
+});
 
 const lowlight = createLowlight(common);
 
@@ -164,6 +244,7 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                 evaluation: false, 
                 katexOptions: { macros: { "\\R": "\\mathbb{R}" } } 
             }),
+            LatexBracketExtension,
         ],
         content: parseInitialContent(value),
         editable: editable,
