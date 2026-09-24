@@ -620,6 +620,7 @@ export default function ProfilePage() {
                             isActive={false}
                             isIdle={activeModule === 'idle'}
                             onToggle={() => setActiveModule(prev => prev === 'status' ? 'idle' : 'status')}
+                            isAdmin={isAdmin}
                         />
                     </div>
                 )}
@@ -632,6 +633,7 @@ export default function ProfilePage() {
                         isActive={true}
                         isIdle={false}
                         onToggle={() => setActiveModule('idle')}
+                        isAdmin={isAdmin}
                     />
                 )}
             </AnimatePresence>

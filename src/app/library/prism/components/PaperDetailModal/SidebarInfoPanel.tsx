@@ -107,7 +107,12 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange, 
         if (editorRef.current?.editor) {
             notesHtml = editorRef.current.editor.getHTML();
         } else if (paper.notes && typeof paper.notes === 'string' && !paper.notes.trim().startsWith('{')) {
-            notesHtml = `<pre style="white-space:pre-wrap;font-family:serif;">${paper.notes}</pre>`;
+            const formatted = paper.notes
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/`([^`\n]+)`/g, '<code style="background:#f5f5f4;border:1px solid #e7e5e4;padding:0.15em 0.35em;border-radius:4px;font-family:monospace;font-size:0.9em;">$1</code>');
+            notesHtml = `<div style="white-space:pre-wrap;font-family:serif;line-height:1.6;">${formatted}</div>`;
         }
 
         // Build figures HTML

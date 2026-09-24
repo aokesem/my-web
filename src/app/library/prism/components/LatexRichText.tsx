@@ -4,14 +4,37 @@ import React, { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
-type Segment = { type: 'text' | 'inline' | 'block'; content: string };
+type Segment =
+    | { type: 'text'; content: string }
+    | { type: 'inline'; content: string }
+    | { type: 'block'; content: string }
+    | { type: 'code'; content: string }
+    | { type: 'codeblock'; content: string; language?: string };
 
-/** 将文本拆成普通文本与公式段（支持 $...$, $$...$$, \(...\), \[...\]） */
+/** 将文本拆成普通文本、公式段（$...$, $$...$$, \(...\), \[...\]）与代码段（`...`, ```...```） */
 export function parseLatexSegments(text: string): Segment[] {
     if (!text) return [];
     const segments: Segment[] = [];
     let i = 0;
     while (i < text.length) {
+        // 1. Triple backticks code block: ```lang\n...```
+        if (text.startsWith('```', i)) {
+            const end = text.indexOf('```', i + 3);
+            if (end !== -1) {
+                const blockContent = text.slice(i + 3, end);
+                const firstNewline = blockContent.indexOf('\n');
+                let language = '';
+                let code = blockContent;
+                if (firstNewline !== -1) {
+                    language = blockContent.slice(0, firstNewline).trim();
+                    code = blockContent.slice(firstNewline + 1);
+                }
+                segments.push({ type: 'codeblock', content: code, language });
+                i = end + 3;
+                continue;
+            }
+        }
+        // 2. LaTeX Display Math: $$...$$
         if (text.startsWith('$$', i)) {
             const end = text.indexOf('$$', i + 2);
             if (end !== -1) {
@@ -20,6 +43,7 @@ export function parseLatexSegments(text: string): Segment[] {
                 continue;
             }
         }
+        // 3. LaTeX Display Math: \[...\]
         if (text.startsWith('\\[', i)) {
             const end = text.indexOf('\\]', i + 2);
             if (end !== -1) {
@@ -28,6 +52,7 @@ export function parseLatexSegments(text: string): Segment[] {
                 continue;
             }
         }
+        // 4. LaTeX Inline Math: \(...\)
         if (text.startsWith('\\(', i)) {
             const end = text.indexOf('\\)', i + 2);
             if (end !== -1) {
@@ -36,6 +61,7 @@ export function parseLatexSegments(text: string): Segment[] {
                 continue;
             }
         }
+        // 5. LaTeX Inline Math: $...$
         if (text[i] === '$' && text[i + 1] !== '$') {
             const end = text.indexOf('$', i + 1);
             if (end !== -1) {
@@ -44,15 +70,32 @@ export function parseLatexSegments(text: string): Segment[] {
                 continue;
             }
         }
+        // 6. Inline Code: `...`
+        if (text[i] === '`') {
+            const end = text.indexOf('`', i + 1);
+            if (end !== -1) {
+                segments.push({ type: 'code', content: text.slice(i + 1, end) });
+                i = end + 1;
+                continue;
+            }
+        }
+
+        // Find closest delimiter of any kind
+        const nextCodeBlock = text.indexOf('```', i);
         const nextBlock = text.indexOf('$$', i);
         const nextBracketBlock = text.indexOf('\\[', i);
         const nextBracketInline = text.indexOf('\\(', i);
         const nextInline = text.indexOf('$', i);
+        const nextCode = text.indexOf('`', i);
+
         let next = text.length;
+        if (nextCodeBlock !== -1) next = Math.min(next, nextCodeBlock);
         if (nextBlock !== -1) next = Math.min(next, nextBlock);
         if (nextBracketBlock !== -1) next = Math.min(next, nextBracketBlock);
         if (nextBracketInline !== -1) next = Math.min(next, nextBracketInline);
         if (nextInline !== -1) next = Math.min(next, nextInline);
+        if (nextCode !== -1) next = Math.min(next, nextCode);
+
         if (next > i) {
             segments.push({ type: 'text', content: text.slice(i, next) });
         }
@@ -90,6 +133,12 @@ export function LatexRichText({
             .map((seg) => {
                 if (seg.type === 'text') {
                     return `<span class="whitespace-pre-wrap">${escapeHtml(seg.content)}</span>`;
+                }
+                if (seg.type === 'code') {
+                    return `<code class="font-mono bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded text-[0.85em] border border-stone-200/60 font-medium">${escapeHtml(seg.content)}</code>`;
+                }
+                if (seg.type === 'codeblock') {
+                    return `<pre class="bg-stone-100 text-stone-800 p-3 rounded-xl font-mono text-xs overflow-x-auto my-2 border border-stone-200/60 leading-relaxed"><code>${escapeHtml(seg.content)}</code></pre>`;
                 }
                 return renderKatex(seg.content, seg.type === 'block');
             })

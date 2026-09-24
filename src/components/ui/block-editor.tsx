@@ -1,6 +1,6 @@
 import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
-import { Extension, InputRule, PasteRule } from '@tiptap/core';
+import { Extension, InputRule, PasteRule, markPasteRule } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -100,6 +100,21 @@ const LatexBracketExtension = Extension.create({
     },
 });
 
+// Native extension to support pasting inline code delimited by `...`
+const CodePasteExtension = Extension.create({
+    name: 'codePaste',
+
+    addPasteRules() {
+        return [
+            markPasteRule({
+                find: /(?:^|[^`])`([^`\n]+)`/g,
+                type: this.editor.schema.marks.code,
+            }),
+        ];
+    },
+});
+
+
 const lowlight = createLowlight(common);
 
 // Helper: extract Supabase storage path from a public URL
@@ -193,6 +208,28 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                     return val;
                 }
             }
+            if (t.startsWith('<')) {
+                return val;
+            }
+            // 若为含反引号的纯文本或 Markdown，转换为 HTML 标签使 TipTap 正常识别行内代码与代码块
+            if (val.includes('`')) {
+                let converted = val.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+                    const langClass = lang ? ` class="language-${lang}"` : '';
+                    const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    return `<pre><code${langClass}>${escaped}</code></pre>`;
+                });
+                converted = converted.replace(/`([^`\n]+)`/g, (_, code) => {
+                    const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    return `<code>${escaped}</code>`;
+                });
+                if (converted.includes('\n\n')) {
+                    converted = converted
+                        .split(/\n\s*\n/)
+                        .map(p => p.trim().startsWith('<pre') ? p : `<p>${p.replace(/\n/g, '<br>')}</p>`)
+                        .join('');
+                }
+                return converted;
+            }
             return val;
         }
         return val;
@@ -245,12 +282,13 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                 katexOptions: { macros: { "\\R": "\\mathbb{R}" } } 
             }),
             LatexBracketExtension,
+            CodePasteExtension,
         ],
         content: parseInitialContent(value),
         editable: editable,
         editorProps: {
             attributes: {
-                class: 'prose prose-stone prose-p:leading-relaxed prose-pre:bg-stone-100 prose-pre:text-stone-800 max-w-none text-[15px] focus:outline-none focus:ring-0 w-full min-h-[100px]',
+                class: 'prose prose-stone prose-p:leading-relaxed prose-pre:bg-stone-100 prose-pre:text-stone-800 prose-code:before:content-none prose-code:after:content-none max-w-none text-[15px] focus:outline-none focus:ring-0 w-full min-h-[100px]',
             },
             handleKeyDown: (view, event) => {
                 // Ctrl/Cmd + Enter => save
@@ -405,6 +443,22 @@ export const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(({
                     float: left;
                     height: 0;
                     pointer-events: none;
+                }
+
+                /* Inline code styles */
+                .prose :not(pre) > code {
+                    background-color: #f5f5f4;
+                    color: #1c1917;
+                    border: 1px solid #e7e5e4;
+                    border-radius: 0.375rem;
+                    padding: 0.15rem 0.4rem;
+                    font-size: 0.875em;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                    font-weight: 500;
+                }
+                .prose :not(pre) > code::before,
+                .prose :not(pre) > code::after {
+                    content: "" !important;
                 }
 
                 /* Table styles */
