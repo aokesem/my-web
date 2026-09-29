@@ -131,14 +131,19 @@ function extractStoragePath(url: string, bucket: string): string | null {
 }
 
 // Helper: delete an image from Supabase storage
-async function deleteImageFromStorage(url: string, bucket: string) {
-    const path = extractStoragePath(url, bucket);
-    if (!path) return;
+async function deleteImageFromStorage(url: string, fallbackBucket: string) {
+    if (!url || !url.includes('/storage/v1/object/public/')) return;
     try {
-        const { error } = await supabase.storage.from(bucket).remove([path]);
-        if (error) console.error('Storage delete error:', error);
+        const urlParts = url.split('/storage/v1/object/public/');
+        if (urlParts.length < 2) return;
+        const pathParts = urlParts[1].split('/');
+        const bucket = pathParts[0] || fallbackBucket;
+        const filePath = pathParts.slice(1).join('/');
+        if (!filePath) return;
+        const { error } = await supabase.storage.from(bucket).remove([filePath]);
+        if (error) console.warn('Storage delete warning:', error.message);
     } catch (e) {
-        console.error('Failed to delete from storage:', e);
+        console.warn('Failed to delete from storage:', e);
     }
 }
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { LanguageSidebar } from "./components/LanguageSidebar";
 import { CodebaseColumns } from "./components/CodebaseColumns";
+import { CodebaseTreeSidebar } from "./components/CodebaseTreeSidebar";
 import { CodebaseContent, type CodebaseContentHandle } from "./components/CodebaseContent";
 import { useCodebaseLanguages, useCodebaseNodes } from "../hooks/useCodebaseData";
 import { BlockEditorRef } from "@/components/ui/block-editor";
@@ -18,10 +19,17 @@ export default function CodebasePage() {
             setIsAdmin(!!session);
         });
     }, []);
+
     // 1. App State
     const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(null);
     // An array of selected node IDs representing the active path
     const [selectedPath, setSelectedPath] = useState<string[]>([]);
+    // View mode: 'columns' (default, 3-column Miller columns) or 'sidebar' (on-demand page outline)
+    const [viewMode, setViewMode] = useState<'columns' | 'sidebar'>('columns');
+
+    const handleToggleViewMode = () => {
+        setViewMode((prev) => (prev === "columns" ? "sidebar" : "columns"));
+    };
 
     const editorRef = useRef<BlockEditorRef>(null);
     const contentGuardRef = useRef<CodebaseContentHandle | null>(null);
@@ -45,6 +53,11 @@ export default function CodebasePage() {
         const newPath = selectedPath.slice(0, level); // cutoff deeper selections
         newPath[level] = nodeId;
         setSelectedPath(newPath);
+    };
+
+    const handleSelectFullPath = (fullPath: string[]) => {
+        if (contentGuardRef.current && !contentGuardRef.current.confirmLeaveIfNeeded()) return;
+        setSelectedPath(fullPath);
     };
 
     return (
@@ -77,18 +90,28 @@ export default function CodebasePage() {
             {/* Main Content Area */}
             {selectedLanguageId ? (
                 <div className="flex-1 flex overflow-hidden">
-                    {/* 3. Miller Columns (L1, L2, L3) */}
-                    <div className="w-[45%] h-full flex shrink-0">
-                        <CodebaseColumns
-                            languageId={selectedLanguageId}
-                            nodes={nodes}
-                            selectedPath={selectedPath}
-                            onSelectPath={handleSelectPath}
-                            isLoading={isLoadingNodes}
-                            onDataChange={mutateNodes}
-                            isAdmin={isAdmin}
-                        />
-                    </div>
+                    {/* 3. Navigation: Miller Columns (L1, L2, L3) OR Classical Tree Sidebar */}
+                    {viewMode === "columns" ? (
+                        <div className="w-[45%] h-full flex shrink-0">
+                            <CodebaseColumns
+                                languageId={selectedLanguageId}
+                                nodes={nodes}
+                                selectedPath={selectedPath}
+                                onSelectPath={handleSelectPath}
+                                isLoading={isLoadingNodes}
+                                onDataChange={mutateNodes}
+                                isAdmin={isAdmin}
+                            />
+                        </div>
+                    ) : (
+                        <div className="w-[280px] lg:w-[300px] h-full flex shrink-0">
+                            <CodebaseTreeSidebar
+                                targetNode={nodes.find((n) => n.id === selectedPath[selectedPath.length - 1])}
+                                breadcrumbs={selectedPath.map((id) => nodes.find((n) => n.id === id)?.title).filter(Boolean) as string[]}
+                                onSwitchToColumns={() => setViewMode("columns")}
+                            />
+                        </div>
+                    )}
 
                     {/* 4. Right Content Area */}
                     <div className="flex-1 h-full bg-white border-l border-stone-200/70 overflow-hidden relative">
@@ -100,6 +123,8 @@ export default function CodebasePage() {
                             onDataChange={mutateNodes}
                             editorRef={editorRef}
                             isAdmin={isAdmin}
+                            viewMode={viewMode}
+                            onToggleViewMode={handleToggleViewMode}
                         />
                     </div>
                 </div>

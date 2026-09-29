@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef, useCallback } from "react";
 import { CodebaseNode } from "../../types";
-import { ChevronRight, FileCode, CheckCircle2, Save, X } from "lucide-react";
+import { ChevronRight, FileCode, CheckCircle2, Save, X, ListTree, Columns3 } from "lucide-react";
 import { BlockEditor, BlockEditorRef } from "@/components/ui/block-editor";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -20,14 +20,17 @@ interface CodebaseContentProps {
     onDataChange: () => void;
     editorRef: React.RefObject<BlockEditorRef | null>;
     isAdmin: boolean;
+    viewMode?: 'columns' | 'sidebar';
+    onToggleViewMode?: () => void;
 }
 
 export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContentProps>(function CodebaseContent(
-    { nodes, selectedPath, languageId, onDataChange, editorRef, isAdmin },
+    { nodes, selectedPath, languageId, onDataChange, editorRef, isAdmin, viewMode = 'columns', onToggleViewMode },
     ref
 ) {
     const [isEditing, setIsEditing] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [editorKey, setEditorKey] = useState(0);
     /** 进入编辑后 TipTap 可能立刻触发一次 onUpdate，不应记为脏 */
     const skipNextDirtyFromEditorRef = useRef(false);
 
@@ -83,9 +86,21 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
             setIsDirty(false);
             onDataChange();
         }
-    }, [targetNode, editorRef, onDataChange]);
+    }, [targetNode, editorRef, onDataChange, isAdmin]);
 
-    // Ctrl+S save shortcut
+    const handleCancel = useCallback(() => {
+        if (isDirty) {
+            if (!window.confirm("当前内容有未保存的修改，确定放弃并恢复原状吗？")) {
+                return;
+            }
+        }
+        setIsEditing(false);
+        setIsDirty(false);
+        // 重置 key 强制重新挂载编辑器，恢复到上一次保存的状态
+        setEditorKey((prev) => prev + 1);
+    }, [isDirty]);
+
+    // Ctrl+S save shortcut & Escape to cancel
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -93,11 +108,14 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
                 if (isAdmin && isEditing && targetNode) {
                     void handleSave();
                 }
+            } else if (e.key === "Escape" && isEditing) {
+                e.preventDefault();
+                handleCancel();
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isEditing, targetNode, handleSave, isAdmin]);
+    }, [isEditing, targetNode, handleSave, handleCancel, isAdmin]);
 
     const beginEditing = () => {
         if (!isAdmin) return toast.warning("只有本人才能修改代码库。");
@@ -129,9 +147,31 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
                 </div>
 
                 <div className="ml-auto flex items-center gap-2">
+                    {onToggleViewMode && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-stone-600 hover:text-stone-900 border border-stone-200/70 bg-stone-50/80 hover:bg-stone-100 px-2.5 transition-colors cursor-pointer"
+                            onClick={onToggleViewMode}
+                            title={viewMode === 'columns' ? "切换为当前笔记页面大纲" : "切换为三栏级联目录"}
+                        >
+                            {viewMode === 'columns' ? (
+                                <>
+                                    <ListTree size={13} className="mr-1.5 text-purple-600" />
+                                    <span>大纲目录</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Columns3 size={13} className="mr-1.5 text-stone-500" />
+                                    <span>级联目录</span>
+                                </>
+                            )}
+                        </Button>
+                    )}
+
                     {isEditing ? (
                         <>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs text-stone-500 px-2" onClick={() => setIsEditing(false)}>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-stone-500 px-2" onClick={handleCancel}>
                                 <X size={14} className="mr-1" /> 取消
                             </Button>
                             <Button size="sm" className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white px-3" onClick={handleSave}>
@@ -163,7 +203,7 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
                     <h1 className="text-3xl font-bold font-serif text-stone-800 mb-8">{targetNode.title}</h1>
 
                     <BlockEditor
-                        key={targetNodeId}
+                        key={`${targetNodeId}-${editorKey}`}
                         ref={editorRef}
                         value={targetNode.notes || ""}
                         editable={isAdmin && isEditing}
@@ -178,7 +218,7 @@ export const CodebaseContent = forwardRef<CodebaseContentHandle, CodebaseContent
                         onSave={handleSave}
                         placeholder={isEditing ? "使用 / 唤出菜单..." : "还没有记录任何内容。"}
                         className="prose prose-stone prose-sm max-w-none focus:outline-none"
-                        imageBucket="prism"
+                        imageBucket="course_images"
                         imageFolder={`codebase/${languageId}/${targetNode.id}`}
                     />
                 </div>

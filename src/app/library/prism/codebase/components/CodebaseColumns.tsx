@@ -361,7 +361,7 @@ function ColumnItemRow({
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
                 onClick={handleClick}
-                className={`group h-[34px] flex items-center justify-between px-2 rounded-lg cursor-pointer transition-all border ${
+                className={`group h-[34px] flex items-center justify-between px-2 rounded-lg cursor-pointer transition-all border relative overflow-hidden ${
                     isLongPressReady
                         ? 'bg-purple-100/90 border-purple-400 shadow-md ring-2 ring-purple-300/40 cursor-grabbing z-30'
                         : isSelected
@@ -393,41 +393,50 @@ function ColumnItemRow({
                             ) : (
                                 <FileCode size={14} className={isSelected ? 'text-purple-400' : 'text-stone-300'} />
                             )}
-                            <span className={`text-xs truncate ${isSelected ? 'font-medium' : ''}`}>{item.title}</span>
+                            <span title={item.title} className={`text-xs truncate ${isSelected ? 'font-medium' : ''}`}>{item.title}</span>
                         </div>
 
-                        <div className="flex items-center gap-0.5 shrink-0">
-                            {isAdmin && (
-                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-5 w-5 text-stone-400 hover:text-stone-700"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsEditing(true);
-                                            setEditTitle(item.title);
-                                        }}
-                                    >
-                                        <Edit2 size={10} />
-                                    </Button>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-5 w-5 text-stone-400 hover:text-red-500"
-                                        onClick={onDelete}
-                                    >
-                                        <Trash2 size={10} />
-                                    </Button>
-                                </div>
-                            )}
+                        {/* Chevron Indicator */}
+                        <div className="flex items-center shrink-0 ml-1">
                             <ChevronRight
                                 size={14}
-                                className={`shrink-0 ml-1 transition-colors ${
-                                    isSelected ? 'text-purple-500 opacity-100' : 'text-stone-300 opacity-0 group-hover:opacity-100'
+                                className={`transition-colors ${
+                                    isSelected ? 'text-purple-500 opacity-100' : 'text-stone-300 opacity-40 group-hover:opacity-0'
                                 }`}
                             />
                         </div>
+
+                        {/* Floating Action Buttons for Admin on Hover (Zero layout space occupied normally) */}
+                        {isAdmin && (
+                            <div
+                                className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 pl-3 pr-0.5 py-0.5 rounded-r-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
+                                    isSelected
+                                        ? 'bg-gradient-to-l from-purple-50 via-purple-50/95 to-transparent'
+                                        : 'bg-gradient-to-l from-stone-50 via-stone-50/95 to-transparent'
+                                }`}
+                            >
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5 text-stone-400 hover:text-stone-700"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsEditing(true);
+                                        setEditTitle(item.title);
+                                    }}
+                                >
+                                    <Edit2 size={10} />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5 text-stone-400 hover:text-red-500"
+                                    onClick={onDelete}
+                                >
+                                    <Trash2 size={10} />
+                                </Button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
