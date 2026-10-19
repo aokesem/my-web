@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { PaperDetail } from '../../types';
 import type { BlockEditorRef } from '@/components/ui/block-editor';
 import { PaperDataLinksDialog } from './PaperDataLinksDialog';
+import { tiptapToMarkdown } from '@/lib/prismIO';
 
 const TAG_STYLES: Record<string, { bg: string, text: string, border: string, dot: string }> = {
     project: { bg: 'bg-indigo-50/50', text: 'text-indigo-600', border: 'border-indigo-100', dot: 'bg-indigo-400' },
@@ -75,18 +76,7 @@ export function SidebarInfoPanel({ paper, editorRef, onUpdate, onEditingChange, 
         }
 
         if (paper.notes) {
-            let notesMd = '';
-            if (editorRef.current?.editor) {
-                try {
-                    notesMd = (editorRef.current.editor.storage as any).markdown.getMarkdown();
-                } catch (e) {
-                    notesMd = typeof paper.notes === 'string' ? paper.notes : '';
-                }
-            } else if (typeof paper.notes === 'string' && !paper.notes.trim().startsWith('{')) {
-                notesMd = paper.notes;
-            } else {
-                notesMd = typeof paper.notes === 'string' ? paper.notes : JSON.stringify(paper.notes);
-            }
+            const notesMd = tiptapToMarkdown(paper.notes);
             md += `${notesMd}\n`;
         }
 
