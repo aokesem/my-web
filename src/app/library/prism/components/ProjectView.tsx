@@ -24,11 +24,26 @@ interface ProjectViewProps {
     allPapers: PaperDetail[];
     onOpenPaper: (id: string) => void;
     onUpdateProjects: () => Promise<void>;
+    initialProjectId?: string | null;
     isAdmin: boolean;
 }
 
-export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdateProjects, isAdmin }: ProjectViewProps) {
-    const [activeProjectName, setActiveProjectName] = useState<string>(projects[0]?.name || '');
+export default function ProjectView({ projects, allPapers, onOpenPaper, onUpdateProjects, isAdmin, initialProjectId }: ProjectViewProps) {
+    const [activeProjectName, setActiveProjectName] = useState<string>(() => {
+        const matched = initialProjectId ? projects.find((p) => p.id === initialProjectId) : undefined;
+        return matched?.name || projects[0]?.name || '';
+    });
+    const appliedInitialProjectRef = React.useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!initialProjectId || projects.length === 0) return;
+        if (appliedInitialProjectRef.current === initialProjectId) return;
+        const matched = projects.find((p) => p.id === initialProjectId);
+        if (matched) {
+            setActiveProjectName(matched.name);
+            appliedInitialProjectRef.current = initialProjectId;
+        }
+    }, [initialProjectId, projects]);
     const [isTimelineOpen, setIsTimelineOpen] = useState(false);
     const [selectedTimelineIndex, setSelectedTimelineIndex] = useState<number | null>(null);
     const [paperGroupMode, setPaperGroupMode] = useState<'direction' | 'type'>('direction');

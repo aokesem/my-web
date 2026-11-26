@@ -1,9 +1,11 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookText, FileText, ArrowUpRight, Triangle, FileCode } from 'lucide-react';
+import { ArrowLeft, BookText, FileText, ArrowUpRight, Triangle, FileCode, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
+import TopicMatrixModal from './components/TopicMatrixModal';
 
 // ============================================================
 // SECTIONS DATA
@@ -89,11 +91,20 @@ const ACCENT_STYLES: Record<string, {
 // ============================================================
 
 export default function PrismPage() {
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [matrixOpen, setMatrixOpen] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAdmin(!!session);
+        });
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#faf9f7] text-slate-800 selection:bg-purple-200/40 flex flex-col">
 
             {/* ===== HEADER ===== */}
-            <header className="w-full px-10 pt-8 pb-6 flex justify-between items-start z-20">
+            <header className="relative w-full px-10 pt-8 pb-6 flex justify-between items-start z-20">
                 <Link
                     href="/library"
                     className="group flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white/70 border border-stone-200/60 hover:bg-white hover:shadow-sm hover:border-stone-300 transition-all duration-300 backdrop-blur-sm"
@@ -103,6 +114,22 @@ export default function PrismPage() {
                         Library
                     </span>
                 </Link>
+
+                {/* 顶部居中无名柔雾入口（三色微光圆点 + 聚合矩阵图标） */}
+                <button
+                    type="button"
+                    onClick={() => setMatrixOpen(true)}
+                    aria-label="主题聚合"
+                    className="group absolute left-1/2 top-8 -translate-x-1/2 flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-white/75 border border-white/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:bg-white hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 backdrop-blur-md transition-all duration-300 cursor-pointer"
+                >
+                    <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400/85 group-hover:scale-125 transition-transform duration-300" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/85 group-hover:scale-125 transition-transform duration-300 delay-75" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/85 group-hover:scale-125 transition-transform duration-300 delay-150" />
+                    </span>
+                    <span className="w-px h-3 bg-stone-200/80" />
+                    <LayoutGrid size={14} className="text-stone-400 group-hover:text-stone-700 transition-colors" strokeWidth={1.65} />
+                </button>
 
                 <div className="flex flex-col items-end">
                     <div className="flex items-center gap-3">
@@ -207,6 +234,12 @@ export default function PrismPage() {
                     Cognitive Prism Module
                 </span>
             </footer>
+
+            <TopicMatrixModal
+                open={matrixOpen}
+                onClose={() => setMatrixOpen(false)}
+                isAdmin={isAdmin}
+            />
         </div>
     );
 }

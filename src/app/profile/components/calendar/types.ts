@@ -18,6 +18,7 @@ export interface Activity {
 export interface DayData {
     status: DayStatus;
     comment: string;
+    emoji?: string | null;
     activities: Activity[];
 }
 

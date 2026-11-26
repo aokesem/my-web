@@ -215,3 +215,26 @@ export interface CodebaseNode {
     sort_order: number;
     created_at: string;
 }
+
+// ============================================================
+// TOPIC AGGREGATION MATRIX
+// ============================================================
+
+export type PrismTopicItemType = 'course' | 'project' | 'language';
+
+export interface PrismTopic {
+    id: string;
+    name: string;
+    sort_order: number;
+    created_at: string;
+    updated_at?: string;
+}
+
+export interface PrismTopicLink {
+    id: string;
+    topic_id: string;
+    item_type: PrismTopicItemType;
+    item_id: string;
+    sort_order: number;
+    created_at?: string;
+}

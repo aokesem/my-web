@@ -71,7 +71,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         const map: Record<string, DayData> = {};
         if (daysRes.data) {
             for (const d of daysRes.data) {
-                map[d.date] = { status: d.status as DayStatus, comment: d.comment || '', activities: [] };
+                map[d.date] = { status: d.status as DayStatus, comment: d.comment || '', emoji: d.emoji || null, activities: [] };
             }
         }
         const allActs: any[] = [];
@@ -79,7 +79,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
             for (const a of actsRes.data) {
                 const act = { id: a.id, content: a.content, duration: a.duration, start_time: a.start_time, end_time: a.end_time, color: a.color, day_of_week: a.day_of_week, recur_until: a.recur_until, date: a.date, deadline_item_id: a.deadline_item_id, place_id: a.place_id };
                 allActs.push(act);
-                if (!map[a.date]) map[a.date] = { status: null, comment: '', activities: [] };
+                if (!map[a.date]) map[a.date] = { status: null, comment: '', emoji: null, activities: [] };
                 map[a.date].activities.push(act);
             }
         }
@@ -129,19 +129,19 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
         });
     }, [deadlineTimepoints, deadlineItems]);
     const selectedKey = formatDateKey(viewYear, viewMonth, selectedDay);
-    const selectedData: DayData = calendarData[selectedKey] || { status: null, comment: '', activities: [] };
+    const selectedData: DayData = calendarData[selectedKey] || { status: null, comment: '', emoji: null, activities: [] };
 
     const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
     const todayStatus = calendarData[todayKey]?.status || null;
     const idleStatusKey = todayStatus || 'none';
 
     // === Supabase 操作函数 ===
-    const upsertDayField = async (dateKey: string, field: 'status' | 'comment', value: string | null) => {
+    const upsertDayField = async (dateKey: string, field: 'status' | 'comment' | 'emoji', value: string | null) => {
         mutate((prev: any) => ({
             ...prev,
             calendarData: {
                 ...prev.calendarData,
-                [dateKey]: { ...(prev.calendarData[dateKey] || { status: null, comment: '', activities: [] }), [field]: value }
+                [dateKey]: { ...(prev.calendarData[dateKey] || { status: null, comment: '', emoji: null, activities: [] }), [field]: value }
             }
         }), false);
         const existing = await supabase.from('calendar_days').select('id').eq('date', dateKey).single();
@@ -158,6 +158,10 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
     };
 
     const handleClearStatus = () => upsertDayField(selectedKey, 'status', null);
+
+    const handleEmojiChange = (emoji: string | null) => {
+        upsertDayField(selectedKey, 'emoji', emoji);
+    };
 
     const handleAddActivity = async (content: string, duration: string, deadlineItemId?: number | null) => {
         const payload: any = {
@@ -192,7 +196,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
             ...prev,
             calendarData: {
                 ...prev.calendarData,
-                [selectedKey]: { ...(prev.calendarData[selectedKey] || { status: null, comment: '', activities: [] }), comment }
+                [selectedKey]: { ...(prev.calendarData[selectedKey] || { status: null, comment: '', emoji: null, activities: [] }), comment }
             }
         }), false);
     };
@@ -489,6 +493,7 @@ export default function CalendarWidget({ isActive, onToggle, isAdmin = false }: 
                                         onSelectDay={setSelectedDay}
                                         onStatusChange={handleStatusChange}
                                         onClearStatus={handleClearStatus}
+                                        onEmojiChange={handleEmojiChange}
                                         onAddActivity={handleAddActivity}
                                         onRemoveActivity={handleRemoveActivity}
                                         onRefresh={mutate}

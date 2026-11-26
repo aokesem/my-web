@@ -27,6 +27,15 @@ export default function CodebasePage() {
     // View mode: 'columns' (default, 3-column Miller columns) or 'sidebar' (on-demand page outline)
     const [viewMode, setViewMode] = useState<'columns' | 'sidebar'>('columns');
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const langId = new URLSearchParams(window.location.search).get('lang');
+        if (langId) {
+            setSelectedLanguageId(langId);
+            setSelectedPath([]);
+        }
+    }, []);
+
     const handleToggleViewMode = () => {
         setViewMode((prev) => (prev === "columns" ? "sidebar" : "columns"));
     };

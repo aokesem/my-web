@@ -1,9 +1,62 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw, MapPin } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ChevronLeft, ChevronRight, X, Calendar, Plus, Trash2, Edit2, Check, RotateCcw, MapPin, SmilePlus } from 'lucide-react';
+import type { EmojiClickData, EmojiData } from 'emoji-picker-react';
 import { DayStatus, DayData, Deadline, DeadlineCategory, DeadlineItem, DeadlineTimepoint, RoutineLog, MONTH_NAMES, MONTH_ABBR, WEEKDAYS, formatDateKey, getMonthGrid, STATUS_COLORS, Activity } from './types';
 import { SafeDeleteDialog } from '@/components/ui/safe-delete-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex h-[420px] w-full items-center justify-center text-xs font-mono text-slate-400">
+            加载表情面板中...
+        </div>
+    ),
+});
+
+let cachedBilingualEmojiData: Promise<EmojiData> | null = null;
+
+const loadBilingualEmojiData = (): Promise<EmojiData> => {
+    if (!cachedBilingualEmojiData) {
+        cachedBilingualEmojiData = Promise.all([
+            import('emoji-picker-react/data/emojis-zh'),
+            import('emoji-picker-react/data/emojis-en'),
+        ]).then(([zhMod, enMod]) => {
+            const zhData = zhMod.default as unknown as EmojiData;
+            const enData = enMod.default as unknown as EmojiData;
+
+            const enNamesByUnified = new Map<string, string[]>();
+            for (const list of Object.values(enData.emojis)) {
+                for (const item of list) {
+                    enNamesByUnified.set(item.u, item.n);
+                }
+            }
+
+            const mergedEmojis: EmojiData['emojis'] = {};
+            for (const [category, list] of Object.entries(zhData.emojis)) {
+                mergedEmojis[category] = list.map((item) => {
+                    const enNames = enNamesByUnified.get(item.u);
+                    if (!enNames || enNames.length === 0) return item;
+                    const zhSet = new Set(item.n);
+                    const filteredEn = enNames.filter((name) => !zhSet.has(name));
+                    return {
+                        ...item,
+                        n: [...filteredEn, ...item.n],
+                    };
+                });
+            }
+
+            return {
+                categories: zhData.categories,
+                emojis: mergedEmojis,
+            };
+        });
+    }
+    return cachedBilingualEmojiData;
+};
 
 interface MonthViewPanelProps {
     viewYear: number;
@@ -22,6 +75,7 @@ interface MonthViewPanelProps {
     onSelectDay: (day: number) => void;
     onStatusChange: (status: DayStatus) => void;
     onClearStatus: () => void;
+    onEmojiChange: (emoji: string | null) => void;
     onAddActivity: (content: string, duration: string, deadlineItemId?: number | null) => Promise<void>;
     onRemoveActivity: (id: number) => Promise<void>;
     onRefresh: () => void;
@@ -50,6 +104,7 @@ export default function MonthViewPanel({
     onSelectDay,
     onStatusChange,
     onClearStatus,
+    onEmojiChange,
     onAddActivity,
     onRemoveActivity,
     onRefresh,
@@ -75,6 +130,7 @@ export default function MonthViewPanel({
     const [placePickerForId, setPlacePickerForId] = useState<number | null>(null);
     const [wakeTimeInput, setWakeTimeInput] = useState('');
     const [sleepTimeInput, setSleepTimeInput] = useState('');
+    const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
     const gridCells: Array<{ day: number | null }> = [];
     for (let i = 0; i < startOffset; i++) gridCells.push({ day: null });
@@ -272,6 +328,7 @@ export default function MonthViewPanel({
                             const key = formatDateKey(viewYear, viewMonth, cell.day);
                             const dayData = calendarData[key];
                             const status = dayData?.status;
+                            const dayEmoji = dayData?.emoji;
                             const isSel = cell.day === selectedDay;
                             const isTod = isToday(cell.day);
                             const isActiveDead = hasActiveDeadline(key);
@@ -301,9 +358,13 @@ export default function MonthViewPanel({
                                     <span className={`relative z-10 text-[13px] font-semibold ${isSel ? 'text-blue-600' : isTod ? 'text-blue-500 font-bold' : isActiveDead ? 'text-rose-600 font-bold' : 'text-slate-600'}`}>
                                         {cell.day}
                                     </span>
-                                    {isActiveDead && (
+                                    {dayEmoji ? (
+                                        <span className="absolute top-0 right-0.5 z-30 text-[15px] leading-none pointer-events-none select-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.85)]">
+                                            {dayEmoji}
+                                        </span>
+                                    ) : isActiveDead ? (
                                         <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 z-20 shadow-sm" />
-                                    )}
+                                    ) : null}
                                     {isTod && !isSel && (
                                         <div className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-400" />
                                     )}
@@ -320,11 +381,16 @@ export default function MonthViewPanel({
                     {/* 日期标题 + 状态选择器 */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="text-base font-bold text-slate-700">
+                            <h4 className="text-base font-bold text-slate-700 flex items-center">
                                 {viewMonth + 1}月{selectedDay}日
                                 <span className="text-slate-400 font-normal text-sm ml-2">
                                     {weekdayNames[selectedDate.getDay()]}
                                 </span>
+                                {selectedData.emoji && (
+                                    <span className="ml-2 text-base leading-none select-none" title="当日心情">
+                                        {selectedData.emoji}
+                                    </span>
+                                )}
                             </h4>
                         </div>
                         <div className="flex items-center gap-2">
@@ -530,61 +596,94 @@ export default function MonthViewPanel({
                         )}
 
                         {isAdmin && (
-                            <div className="space-y-2 mt-3">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        value={newActivity}
-                                        onChange={e => setNewActivity(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                                        placeholder="做了什么..."
-                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
-                                    />
-                                    <input
-                                        value={newDuration}
-                                        onChange={e => setNewDuration(e.target.value)}
-                                        placeholder="时长h"
-                                        type="number"
-                                        step="0.5"
-                                        className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
-                                    />
+                            <div className="flex items-stretch gap-2.5 mt-3">
+                                {/* 左侧当日心情 Emoji 按钮 */}
+                                <div className="relative shrink-0 w-[74px] group/emoji">
                                     <button
-                                        onClick={handleAdd}
-                                        className="p-2 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-colors border border-blue-200/50"
+                                        type="button"
+                                        onClick={() => setEmojiPickerOpen(true)}
+                                        className="w-full h-full rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50/60 hover:border-blue-300 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer"
+                                        title={selectedData.emoji ? '更换当日心情' : '设置当日心情'}
                                     >
-                                        <Plus size={16} />
+                                        {selectedData.emoji ? (
+                                            <span className="text-2xl leading-none select-none">{selectedData.emoji}</span>
+                                        ) : (
+                                            <SmilePlus size={20} className="text-slate-400 group-hover/emoji:text-blue-500 transition-colors" />
+                                        )}
+                                        <span className="text-[10px] text-slate-400 font-medium leading-none">心情</span>
                                     </button>
+                                    {selectedData.emoji && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEmojiChange(null);
+                                            }}
+                                            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-300 shadow-sm flex items-center justify-center opacity-0 group-hover/emoji:opacity-100 transition-opacity"
+                                            title="清除心情"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {/* 分类选择 */}
-                                    <select
-                                        value={selectedCategoryId ?? ''}
-                                        onChange={e => {
-                                            const catId = e.target.value ? parseInt(e.target.value) : null;
-                                            setSelectedCategoryId(catId);
-                                            setNewLinkedItemId(null);
-                                        }}
-                                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors"
-                                    >
-                                        <option value="">选择分类 (可选)</option>
-                                        {(deadlineCategories || []).map(cat => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                        ))}
-                                    </select>
 
-                                    {/* 关联条目选择器 */}
-                                    <select
-                                        value={newLinkedItemId ?? ''}
-                                        onChange={e => setNewLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
-                                        disabled={!selectedCategoryId}
-                                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors disabled:opacity-50"
-                                    >
-                                        <option value="">选择具体条目...</option>
-                                        {deadlineItems
-                                            .filter(item => item.category_id === selectedCategoryId)
-                                            .map(item => (
-                                                <option key={item.id} value={item.id}>{item.title}</option>
+                                {/* 右侧新增事项两行表单 */}
+                                <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            value={newActivity}
+                                            onChange={e => setNewActivity(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                                            placeholder="做了什么..."
+                                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
+                                        />
+                                        <input
+                                            value={newDuration}
+                                            onChange={e => setNewDuration(e.target.value)}
+                                            placeholder="时长h"
+                                            type="number"
+                                            step="0.5"
+                                            className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 transition-colors"
+                                        />
+                                        <button
+                                            onClick={handleAdd}
+                                            className="p-2 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-colors border border-blue-200/50"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {/* 分类选择 */}
+                                        <select
+                                            value={selectedCategoryId ?? ''}
+                                            onChange={e => {
+                                                const catId = e.target.value ? parseInt(e.target.value) : null;
+                                                setSelectedCategoryId(catId);
+                                                setNewLinkedItemId(null);
+                                            }}
+                                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors"
+                                        >
+                                            <option value="">选择分类 (可选)</option>
+                                            {(deadlineCategories || []).map(cat => (
+                                                <option key={cat.id} value={cat.id}>{cat.name}</option>
                                             ))}
-                                    </select>
+                                        </select>
+
+                                        {/* 关联条目选择器 */}
+                                        <select
+                                            value={newLinkedItemId ?? ''}
+                                            onChange={e => setNewLinkedItemId(e.target.value ? parseInt(e.target.value) : null)}
+                                            disabled={!selectedCategoryId}
+                                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 focus:outline-none focus:border-blue-300 transition-colors disabled:opacity-50"
+                                        >
+                                            <option value="">选择具体条目...</option>
+                                            {deadlineItems
+                                                .filter(item => item.category_id === selectedCategoryId)
+                                                .map(item => (
+                                                    <option key={item.id} value={item.id}>{item.title}</option>
+                                                ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -704,6 +803,56 @@ export default function MonthViewPanel({
                     {isAdmin ? 'MODE: EDIT' : 'MODE: VIEW'}
                 </span>
             </div>
+
+            {isAdmin && (
+                <Dialog open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+                    <DialogContent className="bg-white border-slate-200 text-slate-800 sm:max-w-[380px] p-4 z-[60]">
+                        <DialogHeader className="flex flex-row items-center justify-between pr-6 space-y-0">
+                            <DialogTitle className="text-sm font-bold text-slate-700">
+                                {viewMonth + 1}月{selectedDay}日 心情表情
+                            </DialogTitle>
+                            {selectedData.emoji && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onEmojiChange(null);
+                                        setEmojiPickerOpen(false);
+                                    }}
+                                    className="text-xs text-rose-500 hover:text-rose-600 font-medium px-2 py-0.5 rounded hover:bg-rose-50 transition-colors"
+                                >
+                                    清除心情
+                                </button>
+                            )}
+                        </DialogHeader>
+                        {emojiPickerOpen && (
+                            <div className="mt-1">
+                                <EmojiPicker
+                                    emojiStyle="native"
+                                    theme="light"
+                                    lazyLoadEmojis={true}
+                                    emojiData={loadBilingualEmojiData}
+                                    width="100%"
+                                    height={420}
+                                    searchPlaceholder="搜索表情 (支持中/英文)..."
+                                    labels={{
+                                        searchPlaceholder: '搜索表情 (支持中/英文)...',
+                                        searchClear: '清空搜索',
+                                        searchResultsNone: '未找到匹配的表情',
+                                        loading: '正在加载表情词库...',
+                                        loadingError: '表情词库加载失败',
+                                        retryLoading: '重试',
+                                    }}
+                                    previewConfig={{ showPreview: true, defaultCaption: '悬停查看表情名称' }}
+                                    onEmojiClick={(emojiData: EmojiClickData) => {
+                                        onEmojiChange(emojiData.emoji);
+                                        setEmojiPickerOpen(false);
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
+            )}
         </div>
     );
 }

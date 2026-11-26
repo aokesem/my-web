@@ -193,7 +193,17 @@ export default function LibraryPapersPage() {
 
     // View State
     const [activeTab, setActiveTab] = useState('projects');
+    const [initialProjectId, setInitialProjectId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortKey>('created_at');
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const projectId = new URLSearchParams(window.location.search).get('project');
+        if (projectId) {
+            setActiveTab('projects');
+            setInitialProjectId(projectId);
+        }
+    }, []);
     const [sortDesc, setSortDesc] = useState(true);
     /** 全部论文列表：按所属项目筛选（多项目论文满足任一选中项目即显示） */
     const [projectFilterId, setProjectFilterId] = useState<'all' | string>('all');
@@ -550,6 +560,7 @@ export default function LibraryPapersPage() {
                         onOpenPaper={(id) => setSelectedPaperId(id)}
                         onUpdateProjects={async () => { await mutateProjects(); }}
                         isAdmin={isAdmin}
+                        initialProjectId={initialProjectId}
                     />
                 )}
 

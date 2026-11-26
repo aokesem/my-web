@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { BookText, CornerDownLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
@@ -22,6 +22,15 @@ export default function CoursesPage() {
     const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
     const [courseSearchDraft, setCourseSearchDraft] = useState('');
     const [courseSearchQuery, setCourseSearchQuery] = useState('');
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const courseId = new URLSearchParams(window.location.search).get('course');
+        if (courseId) {
+            setSelectedCourseId(courseId);
+            setSelectedChapterId(null);
+        }
+    }, []);
 
     // ============================================================
     // DATA HOOKS
